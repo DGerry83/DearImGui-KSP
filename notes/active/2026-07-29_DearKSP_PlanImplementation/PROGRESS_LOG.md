@@ -4,8 +4,8 @@
 
 | Chunk | Status | Files Modified | Verification | Gate Verdicts | Notes |
 |-------|--------|----------------|--------------|---------------|-------|
-| C1 | Built, awaiting in-game re-check | `ILogger.cs`, `DearKSPLogger.cs`, `Composition.cs`, `DearKSPAddon.cs`, `build*.bat`, `NativeBridge.cs` (comment) | `dotnet build` 0 err/0 warn; `build.bat` OK; deployed to ReformTestInstance | G3 (C1): PASS | See impediment below — native DLL moved to `PluginData/` (D19) |
-| C2 | Pending | - | - | - | - |
+| C1 | **Done** | `ILogger.cs`, `DearKSPLogger.cs`, `Composition.cs`, `DearKSPAddon.cs`, `build*.bat`, `NativeBridge.cs` (comment) | `dotnet build` 0 err/0 warn; in-game: `[DearKSP] Dear KSP loaded. Waiting for initialization (milestone 2).` confirmed in KSP.log 2026-07-29 — **M1 complete** | G3 (C1): PASS; G6 (M1): PASS | See impediment below — native DLL moved to `PluginData/` (D19) |
+| C2 | **Done** | `include/IUnityInterface.h`, `include/IUnityGraphics.h` (new, verbatim), `src/DearKSPNative.cpp`, `build.bat`, `build_release.bat` | `build.bat` 0 err/0 warn; dumpbin: all 5 exports present undecorated; managed build clean | G3 (C2): PASS | Delegated to sub-agent; lead fixed milestone-numbering drift in comments (now C4/C5 references) |
 | C3 | Pending | - | - | - | - |
 | C4 | Pending | - | - | - | - |
 | C5 | Pending | - | - | - | - |

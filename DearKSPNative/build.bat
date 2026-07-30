@@ -3,7 +3,7 @@ rem DearKSPNative debug build: /Od /Zi, cl.exe after vcvars64 (CinematicRecorder
 rem Requires the sibling cimgui clone at ..\..\cimgui (with its imgui submodule).
 call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul
 if not exist build mkdir build
-cl /nologo /EHsc /std:c++17 /Od /Zi /LD src\DearKSPNative.cpp /Fe:build\DearKSPNative.dll /Fo:build\ /Fd:build\ /link /DLL
+cl /nologo /EHsc /std:c++17 /Od /Zi /Iinclude /LD src\DearKSPNative.cpp /Fe:build\DearKSPNative.dll /Fo:build\ /Fd:build\ /link /DLL
 if errorlevel 1 exit /b 1
 if not exist ..\GameData\DearKSP\PluginData mkdir ..\GameData\DearKSP\PluginData
 copy /y build\DearKSPNative.dll ..\GameData\DearKSP\PluginData\ >nul
