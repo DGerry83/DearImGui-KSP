@@ -27,13 +27,11 @@ namespace DearKSP.Infrastructure
         internal const int InitErrVersionMismatch = 4;
         internal const int InitErrUnsupportedDevice = 5;
         internal const int InitErrContextInit = 6;
+        internal const int InitErrDeviceTexture = 7;
 
         // Managed/native handshake constant for the 0.1.x line (spec §5.4, D17);
         // must match DearKSPNative_GetVersion(). Bump both DLLs in lockstep.
         private const int ExpectedNativeVersion = 1;
-
-        // UnityGfxRenderer::kUnityGfxRendererD3D11 (IUnityGraphics.h). GL arrives in C5.
-        private const int DeviceKindD3D11 = 2;
 
         private readonly ILogger _logger;
         private readonly InputCaptureState _captureState = new InputCaptureState();
@@ -41,10 +39,14 @@ namespace DearKSP.Infrastructure
         private IntPtr _library;
         private bool _initialized;
 
-        // Native function delegates (C3-locked C ABI + C2 export surface). Held in
+        // Kept alive for the session: the device is captured from this texture's
+        // native pointer, and we never want it collected underneath the backend.
+        private Texture2D _deviceTexture;
+
+        // Native function delegates (C3-locked C ABI + C4 device handoff). Held in
         // fields so the GC never collects a delegate the native side may call back.
         private GetVersionDelegate _getVersion;
-        private GetGraphicsDeviceKindDelegate _getGraphicsDeviceKind;
+        private SetD3D11DeviceTextureDelegate _setD3D11DeviceTexture;
         private ContextInitDelegate _contextInit;
         private ContextShutdownDelegate _contextShutdown;
         private BeginFrameDelegate _beginFrame;
@@ -102,12 +104,26 @@ namespace DearKSP.Infrastructure
                 return InitErrVersionMismatch;
             }
 
-            int deviceKind = _getGraphicsDeviceKind();
-            if (deviceKind != DeviceKindD3D11)
+            // Device gate managed-side: Unity only calls UnityPluginLoad for plugins
+            // it loads itself, so the native side cannot see IUnityGraphics in our
+            // deployment — SystemInfo is the authoritative check (GL arrives in C5).
+            if (SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Direct3D11)
             {
-                _logger.Error("Graphics device kind " + deviceKind + " is not D3D11 (" + DeviceKindD3D11 + "); the milestone 2 PoC requires D3D11 (GL support arrives in C5).");
+                _logger.Error("Graphics device " + SystemInfo.graphicsDeviceType + " is not Direct3D11; the milestone 2 PoC requires D3D11 (GL support arrives in C5).");
                 Unload();
                 return InitErrUnsupportedDevice;
+            }
+
+            // Hand the backend a Unity-created texture so it can capture the D3D11
+            // device (texture->GetDevice) — the CinematicRecorderNative pattern,
+            // since IUnityInterfaces is unavailable to a LoadLibrary'd plugin.
+            _deviceTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            int deviceResult = _setD3D11DeviceTexture(_deviceTexture.GetNativeTexturePtr());
+            if (deviceResult != 0)
+            {
+                _logger.Error("DearKSPNative_SetD3D11DeviceTexture failed with code " + deviceResult + ".");
+                Unload();
+                return InitErrDeviceTexture;
             }
 
             int contextResult = _contextInit();
@@ -175,7 +191,7 @@ namespace DearKSP.Infrastructure
         private bool BindExports()
         {
             _getVersion = Bind<GetVersionDelegate>("DearKSPNative_GetVersion");
-            _getGraphicsDeviceKind = Bind<GetGraphicsDeviceKindDelegate>("DearKSPNative_GetGraphicsDeviceKind");
+            _setD3D11DeviceTexture = Bind<SetD3D11DeviceTextureDelegate>("DearKSPNative_SetD3D11DeviceTexture");
             _contextInit = Bind<ContextInitDelegate>("DearKSPNative_ContextInit");
             _contextShutdown = Bind<ContextShutdownDelegate>("DearKSPNative_ContextShutdown");
             _beginFrame = Bind<BeginFrameDelegate>("DearKSPNative_BeginFrame");
@@ -183,7 +199,7 @@ namespace DearKSP.Infrastructure
             _setDemoWindowVisible = Bind<SetDemoWindowVisibleDelegate>("DearKSPNative_SetDemoWindowVisible");
             _getRenderEventFunc = Bind<GetRenderEventFuncDelegate>("DearKSPNative_GetRenderEventFunc");
             return _getVersion != null
-                && _getGraphicsDeviceKind != null
+                && _setD3D11DeviceTexture != null
                 && _contextInit != null
                 && _contextShutdown != null
                 && _beginFrame != null
@@ -217,7 +233,7 @@ namespace DearKSP.Infrastructure
         private delegate int GetVersionDelegate();
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate int GetGraphicsDeviceKindDelegate();
+        private delegate int SetD3D11DeviceTextureDelegate(IntPtr d3d11TexturePtr);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate int ContextInitDelegate();

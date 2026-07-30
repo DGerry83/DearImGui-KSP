@@ -2,19 +2,22 @@
 //
 // Initializes imgui_impl_dx11 from Unity's graphics device and renders the
 // frame's ImGui draw data inside the render-event callback (spec §4.1/§4.2).
-// Zero game knowledge beyond the Unity low-level plugin API; the ImGui
-// context itself stays owned by ContextHost (C3 ABI).
+// Zero game knowledge; the ImGui context itself stays owned by ContextHost (C3 ABI).
+//
+// Device discovery: this DLL is loaded via LoadLibrary from managed code, so
+// Unity never calls UnityPluginLoad and IUnityInterfaces is unavailable. The
+// device is therefore taken from a Unity-created D3D11 texture passed in by
+// the managed bridge (texture->GetDevice) — the same pattern
+// CinematicRecorderNative uses in this game.
 #pragma once
 
-#include "IUnityInterface.h"
+// Captures the D3D11 device + immediate context from a Unity-created
+// ID3D11Texture2D (Texture.GetNativeTexturePtr() managed-side).
+// Returns 0 on success (or already captured), 1 on null pointer,
+// 2 when GetDevice fails, 3 when GetImmediateContext fails.
+int BackendD3D11_InitFromTexture(void* d3d11TexturePtr);
 
-// Called from UnityPluginLoad: registers the graphics device-event callback
-// and attempts an immediate device capture (Unity may have already fired
-// kUnityGfxDeviceEventInitialize before the plugin finished loading).
-void BackendD3D11_OnPluginLoad(IUnityInterfaces* unityInterfaces);
-
-// Called from UnityPluginUnload and on kUnityGfxDeviceEventShutdown:
-// releases the backend (ImGui_ImplDX11_Shutdown) and the captured device
+// Releases the backend (ImGui_ImplDX11_Shutdown) and the captured device
 // pointers. Safe to call when nothing was initialized.
 void BackendD3D11_Shutdown(void);
 

@@ -4,6 +4,10 @@
 // saves/restores the full D3D11 pipeline state around the draw (verified in
 // imgui 1.92.9 backends/imgui_impl_dx11.cpp) — the basis for coexistence
 // with Deferred/TUFX (D16, spec §4.2).
+//
+// Device discovery note: Unity only calls UnityPluginLoad for plugins IT
+// loads; we are LoadLibrary'd from managed code (D19 layout), so the device
+// is captured from a Unity-created texture instead (see header).
 
 #include "BackendD3D11.h"
 
@@ -12,32 +16,45 @@
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 
-#include "IUnityGraphics.h"
-#include "IUnityGraphicsD3D11.h"
-
-// Interface registry captured at plugin load; used to fetch IUnityGraphics
-// and IUnityGraphicsD3D11 when the device-event callback fires.
-static IUnityInterfaces* s_UnityInterfaces = nullptr;
-
-// Device pointers captured on kUnityGfxDeviceEventInitialize (render thread).
-// IUnityGraphicsD3D11 exposes GetDevice() only, so the immediate context
-// comes from ID3D11Device::GetImmediateContext — that call AddRefs, and the
-// extra reference is released again once ImGui_ImplDX11_Init has taken its
-// own (s_DeviceContext then becomes a non-owning presence marker).
+// Device pointers captured in BackendD3D11_InitFromTexture. GetDevice and
+// GetImmediateContext both AddRef; the extra context reference is released
+// once ImGui_ImplDX11_Init has taken its own, the device reference is held
+// until BackendD3D11_Shutdown.
 static ID3D11Device*        s_Device        = nullptr;
 static ID3D11DeviceContext* s_DeviceContext = nullptr;
 
 // True once ImGui_ImplDX11_Init + ImGui_ImplDX11_CreateDeviceObjects succeeded.
 static bool s_BackendUp = false;
 
+int BackendD3D11_InitFromTexture(void* d3d11TexturePtr)
+{
+    if (s_Device != nullptr)
+        return 0; // already captured
+    if (d3d11TexturePtr == nullptr)
+        return 1;
+
+    ID3D11Texture2D* texture = (ID3D11Texture2D*)d3d11TexturePtr;
+    texture->GetDevice(&s_Device); // AddRef'd; released in Shutdown
+    if (s_Device == nullptr)
+        return 2;
+
+    s_Device->GetImmediateContext(&s_DeviceContext); // AddRef'd
+    if (s_DeviceContext == nullptr)
+    {
+        s_Device->Release();
+        s_Device = nullptr;
+        return 3;
+    }
+    return 0;
+}
+
 // Full backend bring-up. Needs the device pointers AND a live ImGui context
-// (ImGui_ImplDX11_Init touches ImGui::GetIO()), so it cannot run at
-// device-event time: the device initializes during plugin load, long before
-// managed code calls DearKSPNative_ContextInit. The device event only
-// captures pointers; Render() retries here on every event until both halves
-// exist. We deliberately do NOT call the backend's NewFrame — ContextHost
-// owns ImGui::NewFrame (C3 ABI) — so device objects are created explicitly
-// via ImGui_ImplDX11_CreateDeviceObjects(). In imgui 1.92.9 that covers
+// (ImGui_ImplDX11_Init touches ImGui::GetIO()), and the managed bridge passes
+// the texture before DearKSPNative_ContextInit runs — so init completes lazily
+// here on the first render event where both halves exist. We deliberately do
+// NOT call the backend's NewFrame — ContextHost owns ImGui::NewFrame (C3 ABI)
+// — so device objects are created explicitly via
+// ImGui_ImplDX11_CreateDeviceObjects(). In imgui 1.92.9 that covers
 // shaders/states/samplers; the font texture is created from
 // draw_data->Textures on the first RenderDrawData (RendererHasTextures).
 static void TryInitBackend()
@@ -55,56 +72,8 @@ static void TryInitBackend()
         return;
     }
     s_DeviceContext->Release(); // backend AddRef'd its own; drop our capture ref
+    s_DeviceContext = nullptr;  // non-owning marker no longer needed
     s_BackendUp = true;
-}
-
-// Captures the D3D11 device pointers. No-op unless Unity reports the D3D11
-// renderer — the PoC is D3D11-only; GL arrives in C5 (spec §4.1).
-static void CaptureDevice()
-{
-    if (s_Device != nullptr || s_UnityInterfaces == nullptr)
-        return;
-
-    IUnityGraphics* graphics = s_UnityInterfaces->Get<IUnityGraphics>();
-    if (graphics == nullptr || graphics->GetRenderer() != kUnityGfxRendererD3D11)
-        return;
-
-    IUnityGraphicsD3D11* d3d = s_UnityInterfaces->Get<IUnityGraphicsD3D11>();
-    if (d3d == nullptr)
-        return;
-
-    s_Device = d3d->GetDevice();
-    if (s_Device != nullptr)
-        s_Device->GetImmediateContext(&s_DeviceContext);
-}
-
-static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType)
-{
-    switch (eventType)
-    {
-    case kUnityGfxDeviceEventInitialize:
-        CaptureDevice();
-        break;
-    case kUnityGfxDeviceEventShutdown:
-        BackendD3D11_Shutdown();
-        break;
-    default:
-        break; // BeforeReset/AfterReset: viewport rebuild is C12 work
-    }
-}
-
-void BackendD3D11_OnPluginLoad(IUnityInterfaces* unityInterfaces)
-{
-    s_UnityInterfaces = unityInterfaces;
-
-    IUnityGraphics* graphics = s_UnityInterfaces->Get<IUnityGraphics>();
-    if (graphics == nullptr)
-        return;
-    graphics->RegisterDeviceEventCallback(&OnGraphicsDeviceEvent);
-
-    // The Initialize event is missed when the plugin loads after device
-    // creation (IUnityGraphics.h), so attempt the capture immediately too.
-    CaptureDevice();
 }
 
 void BackendD3D11_Shutdown(void)
@@ -119,7 +88,11 @@ void BackendD3D11_Shutdown(void)
         s_DeviceContext->Release(); // still owned only if backend init never ran
         s_DeviceContext = nullptr;
     }
-    s_Device = nullptr;
+    if (s_Device != nullptr)
+    {
+        s_Device->Release();
+        s_Device = nullptr;
+    }
 }
 
 void BackendD3D11_Render(void)

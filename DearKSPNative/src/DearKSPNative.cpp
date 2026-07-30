@@ -1,14 +1,20 @@
 // DearKSPNative — Core layer entry surface.
 //
-// Exposes the Unity low-level plugin export surface, graphics-device
-// detection (milestone 2), and the version handshake, and routes plugin
-// load/unload and the render-event callback into the active renderer
-// backend (C4: D3D11; C5 adds OpenGL) (spec §4.1/§4.2).
+// Exposes the version handshake, the D3D11 device handoff, and the render-event
+// callback routed into the active renderer backend (C4: D3D11; C5 adds OpenGL)
+// (spec §4.1/§4.2).
+//
+// UnityPluginLoad/Unload are kept for completeness but are effectively dead in
+// our deployment: Unity only calls them for plugins IT loads at startup, and
+// we are LoadLibrary'd from managed code out of GameData/DearKSP/PluginData
+// (D19). That is why the graphics device arrives via a Unity-created texture
+// (DearKSPNative_SetD3D11DeviceTexture) instead of IUnityInterfaces, and why
+// device-kind detection lives managed-side (SystemInfo.graphicsDeviceType).
 
 #include <windows.h>
 
 #include "IUnityInterface.h"
-#include "IUnityGraphics.h"
+#include "IUnityGraphics.h" // UnityRenderingEvent only — the interface itself is unavailable to a LoadLibrary'd plugin
 
 #include "BackendD3D11.h"
 
@@ -18,22 +24,15 @@
 // managed [assembly: KSPAssembly] version; mismatch -> Failed state.
 DEARKSP_NATIVE_API int DearKSPNative_GetVersion()
 {
-    return 1; // handshake placeholder, not the release version
+    return 1; // handshake constant for the 0.1.x line
 }
 
-// Unity interface registry and graphics interface, captured in UnityPluginLoad.
-// Null until the plugin is loaded; cleared again in UnityPluginUnload.
-static IUnityInterfaces* s_UnityInterfaces = nullptr;
-static IUnityGraphics*   s_UnityGraphics   = nullptr;
-
-// Graphics device detection (milestone 2). Returns the UnityGfxRenderer enum
-// value (spec §4.1: D3D11 primary, OpenGL secondary), or -1 when the graphics
-// interface is unavailable (plugin not loaded, or headless startup).
-DEARKSP_NATIVE_API int DearKSPNative_GetGraphicsDeviceKind()
+// Hands the D3D11 backend a Unity-created ID3D11Texture2D
+// (Texture.GetNativeTexturePtr() managed-side) so it can capture the device.
+// Returns 0 on success; see BackendD3D11.h for error codes.
+DEARKSP_NATIVE_API int DearKSPNative_SetD3D11DeviceTexture(void* d3d11TexturePtr)
 {
-    if (s_UnityGraphics == nullptr)
-        return -1;
-    return (int)s_UnityGraphics->GetRenderer();
+    return BackendD3D11_InitFromTexture(d3d11TexturePtr);
 }
 
 // Render-event callback handed to Unity via GL.IssuePluginEvent /
@@ -47,23 +46,26 @@ static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 }
 
 // Managed side calls this once to obtain the callback pointer (spec §4.2).
+// Valid regardless of who loaded the DLL — IssuePluginEvent only needs the
+// function pointer.
 DEARKSP_NATIVE_API UnityRenderingEvent DearKSPNative_GetRenderEventFunc()
 {
     return &OnRenderEvent;
 }
 
-// Unity low-level native plugin entry points.
+// Unity low-level native plugin entry points. In our deployment these are
+// never called (see header comment); they remain so the DLL also works if it
+// is ever placed in KSP_x64_Data/Plugins for Unity to load directly.
+static IUnityInterfaces* s_UnityInterfaces = nullptr; // always null in practice
+
 DEARKSP_NATIVE_API void UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* unityInterfaces)
 {
     s_UnityInterfaces = unityInterfaces;
-    s_UnityGraphics   = s_UnityInterfaces->Get<IUnityGraphics>();
-    BackendD3D11_OnPluginLoad(unityInterfaces); // registers device-event callback, captures device (C4)
 }
 
 DEARKSP_NATIVE_API void UNITY_INTERFACE_API UnityPluginUnload()
 {
     BackendD3D11_Shutdown(); // releases backend + device pointers (C4)
-    s_UnityGraphics   = nullptr;
     s_UnityInterfaces = nullptr;
 }
 
