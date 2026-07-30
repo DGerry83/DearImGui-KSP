@@ -1,18 +1,16 @@
 // DearKSPNative — Core layer entry surface.
 //
-// Owns (in later milestones): the single ImGui context, frame lifecycle, and
-// draw-data -> GPU translation via D3D11/OpenGL backends (spec §4.1).
-// This file currently exposes the Unity low-level plugin export surface,
-// graphics-device detection (milestone 2), and the version-handshake
-// placeholder so the build pipeline produces a loadable DLL.
-//
-// TODO(C4/C5): register the render-event callback with real work and
-// create device objects for the selected backend.
+// Exposes the Unity low-level plugin export surface, graphics-device
+// detection (milestone 2), and the version handshake, and routes plugin
+// load/unload and the render-event callback into the active renderer
+// backend (C4: D3D11; C5 adds OpenGL) (spec §4.1/§4.2).
 
 #include <windows.h>
 
 #include "IUnityInterface.h"
 #include "IUnityGraphics.h"
+
+#include "BackendD3D11.h"
 
 #define DEARKSP_NATIVE_API extern "C" __declspec(dllexport)
 
@@ -39,11 +37,13 @@ DEARKSP_NATIVE_API int DearKSPNative_GetGraphicsDeviceKind()
 }
 
 // Render-event callback handed to Unity via GL.IssuePluginEvent /
-// CommandBuffer.IssuePluginEvent. No-op for now; actual rendering arrives in
-// C4 (D3D11) and C5 (OpenGL) (spec §4.2).
+// CommandBuffer.IssuePluginEvent. Event 0 is the per-frame "render now"
+// signal; it routes to the D3D11 backend (C4). Further event IDs arrive
+// with C5+ (spec §4.2).
 static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
-    (void)eventID; // TODO(C4/C5): translate event ID into backend render work
+    if (eventID == 0)
+        BackendD3D11_Render();
 }
 
 // Managed side calls this once to obtain the callback pointer (spec §4.2).
@@ -57,12 +57,12 @@ DEARKSP_NATIVE_API void UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces* un
 {
     s_UnityInterfaces = unityInterfaces;
     s_UnityGraphics   = s_UnityInterfaces->Get<IUnityGraphics>();
-    // TODO(C4/C5): register device-event callback, select backend
+    BackendD3D11_OnPluginLoad(unityInterfaces); // registers device-event callback, captures device (C4)
 }
 
 DEARKSP_NATIVE_API void UNITY_INTERFACE_API UnityPluginUnload()
 {
-    // TODO(C4/C5): release context, device objects, font atlas
+    BackendD3D11_Shutdown(); // releases backend + device pointers (C4)
     s_UnityGraphics   = nullptr;
     s_UnityInterfaces = nullptr;
 }

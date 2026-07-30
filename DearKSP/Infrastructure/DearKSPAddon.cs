@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 namespace DearKSP.Infrastructure
@@ -5,7 +6,10 @@ namespace DearKSP.Infrastructure
     /// <summary>
     /// KSP entry point (spec §5.1). Created once at main menu; must DontDestroyOnLoad itself —
     /// the game does not do it for once-addons (KSP Knowledge Library, assembly-loading notes).
-    /// Thin shell only: all wiring lives in Composition.
+    /// Thin shell only: initializes the native bridge and drives the C4 PoC frame pump
+    /// (Update → SubmitFrame; WaitForEndOfFrame coroutine → GL.IssuePluginEvent).
+    /// All logic lives in NativeBridge/Composition; failures are log-only for now
+    /// (state machine + popup arrive in C12/C13).
     /// </summary>
     [KSPAddon(KSPAddon.Startup.MainMenu, true)]
     public sealed class DearKSPAddon : MonoBehaviour
@@ -13,7 +17,43 @@ namespace DearKSP.Infrastructure
         private void Awake()
         {
             DontDestroyOnLoad(gameObject);
-            Composition.Logger.Info("Dear KSP loaded. Waiting for initialization (milestone 2).");
+            Composition.Logger.Info("Dear KSP loaded. Initializing native bridge (milestone 2 PoC).");
+        }
+
+        private void Start()
+        {
+            Composition.BridgeInitResult = Composition.Bridge.Initialize();
+            if (Composition.BridgeInitResult == NativeBridge.InitOk)
+            {
+                Composition.Logger.Info("Native bridge up; starting the frame pump (D3D11 PoC).");
+            }
+            else
+            {
+                Composition.Logger.Error("Native bridge initialization failed with code " + Composition.BridgeInitResult + "; library inactive for this session.");
+            }
+            StartCoroutine(RenderEventPump());
+        }
+
+        private void Update()
+        {
+            if (Composition.BridgeInitResult == NativeBridge.InitOk)
+            {
+                Composition.Bridge.SubmitFrame();
+            }
+        }
+
+        // Issues the native render event after each frame's rendering is queued, so the
+        // backend draws ImGui on top of the completed frame (spec §4.2).
+        private IEnumerator RenderEventPump()
+        {
+            while (true)
+            {
+                yield return new WaitForEndOfFrame();
+                if (Composition.BridgeInitResult == NativeBridge.InitOk)
+                {
+                    GL.IssuePluginEvent(Composition.Bridge.RenderEventFunc, 0);
+                }
+            }
         }
     }
 }

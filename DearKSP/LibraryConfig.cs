@@ -18,6 +18,9 @@ namespace DearKSP
         /// <summary>Native DLL file name loaded by NativeBridge.</summary>
         internal const string NativeDllName = "DearKSPNative.dll";
 
+        /// <summary>Directory NativeBridge loads the native DLL from, relative to the KSP root.</summary>
+        internal const string NativePluginDataDir = "GameData/DearKSP/PluginData";
+
         /// <summary>Consecutive throwing frames before a consumer is auto-disabled (spec §5.3).</summary>
         internal const int ConsumerFailureThreshold = 5;
 

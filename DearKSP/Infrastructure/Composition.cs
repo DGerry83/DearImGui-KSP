@@ -5,16 +5,29 @@ namespace DearKSP.Infrastructure
     /// <summary>
     /// Composition root — the ONLY place concrete Infrastructure classes are instantiated
     /// and injected into Application components (CORE_PROTOCOLS §5.5, D18).
-    /// Owns the single native render context reference for the session (added in C4).
+    /// Owns the single native bridge reference and its init result for the session (C4).
     /// </summary>
     internal static class Composition
     {
         private static ILogger _logger;
+        private static NativeBridge _bridge;
 
         /// <summary>The library-wide logger. Created once; safe to call before Init.</summary>
         internal static ILogger Logger => _logger ?? (_logger = new DearKSPLogger());
 
-        // Later chunks add: Init() wiring SettingsStore/Model (C11), NativeBridge (C4),
-        // state machine (C12), and the frame loop (C7).
+        /// <summary>
+        /// The native bridge singleton. Created once; <see cref="INativeBridge.Initialize"/>
+        /// is driven once by DearKSPAddon.Start().
+        /// </summary>
+        internal static NativeBridge Bridge => _bridge ?? (_bridge = new NativeBridge(Logger));
+
+        /// <summary>
+        /// Result of the one-time bridge initialization (-1 = not attempted yet, 0 = success).
+        /// Held here so later chunks (state machine, C12) can gate on it.
+        /// </summary>
+        internal static int BridgeInitResult = -1;
+
+        // Later chunks add: SettingsStore/Model (C11), state machine (C12),
+        // and the frame loop (C7).
     }
 }
