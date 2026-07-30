@@ -6,10 +6,10 @@ namespace DearKSP.Infrastructure
     /// <summary>
     /// KSP entry point (spec §5.1). Created once at main menu; must DontDestroyOnLoad itself —
     /// the game does not do it for once-addons (KSP Knowledge Library, assembly-loading notes).
-    /// Thin shell only: initializes the native bridge and drives the C4 PoC frame pump
-    /// (Update → SubmitFrame; WaitForEndOfFrame coroutine → GL.IssuePluginEvent).
-    /// All logic lives in NativeBridge/Composition; failures are log-only for now
-    /// (state machine + popup arrive in C12/C13).
+    /// Thin shell only: initializes the native bridge and drives the frame loop
+    /// (Update → FrameLoopOrchestrator.RunFrame; WaitForEndOfFrame coroutine →
+    /// GL.IssuePluginEvent). All logic lives in NativeBridge/Composition/Application;
+    /// failures are log-only for now (state machine + popup arrive in C12/C13).
     /// </summary>
     [KSPAddon(KSPAddon.Startup.MainMenu, true)]
     public sealed class DearKSPAddon : MonoBehaviour
@@ -17,7 +17,8 @@ namespace DearKSP.Infrastructure
         private void Awake()
         {
             DontDestroyOnLoad(gameObject);
-            Composition.Logger.Info("Dear KSP loaded. Initializing native bridge (milestone 2 PoC).");
+            Composition.WireApplicationFacade();
+            Composition.Logger.Info("Dear KSP loaded. Initializing native bridge.");
         }
 
         private void Start()
@@ -25,7 +26,8 @@ namespace DearKSP.Infrastructure
             Composition.BridgeInitResult = Composition.Bridge.Initialize();
             if (Composition.BridgeInitResult == NativeBridge.InitOk)
             {
-                Composition.Logger.Info("Native bridge up; starting the frame pump (D3D11 PoC).");
+                Composition.MarkAvailable();
+                Composition.Logger.Info("Native bridge up; frame loop running.");
             }
             else
             {
@@ -38,7 +40,7 @@ namespace DearKSP.Infrastructure
         {
             if (Composition.BridgeInitResult == NativeBridge.InitOk)
             {
-                Composition.Bridge.SubmitFrame();
+                Composition.Orchestrator.RunFrame(Screen.width, Screen.height, Time.deltaTime);
             }
         }
 

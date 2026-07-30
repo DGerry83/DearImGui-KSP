@@ -51,7 +51,6 @@ namespace DearKSP.Infrastructure
         private ContextShutdownDelegate _contextShutdown;
         private BeginFrameDelegate _beginFrame;
         private EndFrameDelegate _endFrame;
-        private SetDemoWindowVisibleDelegate _setDemoWindowVisible;
         private GetRenderEventFuncDelegate _getRenderEventFunc;
 
         internal NativeBridge(ILogger logger)
@@ -136,9 +135,6 @@ namespace DearKSP.Infrastructure
 
             RenderEventFunc = _getRenderEventFunc();
 
-            // POC-SCAFFOLD(C7): demo window enable is removed when the real frame loop lands.
-            _setDemoWindowVisible(1);
-
             _initialized = true;
             _logger.Info("Native bridge initialized: DearKSPNative v" + nativeVersion + " on D3D11, context up.");
             return InitOk;
@@ -153,13 +149,22 @@ namespace DearKSP.Infrastructure
         }
 
         /// <inheritdoc/>
-        public void SubmitFrame()
+        public void BeginUiFrame(float width, float height, float deltaSeconds)
         {
             if (!_initialized)
             {
                 return;
             }
-            _beginFrame(Screen.width, Screen.height, Time.deltaTime);
+            _beginFrame(width, height, deltaSeconds);
+        }
+
+        /// <inheritdoc/>
+        public void EndUiFrame()
+        {
+            if (!_initialized)
+            {
+                return;
+            }
             _endFrame();
         }
 
@@ -196,7 +201,6 @@ namespace DearKSP.Infrastructure
             _contextShutdown = Bind<ContextShutdownDelegate>("DearKSPNative_ContextShutdown");
             _beginFrame = Bind<BeginFrameDelegate>("DearKSPNative_BeginFrame");
             _endFrame = Bind<EndFrameDelegate>("DearKSPNative_EndFrame");
-            _setDemoWindowVisible = Bind<SetDemoWindowVisibleDelegate>("DearKSPNative_SetDemoWindowVisible");
             _getRenderEventFunc = Bind<GetRenderEventFuncDelegate>("DearKSPNative_GetRenderEventFunc");
             return _getVersion != null
                 && _setD3D11DeviceTexture != null
@@ -204,7 +208,6 @@ namespace DearKSP.Infrastructure
                 && _contextShutdown != null
                 && _beginFrame != null
                 && _endFrame != null
-                && _setDemoWindowVisible != null
                 && _getRenderEventFunc != null;
         }
 
@@ -246,9 +249,6 @@ namespace DearKSP.Infrastructure
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void EndFrameDelegate();
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate void SetDemoWindowVisibleDelegate(int visible);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate IntPtr GetRenderEventFuncDelegate();

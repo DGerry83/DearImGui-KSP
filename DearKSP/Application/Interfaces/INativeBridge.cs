@@ -2,9 +2,11 @@ namespace DearKSP.Application.Interfaces
 {
     /// <summary>
     /// Isolates the native DLL: explicit LoadLibrary bootstrap, version handshake,
-    /// device-kind gate, and the per-frame frame pump (spec §4.1; CinematicRecorder-
-    /// documented GameData load-path gotcha). Locked method set (chunk C4) — C6+
-    /// consume this. Implemented by Infrastructure.NativeBridge.
+    /// device-kind gate, and the per-frame Begin/End UiFrame pair (spec §4.1;
+    /// CinematicRecorder-documented GameData load-path gotcha). Method set locked in
+    /// chunk C4 and amended in C7 (the per-frame pump was split into
+    /// BeginUiFrame/EndUiFrame — the interface is internal, no external consumers
+    /// existed yet). Implemented by Infrastructure.NativeBridge.
     /// Contains no Unity types — Application stays Unity-free.
     /// </summary>
     internal interface INativeBridge
@@ -24,11 +26,18 @@ namespace DearKSP.Application.Interfaces
         InputCaptureState GetIoSnapshot();
 
         /// <summary>
-        /// Pumps one frame: native BeginFrame(display size, delta) + EndFrame.
+        /// Opens one UI frame: native BeginFrame(display size, delta). Consumer
+        /// callbacks run between this and <see cref="EndUiFrame"/>.
+        /// No-op when not initialized.
+        /// </summary>
+        void BeginUiFrame(float width, float height, float deltaSeconds);
+
+        /// <summary>
+        /// Closes the UI frame opened by <see cref="BeginUiFrame"/>: native EndFrame.
         /// The render-event callback is issued separately by the addon.
         /// No-op when not initialized.
         /// </summary>
-        void SubmitFrame();
+        void EndUiFrame();
 
         /// <summary>
         /// Recreates the render viewport after a resolution/fullscreen change.
