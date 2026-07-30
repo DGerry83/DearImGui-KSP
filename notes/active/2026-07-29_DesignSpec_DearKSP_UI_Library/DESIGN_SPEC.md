@@ -14,7 +14,7 @@ A shared KSP mod library providing a modern, high-performance UI framework as a 
 
 - Platform: Windows-first (Linux/Mac = long-term goal).
 - Runtime: Kerbal Space Program 1.12.x, Unity 2019.4.18f1 LTS, Mono (not IL2CPP), x64 only, .NET 4.x-era API surface.
-- Graphics: D3D11 primary, OpenGL secondary. D3D9 explicitly unsupported. DX12 assumed to work via D3D11 backwards compatibility (assumption to verify — Unity 2019.4's DX12 path is experimental).
+- Graphics: **D3D11 only for MVP** (D20 — OpenGL deferred: a meaningful test needs a separate environment since CinematicShaders/CinematicRecorder fail under GL). OpenGL remains the planned second backend. D3D9 explicitly unsupported. DX12 assumed to work via D3D11 backwards compatibility (assumption to verify — Unity 2019.4's DX12 path is experimental).
 - Version constraints: library hard-depends only on the game via `KSPAssemblyDependency("KSP", 1, 12)`.
 
 ### 1.4 Distribution
@@ -70,7 +70,7 @@ Install = extract into the KSP root. CKAN metadata deferred to release time. The
 
 ### 3.3 Minimum Viable Product (MVP)
 
-- Native renderer injected via the Unity low-level native plugin pattern, validated on D3D11 and OpenGL.
+- Native renderer injected via the Unity low-level native plugin pattern, validated on D3D11.
 - Core widgets: windows, buttons, text, sliders, input fields.
 - Input locking while capturing (hover locks camera/click-through; active text field locks keyboard).
 - One example window in the separately-installed demo mod.
@@ -309,7 +309,7 @@ None identified in the game dump — zero existing native-plugin render integrat
 | ID | Criterion | Verification Method |
 |----|-----------|---------------------|
 | AC1 | Render-injection PoC draws the ImGui demo window in-game on D3D11 at full framerate | In-game PoC spike (first ProjectBootstrap milestone) |
-| AC2 | PoC also renders correctly on OpenGL | In-game test with `-force-glcore` |
+| AC2 | ~~PoC also renders correctly on OpenGL~~ **Deferred (D20)**: OpenGL backend + validation move out of MVP pending a clean GL test environment | In-game test with `-force-glcore` (when scheduled) |
 | AC3 | A sample consumer builds a working window (all MVP widgets) using only the C# API, zero IMGUI | Demo mod in-game test |
 | AC4 | A separate consumer declaring `KSPAssemblyDependencyEqualMajor("DearKSP", x, y)` loads after the library and works | Two-mod install test; load order confirmed in log |
 | AC5 | Torture-test UI (1000-item list) visibly outperforms the IMGUI reference implementation | Side-by-side benchmark in the demo mod vs `IMGUI_Helper` `PerformanceTab.cs` |
@@ -329,7 +329,7 @@ None identified in the game dump — zero existing native-plugin render integrat
 - **Assumption (verify in PoC)**: the standard Unity low-level native plugin pattern (`GL.IssuePluginEvent`) works in KSP — no game-side precedent exists in the dump; this is the gating technical risk.
 - **Open (runtime probing)**: player settings not in the dump (scripting runtime version, API compatibility level, graphics API order, color space) — read from `boot.config` or at runtime.
 - **Open (runtime probing)**: scene contents (canvas render modes, camera depths, culling masks) determine exactly where rendering is injected.
-- **Deferred decisions**: CKAN metadata, Linux/Mac port plan, bundled alternate font choice (if ProggyClean is ever replaced), old-major support window.
+- **Deferred decisions**: CKAN metadata, Linux/Mac port plan, bundled alternate font choice (if ProggyClean is ever replaced), old-major support window, **OpenGL backend scheduling (D20 — blocked on a clean GL test environment)**.
 
 ---
 

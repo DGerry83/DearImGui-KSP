@@ -11,7 +11,7 @@
 | C2 | Native plugin exports + device detection | Foundation | `DearKSPNative/src/` (plugin entry, Unity interface structs) | Med | M2 | Pending |
 | C3 | imgui/cimgui build integration + context host + font atlas | Foundation | `build*.bat`, new native sources (context host, atlas) | Med | M2 | Pending |
 | C4 | D3D11 backend + managed bridge PoC | Vertical slice | native D3D11 backend, `NativeBridge.cs`, addon frame hook | **High** | M2 | Pending |
-| C5 | OpenGL backend | Vertical slice | native GL backend | Med | M2 | Pending |
+| C5 | OpenGL backend | Vertical slice | native GL backend | Med | M2 | **Deferred (D20, user decision 2026-07-29)** |
 | C6 | cimgui interop layer (MVP widgets) | Foundation | `DearKSP/Interop/` (internal P/Invoke bindings) | Med | M3 | Pending |
 | C7 | Consumer API: facade, registry, frame loop | Vertical slice | `DearKSP.cs`, `ConsumerRegistry.cs`, `FrameLoopOrchestrator.cs`, `Composition.cs` | Med | M3 | Pending |
 | C8 | Demo example window + load-order proof | Consumer | `DemoConsumer.cs` | Low | M3 | Pending |
