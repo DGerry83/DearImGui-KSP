@@ -1,0 +1,12 @@
+# Build outputs
+bin/
+obj/
+.vs/
+DearKSPNative/build/
+
+# Machine-specific KSP install pin
+*.props.user
+
+# OS noise
+Thumbs.db
+Desktop.ini

@@ -6,7 +6,7 @@
 
 - **Target**: KSP 1.12.x, Unity 2019.4.18f1, Mono x64, Windows-first, D3D11 primary + OpenGL secondary.
 - **Structure**: `DearKSPNative.dll` (C++: Dear ImGui + cimgui + render backends) + `DearKSP.dll` (C#: KSP plugin, frame loop, input locks, public API).
-- **Current status**: design phase. The implementation-ready spec is complete (see below); no code exists yet.
+- **Current status**: bootstrap complete (2026-07-29). Confirmed spec + implementation plan exist; skeleton compiles; implementation proceeds milestone-by-milestone via `PlanImplementation.md`.
 
 ## Working on this repo — read these first
 
@@ -18,7 +18,22 @@ All work follows the meta-prompt workflow in:
 - **Start every task with `Router.md` in that folder** — it classifies the request and routes to the right template (BugfixPlanning, DesignSpecRefinement, ProjectBootstrap, etc.).
 - `C:\Users\Matt\source\repos\META-PROMPTS\TEMPLATES\CORE_PROTOCOLS.md` — artifact taxonomy (`notes\active\`, `notes\knowledge\`, `notes\plans\`, `notes\indices\`), session naming, and shared engineering principles. All Markdown artifacts go in the taxonomy folders, never loose in `notes\`.
 
-The design of this project was produced by `DesignSpecRefinement.md`; the next step is `ProjectBootstrap.md`, with the render-injection PoC as milestone one.
+The design of this project was produced by `DesignSpecRefinement.md`; bootstrap was produced by `ProjectBootstrap.md` (session `notes\active\2026-07-29_NewProject_DearKSP\`: `PLANNING_WORKSHEET.md`, `IMPLEMENTATION_PLAN.md`, `PROJECT_SKELETON.md`, `GATES.md`). Implementation proceeds via `PlanImplementation.md`, milestone by milestone; do not start milestone N until N-1 is verified.
+
+## Repository Layout
+
+- `DearKSP/` — managed library. `Application/` = Unity-free orchestration + public API (depends on Core only via interfaces); `Infrastructure/` = the **only** KSP/Unity-touching layer.
+- `DearKSPNative/` — C++ Core (ImGui context, frame lifecycle, backends). Zero KSP/Unity knowledge. Sources come from the sibling clone `C:\Users\Matt\source\repos\cimgui` (pinned imgui 1.92.9), compiled in directly.
+- `DearKSPDemo/` — demo/benchmark mod, separate install.
+- `GameData/` — staging tree; mirrored into the game on every managed build.
+- `tests/` — mirrors the layers (placeholders).
+- `notes/` — artifact taxonomy (`active\`, `finished\`, `archive\`, `knowledge\`, `indices\`, `plans\`).
+
+## Build & Test Commands
+
+- Managed: `dotnet build DearKSP.slnx` (Debug) / `-c Release`. Requires `DearKSP.props.user` pinning `KSPBT_GameRoot` (gitignored; currently `C:\SSDGames\ReformTestInstance`).
+- Native: `cd DearKSPNative; build.bat` (debug) / `build_release.bat` (release) — plain `cl.exe`, no CMake/vcxproj.
+- Test: in-game acceptance per `IMPLEMENTATION_PLAN.md` §9 milestones; unit tests deferred to milestone 3+.
 
 ### Design artifacts (this repo)
 
