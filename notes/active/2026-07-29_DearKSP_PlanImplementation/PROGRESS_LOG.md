@@ -6,7 +6,7 @@
 |-------|--------|----------------|--------------|---------------|-------|
 | C1 | **Done** | `ILogger.cs`, `DearKSPLogger.cs`, `Composition.cs`, `DearKSPAddon.cs`, `build*.bat`, `NativeBridge.cs` (comment) | `dotnet build` 0 err/0 warn; in-game: `[DearKSP] Dear KSP loaded. Waiting for initialization (milestone 2).` confirmed in KSP.log 2026-07-29 — **M1 complete** | G3 (C1): PASS; G6 (M1): PASS | See impediment below — native DLL moved to `PluginData/` (D19) |
 | C2 | **Done** | `include/IUnityInterface.h`, `include/IUnityGraphics.h` (new, verbatim), `src/DearKSPNative.cpp`, `build.bat`, `build_release.bat` | `build.bat` 0 err/0 warn; dumpbin: all 5 exports present undecorated; managed build clean | G3 (C2): PASS | Delegated to sub-agent; lead fixed milestone-numbering drift in comments (now C4/C5 references) |
-| C3 | Pending | - | - | - | - |
+| C3 | **Done** | `src/ContextHost.{h,cpp}` (new), `harness/harness_main.cpp` + `build_harness.bat` (new), `build.bat`, `build_release.bat` | `build.bat` 0 err/0 warn with imgui 1.92.9 + cimgui TUs; dumpbin: 11 exports; harness: `HARNESS PASS`, exit 0, atlas 512×128 RGBA32; managed build clean | G3 (C3): PASS | Sub-agent deviation (accepted): `io.IniFilename = nullptr` so no imgui.ini lands in KSP root — spec §5.4 compliance; bonus: full cimgui API now exported from our DLL, which C6 will P/Invoke directly |
 | C4 | Pending | - | - | - | - |
 | C5 | Pending | - | - | - | - |
 | C6 | Pending | - | - | - | - |
