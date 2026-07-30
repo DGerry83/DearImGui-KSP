@@ -4,7 +4,7 @@
 
 | Chunk | Status | Files Modified | Verification | Gate Verdicts | Notes |
 |-------|--------|----------------|--------------|---------------|-------|
-| C1 | Built, awaiting in-game check | `ILogger.cs`, `DearKSPLogger.cs`, `Composition.cs`, `DearKSPAddon.cs` | `dotnet build` 0 err/0 warn; deployed to ReformTestInstance 2026-07-29 21:03 | G3 (C1): PASS | `UnityEngine.ILogger` name clash fixed via using-alias; verboseLogging stub tracked for C11 |
+| C1 | Built, awaiting in-game re-check | `ILogger.cs`, `DearKSPLogger.cs`, `Composition.cs`, `DearKSPAddon.cs`, `build*.bat`, `NativeBridge.cs` (comment) | `dotnet build` 0 err/0 warn; `build.bat` OK; deployed to ReformTestInstance | G3 (C1): PASS | See impediment below — native DLL moved to `PluginData/` (D19) |
 | C2 | Pending | - | - | - | - |
 | C3 | Pending | - | - | - | - |
 | C4 | Pending | - | - | - | - |
@@ -23,6 +23,10 @@
 ### Blockers
 
 - None.
+
+### Impediments (resolved)
+
+- **C1 in-game verification failed (2026-07-29)**: game hung very early in load with the project mods installed — `GameDatabase.CleanupLoaders` NRE right after `CodeAssetLoader: Compiling all code assets`. Root cause: `DearKSPNative.dll` was deployed to `GameData/DearKSP/Plugins/`; KSP's assembly loader tried to load the native DLL as a managed assembly. Fix (user-identified): deploy native DLL to `GameData/DearKSP/PluginData/`, the CinematicRecorder/CinematicShaders convention. Recorded as D19 in the design DECISION_LOG, corrected in spec §1.4, and added to the KSP Knowledge Library (`assembly-loading-and-dependencies.md`). Awaiting in-game re-verification.
 
 ### Decisions Made
 

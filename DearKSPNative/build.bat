@@ -5,6 +5,6 @@ call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\v
 if not exist build mkdir build
 cl /nologo /EHsc /std:c++17 /Od /Zi /LD src\DearKSPNative.cpp /Fe:build\DearKSPNative.dll /Fo:build\ /Fd:build\ /link /DLL
 if errorlevel 1 exit /b 1
-if not exist ..\GameData\DearKSP\Plugins mkdir ..\GameData\DearKSP\Plugins
-copy /y build\DearKSPNative.dll ..\GameData\DearKSP\Plugins\ >nul
-echo DearKSPNative.dll (debug) -^> GameData\DearKSP\Plugins\
+if not exist ..\GameData\DearKSP\PluginData mkdir ..\GameData\DearKSP\PluginData
+copy /y build\DearKSPNative.dll ..\GameData\DearKSP\PluginData\ >nul
+echo DearKSPNative.dll (debug) -^> GameData\DearKSP\PluginData\

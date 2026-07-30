@@ -22,7 +22,7 @@ A shared KSP mod library providing a modern, high-performance UI framework as a 
 Release zip containing `GameData/DearKSP/` with:
 
 - `Plugins/DearKSP.dll` — managed C# assembly.
-- `Plugins/DearKSPNative.dll` — native C++ assembly (x64 Windows; Linux/Mac binaries join later).
+- `PluginData/DearKSPNative.dll` — native C++ assembly (x64 Windows; Linux/Mac binaries join later). Native DLLs must stay out of `Plugins/`: KSP's assembly loader attempts to load every DLL in its scan path as a managed assembly and hangs on native ones (D19).
 - `settings.cfg` — default settings ConfigNode.
 - `LICENSE`, `README.md`, and a version file.
 

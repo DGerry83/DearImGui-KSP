@@ -7,6 +7,13 @@ DearKSPNative/build/
 # Machine-specific KSP install pin
 *.props.user
 
+# Staged build artifacts (regenerated on every build; settings.cfg is source and stays tracked)
+GameData/**/Plugins/*.dll
+GameData/**/Plugins/*.pdb
+GameData/**/PluginData/*.dll
+GameData/**/*.version
+GameData/**/Readme.txt
+
 # OS noise
 Thumbs.db
 Desktop.ini

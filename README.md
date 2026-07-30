@@ -30,7 +30,7 @@ Prerequisites:
 Then:
 
 ```powershell
-cd DearKSPNative; .\build_release.bat        # native DLL -> GameData\DearKSP\Plugins\
+cd DearKSPNative; .\build_release.bat        # native DLL -> GameData\DearKSP\PluginData\
 dotnet build DearKSP.slnx -c Release         # managed DLLs; deploys GameData trees into the game
 ```
 
