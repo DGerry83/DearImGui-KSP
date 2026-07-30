@@ -1,7 +1,9 @@
 // DearKSPNative — ImGui context host implementation (chunk C3, milestone M2).
 //
-// Single context, renderer-less: no BackendFlags, no GPU objects. The atlas
-// built here is CPU-side only; C4/C5 upload it to a device texture.
+// Single context. BackendFlags carries ImGuiBackendFlags_RendererHasTextures
+// from the start (imgui 1.92.9 texture protocol): the atlas is built lazily by
+// NewFrame and GPU-uploaded by the backend from draw_data->Textures — there is
+// deliberately no CPU-side Build() here (see ContextInit for details).
 
 #include "ContextHost.h"
 
@@ -30,24 +32,25 @@ DEARKSP_NATIVE_API int DearKSPNative_ContextInit(void)
         return 1;
 
     ImGuiIO& io = ImGui::GetIO();
-    io.BackendFlags = 0; // renderer-less context; backends are added in C4/C5
+    // RendererHasTextures is set HERE, not by the backend: imgui 1.92.9's new
+    // texture protocol forbids calling ImFontAtlas::Build() once the flag is
+    // set, and the flag must be set before the first NewFrame or the legacy
+    // "atlas not built" assert fires instead. With the flag set from the
+    // start, NewFrame builds the atlas lazily and the backend creates the GPU
+    // texture from draw_data->Textures (imgui_draw.cpp:2810-2820).
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
     io.DisplaySize  = ImVec2(kDefaultDisplayWidth, kDefaultDisplayHeight);
     io.IniFilename  = nullptr; // no imgui.ini: window state belongs to consumers (D7, spec §5.4)
 
     ImGui::StyleColorsDark();
 
-    // Embedded default font (ProggyClean) -> CPU-side RGBA atlas (spec §4.1).
+    // Embedded default font (ProggyClean) registered; the atlas itself is NOT
+    // built here — see the BackendFlags comment above (spec §4.1).
     if (io.Fonts->AddFontDefault() == nullptr)
     {
         ImGui::DestroyContext(s_Context);
         s_Context = nullptr;
         return 2;
-    }
-    if (!io.Fonts->Build())
-    {
-        ImGui::DestroyContext(s_Context);
-        s_Context = nullptr;
-        return 3;
     }
     return 0;
 }
