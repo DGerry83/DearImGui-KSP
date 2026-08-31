@@ -1,3 +1,4 @@
+using KSP.UI.Screens;
 using UnityEngine;
 
 namespace DearImGuiKSPDemo
@@ -7,6 +8,7 @@ namespace DearImGuiKSPDemo
     /// so users installing the library as a dependency get no demo UI.
     /// Hosts the example window (AC3): text, a button with click feedback, a slider, and an
     /// input field, all declared per frame through the public C# API. Zero Unity IMGUI.
+    /// Toggled via an ApplicationLauncher toolbar button (green placeholder icon).
     /// TODO(milestone 6): add the naive vs virtualized 1000-item list benchmark (AC5, D10).
     /// </summary>
     [KSPAddon(KSPAddon.Startup.EveryScene, false)]
@@ -14,6 +16,8 @@ namespace DearImGuiKSPDemo
     {
         private const string ConsumerId = "DearImGuiKSPDemo";
 
+        private ApplicationLauncherButton _toolbarButton;
+        private bool _windowVisible = true;
         private int _clickCount;
         private float _sliderValue = 0.5f;
         private string _inputText = "edit me";
@@ -27,16 +31,70 @@ namespace DearImGuiKSPDemo
             }
             DearImGuiKSP.DearImGuiKSP.Register(ConsumerId, OnFrame);
             Debug.Log("[DearImGuiKSPDemo] Registered with DearImGui-KSP.");
+
+            GameEvents.onGUIApplicationLauncherReady.Add(OnLauncherReady);
+            if (ApplicationLauncher.Ready)
+            {
+                OnLauncherReady();
+            }
         }
 
         private void OnDestroy()
         {
+            GameEvents.onGUIApplicationLauncherReady.Remove(OnLauncherReady);
+            if (_toolbarButton != null && ApplicationLauncher.Instance != null)
+            {
+                ApplicationLauncher.Instance.RemoveModApplication(_toolbarButton);
+                _toolbarButton = null;
+            }
             DearImGuiKSP.DearImGuiKSP.Unregister(ConsumerId);
+        }
+
+        private void OnLauncherReady()
+        {
+            if (_toolbarButton != null)
+            {
+                return;
+            }
+            _toolbarButton = ApplicationLauncher.Instance.AddModApplication(
+                OnToolbarOn, OnToolbarOff,
+                null, null, null, null,
+                ApplicationLauncher.AppScenes.ALWAYS,
+                MakePlaceholderIcon());
+            _toolbarButton.SetTrue(false); // window starts visible; reflect it without firing the callback
+        }
+
+        private void OnToolbarOn()
+        {
+            _windowVisible = true;
+        }
+
+        private void OnToolbarOff()
+        {
+            _windowVisible = false;
+        }
+
+        // Solid-green 38x38 placeholder icon (stock toolbar icon size).
+        private static Texture2D MakePlaceholderIcon()
+        {
+            Texture2D tex = new Texture2D(38, 38, TextureFormat.RGBA32, false);
+            Color[] pixels = new Color[38 * 38];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = Color.green;
+            }
+            tex.SetPixels(pixels);
+            tex.Apply();
+            return tex;
         }
 
         // Per-frame UI declaration — the only place widget calls are valid.
         private void OnFrame()
         {
+            if (!_windowVisible)
+            {
+                return;
+            }
             if (!DearImGuiKSP.DearImGuiKSP.BeginWindow("DearImGui-KSP Demo"))
             {
                 DearImGuiKSP.DearImGuiKSP.EndWindow();
