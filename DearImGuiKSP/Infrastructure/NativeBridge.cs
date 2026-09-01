@@ -242,9 +242,10 @@ namespace DearImGuiKSP.Infrastructure
         /// <inheritdoc/>
         public void RebuildViewport(int width, int height)
         {
-            // TODO(C12): recreate the render viewport / notify the native backend on
-            // resolution or fullscreen changes. PoC no-op: the D3D11 backend draws
-            // into whatever render target Unity has bound at render-event time.
+            // ImGui DisplaySize is set every BeginFrame, the backend draws into
+            // whatever render target Unity has bound at render-event time, and the
+            // font atlas is resolution-independent, so there is nothing to rebuild.
+            _logger.Debug("Viewport resize to " + width + "x" + height + ": no native rebuild needed.");
         }
 
         /// <inheritdoc/>

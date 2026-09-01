@@ -7,8 +7,8 @@ namespace DearImGuiKSP.Application
     /// sample capture state → apply/release input locks (C9) → native BeginUiFrame →
     /// consumer callbacks in registration order through the FaultBarrier (C10) →
     /// native EndUiFrame. The render-event handoff is issued separately by the addon.
-    /// The lifecycle state machine (C12) hooks in here later; availability is currently
-    /// the <see cref="DearImGuiKSP.IsAvailable"/> flag flipped by Composition after bridge init.
+    /// Frames run only while the lifecycle state machine (C12) is Running —
+    /// suspended (F2/loading) and failed sessions produce no frames.
     /// </summary>
     internal sealed class FrameLoopOrchestrator
     {
@@ -16,27 +16,30 @@ namespace DearImGuiKSP.Application
         private readonly ConsumerRegistry _registry;
         private readonly InputCaptureTracker _captureTracker;
         private readonly FaultBarrier _faultBarrier;
+        private readonly LifecycleStateMachine _lifecycle;
 
         internal FrameLoopOrchestrator(
             INativeBridge bridge,
             ConsumerRegistry registry,
             InputCaptureTracker captureTracker,
-            FaultBarrier faultBarrier)
+            FaultBarrier faultBarrier,
+            LifecycleStateMachine lifecycle)
         {
             _bridge = bridge;
             _registry = registry;
             _captureTracker = captureTracker;
             _faultBarrier = faultBarrier;
+            _lifecycle = lifecycle;
         }
 
         /// <summary>
-        /// Runs one UI frame. No-op while the bridge is not initialized.
+        /// Runs one UI frame. No-op unless the library is in the Running state.
         /// Unity-side values (screen size, delta time) arrive as parameters so
         /// Application stays Unity-free.
         /// </summary>
         internal void RunFrame(float width, float height, float deltaTime)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!_lifecycle.IsRunning)
             {
                 return;
             }

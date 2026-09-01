@@ -20,6 +20,8 @@ namespace DearImGuiKSP.Infrastructure
         private static InputLockGateway _lockGateway;
         private static InputCaptureTracker _captureTracker;
         private static FaultBarrier _faultBarrier;
+        private static LifecycleStateMachine _stateMachine;
+        private static GameEventHooks _gameEventHooks;
 
         /// <summary>The library-wide logger. Created once; safe to call before Init.</summary>
         internal static ILogger Logger => _logger ?? (_logger = CreateLogger());
@@ -64,30 +66,51 @@ namespace DearImGuiKSP.Infrastructure
         /// <summary>The consumer fault barrier singleton (C10), driven by the orchestrator.</summary>
         internal static FaultBarrier Barrier => _faultBarrier ?? (_faultBarrier = new FaultBarrier(Logger));
 
-        /// <summary>The frame loop orchestrator singleton (C7; C9/C10 wired in group A), driven by DearImGuiKSPAddon.Update().</summary>
+        /// <summary>The lifecycle state machine singleton (C12). Drives availability and suspend/resume.</summary>
+        internal static LifecycleStateMachine StateMachine =>
+            _stateMachine ?? (_stateMachine = new LifecycleStateMachine(Logger));
+
+        /// <summary>The game-event hook source singleton (C12). Subscribed by <see cref="WireLifecycle"/>.</summary>
+        internal static GameEventHooks Hooks => _gameEventHooks ?? (_gameEventHooks = new GameEventHooks());
+
+        /// <summary>The frame loop orchestrator singleton (C7; C9/C10/C12 wired), driven by DearImGuiKSPAddon.Update().</summary>
         internal static FrameLoopOrchestrator Orchestrator =>
-            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier));
+            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine));
 
         /// <summary>
-        /// Wires the public facade's internal hooks (C7): Application cannot see
-        /// Infrastructure, so the logger and registry are handed over from here.
-        /// Called once from DearImGuiKSPAddon.Awake(); idempotent.
+        /// Wires the public facade's internal hooks (C7, C12): Application cannot see
+        /// Infrastructure, so the logger, registry, and state machine are handed over
+        /// from here. Called once from DearImGuiKSPAddon.Awake(); idempotent.
         /// </summary>
         internal static void WireApplicationFacade()
         {
             DearImGuiKSP.Log = Logger;
             DearImGuiKSP.Registry = Registry;
+            DearImGuiKSP.Lifecycle = StateMachine;
         }
 
         /// <summary>
-        /// Flips <see cref="DearImGuiKSP.IsAvailable"/> on. Called by DearImGuiKSPAddon.Start()
-        /// after a successful bridge init. Later: driven by the state machine (C12).
+        /// Connects game-event hooks to the state machine and the bridge (C12), then
+        /// subscribes to GameEvents. Called by DearImGuiKSPAddon.Start() after a
+        /// successful bridge init.
         /// </summary>
-        internal static void MarkAvailable()
+        internal static void WireLifecycle()
         {
-            DearImGuiKSP.SetAvailable(true);
+            // Entering suspension (or failure) while capturing must not leave locks held.
+            Hooks.UiVisibilityChanged += visible =>
+            {
+                if (!visible) CaptureTracker.ReleaseAll();
+                StateMachine.SetUiVisible(visible);
+            };
+            Hooks.LoadingChanged += loading =>
+            {
+                if (loading) CaptureTracker.ReleaseAll();
+                StateMachine.SetLoading(loading);
+            };
+            Hooks.ResolutionChanged += (w, h) => Bridge.RebuildViewport(w, h);
+            Hooks.Subscribe();
         }
 
-        // Later chunks add: state machine (C12).
+        // Later chunks add: failure notifier (C13).
     }
 }

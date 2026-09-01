@@ -14,25 +14,21 @@ namespace DearImGuiKSP
     /// </summary>
     public static class DearImGuiKSP
     {
-        private static bool _isAvailable;
-
-        // Wiring hooks (C7): Application cannot see Infrastructure.Composition, so
+        // Wiring hooks (C7/C12): Application cannot see Infrastructure.Composition, so
         // Composition assigns these at startup — the logger in Awake, the registry
-        // alongside it, and availability after a successful bridge init.
+        // alongside it, and the lifecycle state machine after it is created.
         internal static ILogger Log { get; set; }
         internal static ConsumerRegistry Registry { get; set; }
-
-        internal static void SetAvailable(bool value)
-        {
-            _isAvailable = value;
-        }
+        internal static LifecycleStateMachine Lifecycle { get; set; }
 
         /// <summary>
-        /// True when the library initialized successfully and is rendering.
-        /// Consumers should fall back to their own UI when this is false.
-        /// Later: gated by the lifecycle state machine (C12).
+        /// True when the library is initialized and either running or temporarily suspended.
+        /// Suspended (F2 hide or loading screen) is a pause, not a failure — consumers
+        /// should NOT tear down their UI; the frame loop resumes automatically.
         /// </summary>
-        public static bool IsAvailable => _isAvailable;
+        public static bool IsAvailable =>
+            Lifecycle != null &&
+            (Lifecycle.State == LifecycleState.Running || Lifecycle.State == LifecycleState.Suspended);
 
         /// <summary>
         /// Registers a per-frame UI declaration callback. Callbacks run once per
