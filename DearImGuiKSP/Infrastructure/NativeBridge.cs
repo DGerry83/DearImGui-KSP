@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using DearImGuiKSP.Application;
 using DearImGuiKSP.Application.Interfaces;
 using UnityEngine;
@@ -31,7 +32,7 @@ namespace DearImGuiKSP.Infrastructure
 
         // Managed/native handshake constant (spec §5.4, D17); must match
         // DearImGuiKSPNative_GetVersion(). Bump both DLLs in lockstep.
-        private const int ExpectedNativeVersion = 2;
+        private const int ExpectedNativeVersion = 3;
 
         private readonly ILogger _logger;
         private readonly InputCaptureState _captureState = new InputCaptureState();
@@ -53,6 +54,7 @@ namespace DearImGuiKSP.Infrastructure
         private EndFrameDelegate _endFrame;
         private GetRenderEventFuncDelegate _getRenderEventFunc;
         private GetIoCaptureStateDelegate _getIoCaptureState;
+        private FeedFrameInputDelegate _feedFrameInput;
 
         internal NativeBridge(ILogger logger)
         {
@@ -166,7 +168,65 @@ namespace DearImGuiKSP.Infrastructure
             {
                 return;
             }
+
+            FeedFrameInput(width, height);
             _beginFrame(width, height, deltaSeconds);
+        }
+
+        // Samples Unity input for this frame and queues it into the native ImGui IO
+        // before NewFrame (C9b addendum). Lives in Infrastructure so Application stays
+        // Unity-free.
+        private void FeedFrameInput(float width, float height)
+        {
+            float mouseX = Input.mousePosition.x;
+            float mouseY = height - Input.mousePosition.y;
+            float wheel = Input.mouseScrollDelta.y;
+
+            int mouseButtons = 0;
+            if (Input.GetMouseButton(0)) mouseButtons |= 1 << 0;
+            if (Input.GetMouseButton(1)) mouseButtons |= 1 << 1;
+            if (Input.GetMouseButton(2)) mouseButtons |= 1 << 2;
+
+            int keyBits = 0;
+            if (Input.GetKey(KeyCode.Backspace)) keyBits |= 1 << 0;
+            if (Input.GetKey(KeyCode.Delete)) keyBits |= 1 << 1;
+            if (Input.GetKey(KeyCode.LeftArrow)) keyBits |= 1 << 2;
+            if (Input.GetKey(KeyCode.RightArrow)) keyBits |= 1 << 3;
+            if (Input.GetKey(KeyCode.UpArrow)) keyBits |= 1 << 4;
+            if (Input.GetKey(KeyCode.DownArrow)) keyBits |= 1 << 5;
+            if (Input.GetKey(KeyCode.Home)) keyBits |= 1 << 6;
+            if (Input.GetKey(KeyCode.End)) keyBits |= 1 << 7;
+            if (Input.GetKey(KeyCode.Return) || Input.GetKey(KeyCode.KeypadEnter)) keyBits |= 1 << 8;
+            if (Input.GetKey(KeyCode.Escape)) keyBits |= 1 << 9;
+            if (Input.GetKey(KeyCode.Tab)) keyBits |= 1 << 10;
+            if (Input.GetKey(KeyCode.LeftControl)) keyBits |= 1 << 11;
+            if (Input.GetKey(KeyCode.RightControl)) keyBits |= 1 << 12;
+
+            byte[] utf8Chars = null;
+            string inputString = Input.inputString;
+            if (!string.IsNullOrEmpty(inputString))
+            {
+                StringBuilder sb = new StringBuilder(inputString.Length);
+                for (int i = 0; i < inputString.Length; ++i)
+                {
+                    char c = inputString[i];
+                    if (c >= 0x20 && c != 0x7F)
+                    {
+                        sb.Append(c);
+                    }
+                }
+
+                string filtered = sb.ToString();
+                if (filtered.Length > 0)
+                {
+                    byte[] bytes = Encoding.UTF8.GetBytes(filtered);
+                    utf8Chars = new byte[bytes.Length + 1];
+                    Buffer.BlockCopy(bytes, 0, utf8Chars, 0, bytes.Length);
+                    utf8Chars[bytes.Length] = 0;
+                }
+            }
+
+            _feedFrameInput(mouseX, mouseY, wheel, mouseButtons, keyBits, utf8Chars);
         }
 
         /// <inheritdoc/>
@@ -214,6 +274,7 @@ namespace DearImGuiKSP.Infrastructure
             _endFrame = Bind<EndFrameDelegate>("DearImGuiKSPNative_EndFrame");
             _getRenderEventFunc = Bind<GetRenderEventFuncDelegate>("DearImGuiKSPNative_GetRenderEventFunc");
             _getIoCaptureState = Bind<GetIoCaptureStateDelegate>("DearImGuiKSPNative_GetIoCaptureState");
+            _feedFrameInput = Bind<FeedFrameInputDelegate>("DearImGuiKSPNative_FeedFrameInput");
             return _getVersion != null
                 && _setD3D11DeviceTexture != null
                 && _contextInit != null
@@ -221,7 +282,8 @@ namespace DearImGuiKSP.Infrastructure
                 && _beginFrame != null
                 && _endFrame != null
                 && _getRenderEventFunc != null
-                && _getIoCaptureState != null;
+                && _getIoCaptureState != null
+                && _feedFrameInput != null;
         }
 
         private T Bind<T>(string exportName) where T : class
@@ -268,6 +330,9 @@ namespace DearImGuiKSP.Infrastructure
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void GetIoCaptureStateDelegate(ref int wantMouse, ref int wantKeyboard);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void FeedFrameInputDelegate(float mouseX, float mouseY, float wheel, int mouseButtons, int keyBits, [In] byte[] utf8Chars);
 
         // kernel32 only — the GameData load-path gotcha applies to OUR dll, not these.
         [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]

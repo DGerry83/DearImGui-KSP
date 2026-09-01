@@ -32,3 +32,8 @@ DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetFontAtlasPixels(unsigned char*
 // Mouse/keyboard capture state from ImGui IO (spec §5.3). Writes 1/0 to each
 // out-arg when the context exists; writes 0/0 otherwise. Null pointers are safe.
 DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_GetIoCaptureState(int* wantMouse, int* wantKeyboard);
+
+// Queues one frame of mouse/keyboard input into the ImGui IO event queue before
+// NewFrame (spec §5.3 addendum). mouseButtons/keyBits are bitmasks; utf8Chars is
+// a null-terminated UTF-8 string (may be null). No-op before ContextInit.
+DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_FeedFrameInput(float mouseX, float mouseY, float wheel, int mouseButtons, int keyBits, const char* utf8Chars);

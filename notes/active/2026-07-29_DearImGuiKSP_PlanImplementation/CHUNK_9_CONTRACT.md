@@ -59,3 +59,36 @@
 ### Rollback
 
 - `git checkout -- DearImGuiKSPNative/src DearImGuiKSPNative/harness DearImGuiKSP/Infrastructure/NativeBridge.cs DearImGuiKSP/Infrastructure/InputLockGateway.cs DearImGuiKSP/Application/InputCaptureTracker.cs DearImGuiKSP/Application/Interfaces/IInputLockGateway.cs`
+
+---
+
+## Addendum C9b (2026-08-31): Input Feeding — found at in-game verification
+
+**Root cause**: the ImGui IO is never fed input. `DearImGuiKSPNative_BeginFrame` sets only `DisplaySize`/`DeltaTime` before `NewFrame`; no mouse position, buttons, wheel, keys, or characters ever reach ImGui. Result (user-verified): window renders but is entirely non-interactive in all scenes, and `WantCaptureMouse`/`WantCaptureKeyboard` stay false (locks never engage — AC7 untestable). Input feeding was an unscoped prerequisite of C9; this addendum completes the chunk.
+
+### Scope (adds to C9)
+
+- **Native** (`ContextHost.h/.cpp`): new export
+  ```cpp
+  void DearImGuiKSPNative_FeedFrameInput(float mouseX, float mouseY, float wheel, int mouseButtons, int keyBits, const char* utf8Chars);
+  ```
+  Called by the bridge *before* `BeginFrame` each frame. Internally: `io.AddMousePosEvent(mouseX, mouseY)`; `io.AddMouseWheelEvent(0, wheel)` when nonzero; `io.AddMouseButtonEvent` for buttons 0–2 on change (track previous mask); `io.AddKeyEvent` on change for the fixed key-bit list below (track previous bits); `io.AddInputCharactersUTF8(utf8Chars)` when non-empty. No-op when the context doesn't exist.
+- **Key-bit list** (fixed order, both sides): 0 Backspace, 1 Delete, 2 LeftArrow, 3 RightArrow, 4 UpArrow, 5 DownArrow, 6 Home, 7 End, 8 Enter, 9 Escape, 10 Tab, 11 LeftCtrl, 12 RightCtrl. Native maps bits to the matching `ImGuiKey_*`.
+- **Managed** (`NativeBridge.cs`): `BeginUiFrame` samples Unity input before calling `_beginFrame` (input sampling lives in Infrastructure — Application stays Unity-free):
+  - `Input.mousePosition`, Y flipped against the `height` parameter (`height - y`).
+  - Buttons via `Input.GetMouseButton(0..2)`.
+  - Key bits via `Input.GetKey(...)` per the list above.
+  - `Input.inputString` → UTF-8 bytes, filtering chars `< 0x20` and `0x7F` (backspace etc. arrive as control chars and must not reach `AddInputCharactersUTF8`).
+- **Handshake bump to 3** on both sides (lockstep, invariant 4).
+- Harness: keep `HARNESS PASS`.
+
+### Constraints (addendum)
+
+- Same exclusive file ownership as C9 (`NativeBridge.cs`, `ContextHost.h/.cpp`, `DearImGuiKSPNative.cpp`, `harness/*`). No edits to orchestrator/Composition/addon — no wiring changes needed; sampling rides inside `NativeBridge.BeginUiFrame`.
+- Mouse-wheel + the key list are the MVP input surface; gamepad/navigation config flags are out of scope.
+- No git commits — the lead commits.
+
+### Verification (addendum)
+
+- Native build 0/0; harness `HARNESS PASS`; `dotnet build` 0/0.
+- **User in-game (AC7 completion)**: demo window draggable by title bar; button clickable (counter increments); slider draggable; input field focusable and editable (typing, backspace, arrows, enter); camera stays locked while hovering the window and unlocks off it.

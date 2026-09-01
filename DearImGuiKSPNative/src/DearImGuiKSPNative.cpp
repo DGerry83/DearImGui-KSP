@@ -24,7 +24,7 @@
 // managed ExpectedNativeVersion constant; mismatch -> Failed state.
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetVersion()
 {
-    return 2; // handshake constant value 2
+    return 3; // handshake constant value 3
 }
 
 // Hands the D3D11 backend a Unity-created ID3D11Texture2D

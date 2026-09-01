@@ -109,3 +109,63 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_GetIoCaptureState(int* wantMouse
     if (wantKeyboard != nullptr)
         *wantKeyboard = io.WantCaptureKeyboard ? 1 : 0;
 }
+
+// Previous-frame input masks so we only queue events on change.
+static int s_PreviousMouseButtons = 0;
+static int s_PreviousKeyBits = 0;
+
+static const ImGuiKey s_KeyBitToImGuiKey[] =
+{
+    ImGuiKey_Backspace,
+    ImGuiKey_Delete,
+    ImGuiKey_LeftArrow,
+    ImGuiKey_RightArrow,
+    ImGuiKey_UpArrow,
+    ImGuiKey_DownArrow,
+    ImGuiKey_Home,
+    ImGuiKey_End,
+    ImGuiKey_Enter,
+    ImGuiKey_Escape,
+    ImGuiKey_Tab,
+    ImGuiKey_LeftCtrl,
+    ImGuiKey_RightCtrl,
+};
+
+DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_FeedFrameInput(float mouseX, float mouseY, float wheel, int mouseButtons, int keyBits, const char* utf8Chars)
+{
+    if (s_Context == nullptr)
+        return;
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.AddMousePosEvent(mouseX, mouseY);
+
+    if (wheel != 0.0f)
+        io.AddMouseWheelEvent(0.0f, wheel);
+
+    int changedButtons = s_PreviousMouseButtons ^ mouseButtons;
+    for (int button = 0; button < 3; ++button)
+    {
+        if (changedButtons & (1 << button))
+        {
+            bool down = (mouseButtons & (1 << button)) != 0;
+            io.AddMouseButtonEvent(button, down);
+        }
+    }
+    s_PreviousMouseButtons = mouseButtons;
+
+    const int keyCount = sizeof(s_KeyBitToImGuiKey) / sizeof(s_KeyBitToImGuiKey[0]);
+    int changedKeys = s_PreviousKeyBits ^ keyBits;
+    for (int bit = 0; bit < keyCount; ++bit)
+    {
+        if (changedKeys & (1 << bit))
+        {
+            bool down = (keyBits & (1 << bit)) != 0;
+            io.AddKeyEvent(s_KeyBitToImGuiKey[bit], down);
+        }
+    }
+    s_PreviousKeyBits = keyBits;
+
+    if (utf8Chars != nullptr && utf8Chars[0] != '\0')
+        io.AddInputCharactersUTF8(utf8Chars);
+}
