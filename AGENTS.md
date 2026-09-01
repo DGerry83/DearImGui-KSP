@@ -28,6 +28,7 @@ The design of this project was produced by `DesignSpecRefinement.md`; bootstrap 
 - `GameData/` — staging tree; mirrored into the game on every managed build.
 - `tests/` — mirrors the layers (placeholders).
 - `notes/` — artifact taxonomy (`active\`, `finished\`, `archive\`, `knowledge\`, `indices\`, `plans\`).
+- `ISSUES/` — local issue tracker (gitignored). Schema and workflow in `ISSUES/README.md`; file new issues per its naming convention and keep `TRACKER.md` in sync.
 
 ## Build & Test Commands
 

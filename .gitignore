@@ -17,3 +17,6 @@ GameData/**/Readme.txt
 # OS noise
 Thumbs.db
 Desktop.ini
+
+# Issue tracker (local-only; evidence files must never touch history)
+/ISSUES/
