@@ -31,7 +31,7 @@
 | `GetIoSnapshot` returns defaults | `NativeBridge.cs` | Real IO sampling | ~~C9~~ **done** |
 | Per-consumer try/catch placeholder | `FrameLoopOrchestrator.cs` | `FaultBarrier.Invoke` | ~~C10~~ **done** |
 | PoC demo-window scaffolding | `ContextHost.cpp` / `DearImGuiKSPNative.cpp` | removed | ~~C9~~ **done** |
-| TEMP fault-injection probe | `DemoConsumer.cs` (`DearImGuiKSPDemoFaultProbe`) | — remove after AC9 in-game verification passes | C10 close-out |
+| TEMP fault-injection probe | `DemoConsumer.cs` (`DearImGuiKSPDemoFaultProbe`) | — remove after AC9 in-game verification passes | ~~C10 close-out~~ **done** (AC9 PASS 2026-08-31) |
 
 ### Inter-Chunk Contracts (Locked)
 

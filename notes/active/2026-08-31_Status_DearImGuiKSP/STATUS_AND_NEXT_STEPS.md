@@ -13,8 +13,8 @@ Repo/project renamed **Dear KSP → DearImGui-KSP** (full rename: assemblies, na
 | M1 Build pipeline + deployment | C1 | **DONE** — in-game `[DearImGuiKSP]` startup line verified (commit fbbb33e) |
 | M2 Render-injection PoC | C2–C4 | **DONE (D3D11)** — AC1 PASS in-game with Deferred+TUFX (commit 225ecb6). C5 OpenGL backend **deferred** per D20 (commit 55bec8e) |
 | M3 Consumer API + core widgets | C6–C8 | **DONE** — C6 interop, C7 facade/registry/frame loop, C8 demo consumer: **AC3 + AC4 PASS in-game 2026-08-31** (window renders all MVP widgets, toolbar toggle, correct load order) |
-| M4 Input locking + fault isolation | C9, C10 | **IMPLEMENTED (group A, 2026-08-31)** — C9 capture+locks (handshake v2, PoC scaffolding removed), C10 fault barrier. Awaiting user in-game verification: AC7, AC9 (temp fault probe in demo) |
-| M5 Settings + lifecycle + failure UX | C11–C13 | **C11 DONE (group A)** — settings store/model/migration + verbose-logging gate + kill switch. Awaiting user in-game verification: AC12. C12/C13 not started |
+| M4 Input locking + fault isolation | C9, C10 | **DONE** — AC7 PASS + AC9 PASS in-game 2026-08-31 (C9b input-feeding addendum made windows interactive; temp fault probe verified then removed). Follow-up: ISSUES #001 uGUI click-through (P2) |
+| M5 Settings + lifecycle + failure UX | C11–C13 | **C11 implemented** — settings defect found at verification (ConfigNode wrapper-node layout), fixed same day; AC12 re-verification pending. C12/C13 not started |
 | M6 Benchmark + compatibility | C14, C15 | Not started |
 
 ## Code state (verified against notes)
@@ -33,7 +33,7 @@ Repo/project renamed **Dear KSP → DearImGui-KSP** (full rename: assemblies, na
 ## Next steps (in planned order)
 
 1. ~~C8~~ — **DONE 2026-08-31** (AC3/AC4 PASS; includes user-requested ApplicationLauncher toolbar toggle with green placeholder icon — toggle itself still unverified in-game).
-2. ~~Parallel group A~~ — **IMPLEMENTED 2026-08-31** (C9 input capture + locks, C10 fault barrier, C11 settings). Contracts: CHUNK_9/10/11_CONTRACT.md. **User verifies in-game**: AC7 (locks on hover/text focus, release cleanly), AC9 (temp `DearImGuiKSPDemoFaultProbe` auto-disabled after 5 throwing frames, demo unaffected — remove probe after PASS), AC12 (settings round-trip, migration, `enabled=false` dormancy, `verboseLogging=true` debug lines).
+2. ~~Parallel group A~~ — **DONE 2026-08-31** (C9 input capture + locks incl. C9b input-feeding fix, C10 fault barrier, C11 settings). AC7/AC9 PASS in-game. **AC12 re-verification pending**: ConfigNode wrapper-node defect fixed — re-test `enabled = false` (library dormant) and `verboseLogging = true` (`[debug]` lines) in `GameData/DearImGuiKSP/settings.cfg`. NOTE: managed builds re-mirror the repo's `settings.cfg` (defaults) into the game instance — re-apply test edits after any build.
 3. **C12** lifecycle state machine + game-event hooks → **C13** failure notifier.
 4. **C14** torture-test benchmark → **C15** full compatibility validation (Deferred, TUFX, Scatterer, Parallax, Cinematic Shaders, Cinematic Recorder, IMGUI mods).
 5. Phase 4/5 gates: G4 integration build, G5 `FINAL_AUDIT.md` coverage table.
