@@ -1,25 +1,32 @@
-using System;
 using DearImGuiKSP.Application.Interfaces;
 
 namespace DearImGuiKSP.Application
 {
     /// <summary>
     /// Executes the per-frame sequence (locked in C7, spec §5.3):
-    /// native BeginUiFrame → consumer callbacks in registration order → native
-    /// EndUiFrame. The render-event handoff is issued separately by the addon.
-    /// Input sampling/locks (C9), the FaultBarrier (C10), and the lifecycle state
-    /// machine (C12) hook in here later; availability is currently the
-    /// <see cref="DearImGuiKSP.IsAvailable"/> flag flipped by Composition after bridge init.
+    /// sample capture state → apply/release input locks (C9) → native BeginUiFrame →
+    /// consumer callbacks in registration order through the FaultBarrier (C10) →
+    /// native EndUiFrame. The render-event handoff is issued separately by the addon.
+    /// The lifecycle state machine (C12) hooks in here later; availability is currently
+    /// the <see cref="DearImGuiKSP.IsAvailable"/> flag flipped by Composition after bridge init.
     /// </summary>
     internal sealed class FrameLoopOrchestrator
     {
         private readonly INativeBridge _bridge;
         private readonly ConsumerRegistry _registry;
+        private readonly InputCaptureTracker _captureTracker;
+        private readonly FaultBarrier _faultBarrier;
 
-        internal FrameLoopOrchestrator(INativeBridge bridge, ConsumerRegistry registry)
+        internal FrameLoopOrchestrator(
+            INativeBridge bridge,
+            ConsumerRegistry registry,
+            InputCaptureTracker captureTracker,
+            FaultBarrier faultBarrier)
         {
             _bridge = bridge;
             _registry = registry;
+            _captureTracker = captureTracker;
+            _faultBarrier = faultBarrier;
         }
 
         /// <summary>
@@ -34,22 +41,14 @@ namespace DearImGuiKSP.Application
                 return;
             }
 
+            // Capture state reflects the previous frame's ImGui IO (spec §5.3 order:
+            // sample → locks → callbacks). Sampled before BeginUiFrame on purpose.
+            _captureTracker.Update(_bridge.GetIoSnapshot());
+
             _bridge.BeginUiFrame(width, height, deltaTime);
             foreach (ConsumerRegistry.ConsumerRegistration consumer in _registry.Ordered)
             {
-                if (!consumer.Enabled)
-                {
-                    continue;
-                }
-                // TODO(C10): FaultBarrier replaces this placeholder — counting + auto-disable.
-                try
-                {
-                    consumer.Callback();
-                }
-                catch (Exception ex)
-                {
-                    DearImGuiKSP.Log?.Error("Consumer '" + consumer.Id + "' threw an exception: " + ex);
-                }
+                _faultBarrier.Invoke(consumer);
             }
             _bridge.EndUiFrame();
         }

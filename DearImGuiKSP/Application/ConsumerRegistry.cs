@@ -6,8 +6,8 @@ namespace DearImGuiKSP.Application
     /// <summary>
     /// Tracks registered consumers in registration order with per-consumer fault state.
     /// Registration order is the MVP z-order (spec §5.3). Implemented in C7; the fault
-    /// fields (<see cref="ConsumerRegistration.ConsecutiveFailureCount"/>) are inert
-    /// until the FaultBarrier lands in C10.
+    /// fields (<see cref="ConsumerRegistration.ConsecutiveFailureCount"/>) are counted
+    /// by <see cref="FaultBarrier"/> (C10).
     /// </summary>
     internal sealed class ConsumerRegistry
     {
@@ -17,7 +17,7 @@ namespace DearImGuiKSP.Application
             internal readonly string Id;
             internal readonly Action Callback;
             internal bool Enabled = true;
-            internal int ConsecutiveFailureCount = 0; // TODO(C10): counted by FaultBarrier
+            internal int ConsecutiveFailureCount = 0;
 
             internal ConsumerRegistration(string id, Action callback)
             {

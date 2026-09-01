@@ -1,8 +1,8 @@
 // DearImGuiKSPNative — headless smoke-test harness (chunk C3, milestone M2).
 //
 // Console exe linking the same TUs as the DLL (minus the Unity plugin entry
-// file). Proves the context host initializes, runs headless frames with the
-// demo window on, hands out a sane font atlas, and shuts down cleanly.
+// file). Proves the context host initializes, runs headless frames, hands out
+// a sane font atlas, and shuts down cleanly.
 // Prints "HARNESS PASS" and exits 0 on success; exits 1 on the first failure.
 
 #include <cstdio>
@@ -20,8 +20,6 @@ int main()
     int rc = DearImGuiKSPNative_ContextInit();
     if (rc != 0)
         return Fail("ContextInit", rc);
-
-    DearImGuiKSPNative_SetDemoWindowVisible(1);
 
     // 60 headless frames at 1920x1080, 60 fps.
     for (int i = 0; i < 60; ++i)

@@ -1,3 +1,4 @@
+using System;
 using KSP.UI.Screens;
 using UnityEngine;
 
@@ -16,6 +17,11 @@ namespace DearImGuiKSPDemo
     {
         private const string ConsumerId = "DearImGuiKSPDemo";
 
+        // TEMP(C10-verification): always-throwing consumer for AC9 in-game verification
+        // (auto-disabled after 5 consecutive throwing frames; demo window must keep
+        // rendering). Removed once AC9 passes.
+        private const string FaultProbeId = "DearImGuiKSPDemoFaultProbe";
+
         private ApplicationLauncherButton _toolbarButton;
         private bool _windowVisible = true;
         private int _clickCount;
@@ -30,6 +36,7 @@ namespace DearImGuiKSPDemo
                 return;
             }
             DearImGuiKSP.DearImGuiKSP.Register(ConsumerId, OnFrame);
+            DearImGuiKSP.DearImGuiKSP.Register(FaultProbeId, FaultProbe); // TEMP(C10-verification)
             Debug.Log("[DearImGuiKSPDemo] Registered with DearImGui-KSP.");
 
             GameEvents.onGUIApplicationLauncherReady.Add(OnLauncherReady);
@@ -48,6 +55,14 @@ namespace DearImGuiKSPDemo
                 _toolbarButton = null;
             }
             DearImGuiKSP.DearImGuiKSP.Unregister(ConsumerId);
+            DearImGuiKSP.DearImGuiKSP.Unregister(FaultProbeId); // TEMP(C10-verification)
+        }
+
+        // TEMP(C10-verification): throws every frame; expect 5 logged exceptions then an
+        // auto-disable notice, with the demo window unaffected. Removed once AC9 passes.
+        private void FaultProbe()
+        {
+            throw new InvalidOperationException("AC9 fault-injection probe (intentional).");
         }
 
         private void OnLauncherReady()

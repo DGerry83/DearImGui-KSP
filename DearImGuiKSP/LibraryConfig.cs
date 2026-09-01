@@ -28,7 +28,12 @@ namespace DearImGuiKSP
         internal const float DefaultUiScale = 1.0f;
         internal const float DefaultFontScale = 1.0f;
         internal const string DefaultTheme = "dark";
+        internal const bool DefaultVerboseLogging = false;
+        internal const bool DefaultEnabled = true;
         internal const float MinScale = 0.5f;
         internal const float MaxScale = 2.0f;
+
+        // Settings persistence (spec §4.4, §10.5)
+        internal const int SettingsFormatVersion = 1;
     }
 }

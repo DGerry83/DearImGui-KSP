@@ -29,9 +29,9 @@ namespace DearImGuiKSP.Infrastructure
         internal const int InitErrContextInit = 6;
         internal const int InitErrDeviceTexture = 7;
 
-        // Managed/native handshake constant for the 0.1.x line (spec §5.4, D17);
-        // must match DearImGuiKSPNative_GetVersion(). Bump both DLLs in lockstep.
-        private const int ExpectedNativeVersion = 1;
+        // Managed/native handshake constant (spec §5.4, D17); must match
+        // DearImGuiKSPNative_GetVersion(). Bump both DLLs in lockstep.
+        private const int ExpectedNativeVersion = 2;
 
         private readonly ILogger _logger;
         private readonly InputCaptureState _captureState = new InputCaptureState();
@@ -52,6 +52,7 @@ namespace DearImGuiKSP.Infrastructure
         private BeginFrameDelegate _beginFrame;
         private EndFrameDelegate _endFrame;
         private GetRenderEventFuncDelegate _getRenderEventFunc;
+        private GetIoCaptureStateDelegate _getIoCaptureState;
 
         internal NativeBridge(ILogger logger)
         {
@@ -143,8 +144,18 @@ namespace DearImGuiKSP.Infrastructure
         /// <inheritdoc/>
         public InputCaptureState GetIoSnapshot()
         {
-            // TODO(C9): fill _captureState from the ImGui IO (WantCaptureMouse/
-            // WantCaptureKeyboard). PoC returns defaults: nothing captured.
+            if (!_initialized || _getIoCaptureState == null)
+            {
+                _captureState.MouseCaptured = false;
+                _captureState.KeyboardCaptured = false;
+                return _captureState;
+            }
+
+            int wantMouse = 0;
+            int wantKeyboard = 0;
+            _getIoCaptureState(ref wantMouse, ref wantKeyboard);
+            _captureState.MouseCaptured = wantMouse != 0;
+            _captureState.KeyboardCaptured = wantKeyboard != 0;
             return _captureState;
         }
 
@@ -202,13 +213,15 @@ namespace DearImGuiKSP.Infrastructure
             _beginFrame = Bind<BeginFrameDelegate>("DearImGuiKSPNative_BeginFrame");
             _endFrame = Bind<EndFrameDelegate>("DearImGuiKSPNative_EndFrame");
             _getRenderEventFunc = Bind<GetRenderEventFuncDelegate>("DearImGuiKSPNative_GetRenderEventFunc");
+            _getIoCaptureState = Bind<GetIoCaptureStateDelegate>("DearImGuiKSPNative_GetIoCaptureState");
             return _getVersion != null
                 && _setD3D11DeviceTexture != null
                 && _contextInit != null
                 && _contextShutdown != null
                 && _beginFrame != null
                 && _endFrame != null
-                && _getRenderEventFunc != null;
+                && _getRenderEventFunc != null
+                && _getIoCaptureState != null;
         }
 
         private T Bind<T>(string exportName) where T : class
@@ -252,6 +265,9 @@ namespace DearImGuiKSP.Infrastructure
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate IntPtr GetRenderEventFuncDelegate();
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void GetIoCaptureStateDelegate(ref int wantMouse, ref int wantKeyboard);
 
         // kernel32 only — the GameData load-path gotcha applies to OUR dll, not these.
         [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]

@@ -27,12 +27,11 @@
 
 | Stub | Location | Replaced By | Remove In |
 |------|----------|-------------|-----------|
-| `DearImGuiKSP.IsAvailable => false` hard-coded | `Application/DearImGuiKSP.cs` | Wired to LifecycleStateMachine | C7 |
-| Skeleton log line in `DearImGuiKSPAddon.Awake` | `Infrastructure/DearImGuiKSPAddon.cs` | Composition-driven startup | C1 |
-| `DearImGuiKSPNative_GetVersion` returning placeholder `1` | `src/DearImGuiKSPNative.cpp` | Real lockstep handshake value | C4 |
-| Empty `INativeBridge` interface | `Application/Interfaces/INativeBridge.cs` | C4 method set (locked) | C4 |
-| `verboseLogging` constant stub (if C12 precedes C11 completion) | `DearImGuiKSPLogger.cs` | SettingsModel-backed value | C11 |
-| Empty widget-binding surface | `DearImGuiKSP/Interop/` (created in C6) | Real bindings | C6 |
+| `verboseLogging` constant stub | `DearImGuiKSPLogger.cs` | SettingsModel-backed value | ~~C11~~ **done** |
+| `GetIoSnapshot` returns defaults | `NativeBridge.cs` | Real IO sampling | ~~C9~~ **done** |
+| Per-consumer try/catch placeholder | `FrameLoopOrchestrator.cs` | `FaultBarrier.Invoke` | ~~C10~~ **done** |
+| PoC demo-window scaffolding | `ContextHost.cpp` / `DearImGuiKSPNative.cpp` | removed | ~~C9~~ **done** |
+| TEMP fault-injection probe | `DemoConsumer.cs` (`DearImGuiKSPDemoFaultProbe`) | — remove after AC9 in-game verification passes | C10 close-out |
 
 ### Inter-Chunk Contracts (Locked)
 

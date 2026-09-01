@@ -18,8 +18,7 @@ DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_ContextInit(void);
 DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_ContextShutdown(void);
 
 // Sets display size / delta time and calls ImGui::NewFrame(). deltaSeconds is
-// clamped to a small positive minimum. Shows the demo window when toggled on.
-// No-op before ContextInit.
+// clamped to a small positive minimum. No-op before ContextInit.
 DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_BeginFrame(float width, float height, float deltaSeconds);
 
 // Calls ImGui::Render(); draw data remains available to backends until the
@@ -30,5 +29,6 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_EndFrame(void);
 // success, nonzero if uninitialized, the args are null, or the atlas is empty.
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetFontAtlasPixels(unsigned char** outPixels, int* outWidth, int* outHeight);
 
-// Toggles the ImGui demo window for the PoC. Safe to call before ContextInit.
-DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_SetDemoWindowVisible(int visible);
+// Mouse/keyboard capture state from ImGui IO (spec §5.3). Writes 1/0 to each
+// out-arg when the context exists; writes 0/0 otherwise. Null pointers are safe.
+DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_GetIoCaptureState(int* wantMouse, int* wantKeyboard);

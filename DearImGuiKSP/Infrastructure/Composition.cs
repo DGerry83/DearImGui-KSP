@@ -15,9 +15,23 @@ namespace DearImGuiKSP.Infrastructure
         private static NativeBridge _bridge;
         private static ConsumerRegistry _registry;
         private static FrameLoopOrchestrator _orchestrator;
+        private static SettingsStore _settingsStore;
+        private static SettingsModel _settings;
+        private static InputLockGateway _lockGateway;
+        private static InputCaptureTracker _captureTracker;
+        private static FaultBarrier _faultBarrier;
 
         /// <summary>The library-wide logger. Created once; safe to call before Init.</summary>
-        internal static ILogger Logger => _logger ?? (_logger = new DearImGuiKSPLogger());
+        internal static ILogger Logger => _logger ?? (_logger = CreateLogger());
+
+        private static ILogger CreateLogger()
+        {
+            var logger = new DearImGuiKSPLogger();
+            // Deferred lambda: Settings is only resolved when the first Debug line is
+            // evaluated, so the logger can exist before the settings file is read (C11).
+            logger.VerboseLoggingProvider = () => Settings.VerboseLogging;
+            return logger;
+        }
 
         /// <summary>
         /// The native bridge singleton. Created once; <see cref="INativeBridge.Initialize"/>
@@ -34,9 +48,25 @@ namespace DearImGuiKSP.Infrastructure
         /// <summary>The consumer registry singleton (C7). Shared with the public facade.</summary>
         internal static ConsumerRegistry Registry => _registry ?? (_registry = new ConsumerRegistry());
 
-        /// <summary>The frame loop orchestrator singleton (C7), driven by DearImGuiKSPAddon.Update().</summary>
+        /// <summary>The settings store singleton (C11). Used only by <see cref="Settings"/>.</summary>
+        private static SettingsStore Store => _settingsStore ?? (_settingsStore = new SettingsStore(Logger));
+
+        /// <summary>The settings model singleton (C11). Loads settings.cfg on first access.</summary>
+        internal static SettingsModel Settings => _settings ?? (_settings = new SettingsModel(Store));
+
+        /// <summary>The input lock gateway singleton (C9).</summary>
+        internal static InputLockGateway LockGateway => _lockGateway ?? (_lockGateway = new InputLockGateway());
+
+        /// <summary>The input capture tracker singleton (C9), driven by the orchestrator.</summary>
+        internal static InputCaptureTracker CaptureTracker =>
+            _captureTracker ?? (_captureTracker = new InputCaptureTracker(LockGateway, Registry));
+
+        /// <summary>The consumer fault barrier singleton (C10), driven by the orchestrator.</summary>
+        internal static FaultBarrier Barrier => _faultBarrier ?? (_faultBarrier = new FaultBarrier(Logger));
+
+        /// <summary>The frame loop orchestrator singleton (C7; C9/C10 wired in group A), driven by DearImGuiKSPAddon.Update().</summary>
         internal static FrameLoopOrchestrator Orchestrator =>
-            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry));
+            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier));
 
         /// <summary>
         /// Wires the public facade's internal hooks (C7): Application cannot see
@@ -58,6 +88,6 @@ namespace DearImGuiKSP.Infrastructure
             DearImGuiKSP.SetAvailable(true);
         }
 
-        // Later chunks add: SettingsStore/Model (C11), state machine (C12).
+        // Later chunks add: state machine (C12).
     }
 }

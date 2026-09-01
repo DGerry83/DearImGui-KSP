@@ -23,6 +23,13 @@ namespace DearImGuiKSP.Infrastructure
 
         private void Start()
         {
+            // Global kill switch (spec §9.1, C11): enabled = false → dormant session.
+            if (!Composition.Settings.Enabled)
+            {
+                Composition.Logger.Info("Disabled by settings.cfg (enabled = false); library dormant for this session.");
+                return;
+            }
+
             Composition.BridgeInitResult = Composition.Bridge.Initialize();
             if (Composition.BridgeInitResult == NativeBridge.InitOk)
             {

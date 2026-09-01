@@ -21,10 +21,10 @@
 #define DEARIMGUIKSP_NATIVE_API extern "C" __declspec(dllexport)
 
 // Managed/native version handshake (spec §5.4, D17). Bump in lockstep with the
-// managed [assembly: KSPAssembly] version; mismatch -> Failed state.
+// managed ExpectedNativeVersion constant; mismatch -> Failed state.
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetVersion()
 {
-    return 1; // handshake constant for the 0.1.x line
+    return 2; // handshake constant value 2
 }
 
 // Hands the D3D11 backend a Unity-created ID3D11Texture2D

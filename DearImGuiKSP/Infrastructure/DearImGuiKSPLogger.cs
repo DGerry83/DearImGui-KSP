@@ -1,17 +1,20 @@
+using System;
 using ILogger = DearImGuiKSP.Application.Interfaces.ILogger;
-using UnityEngine;
 
 namespace DearImGuiKSP.Infrastructure
 {
     /// <summary>
     /// Implements <see cref="ILogger"/> over UnityEngine.Debug with the [DearImGuiKSP] prefix.
-    /// Debug-level lines are gated by the verboseLogging setting (spec §9) — currently a
-    /// stub constant, replaced by SettingsModel in chunk C11 (tracked in INTEGRATION_CONTRACT.md).
+    /// Debug-level lines are gated by the verboseLogging setting (spec §9) via a
+    /// SettingsModel-backed provider set by the composition root.
     /// </summary>
     internal sealed class DearImGuiKSPLogger : ILogger
     {
-        // STUB(C11): replaced by SettingsModel-backed verboseLogging.
-        private const bool VerboseLoggingStub = true;
+        /// <summary>
+        /// Supplies the current verbose-logging flag. When null, debug output is suppressed.
+        /// Wired to <see cref="Application.SettingsModel.VerboseLogging"/> by the composition root.
+        /// </summary>
+        internal Func<bool> VerboseLoggingProvider { get; set; }
 
         public void Error(string message) => UnityEngine.Debug.LogError(LibraryConfig.LogPrefix + " " + message);
 
@@ -21,7 +24,7 @@ namespace DearImGuiKSP.Infrastructure
 
         public void Debug(string message)
         {
-            if (VerboseLoggingStub)
+            if (VerboseLoggingProvider?.Invoke() == true)
             {
                 UnityEngine.Debug.Log(LibraryConfig.LogPrefix + " [debug] " + message);
             }

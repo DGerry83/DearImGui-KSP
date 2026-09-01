@@ -9,9 +9,8 @@
 
 #include "imgui.h"
 
-// The one ImGui context for the DLL, plus the demo-window toggle for the PoC.
-static ImGuiContext* s_Context           = nullptr;
-static int           s_DemoWindowVisible = 0;
+// The one ImGui context for the DLL.
+static ImGuiContext* s_Context = nullptr;
 
 // Lower clamp for frame delta so NewFrame never sees a zero/negative dt.
 static const float kMinDeltaSeconds = 1.0f / 240.0f;
@@ -62,7 +61,6 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_ContextShutdown(void)
         ImGui::DestroyContext(s_Context); // also frees the atlas CPU data
         s_Context = nullptr;
     }
-    s_DemoWindowVisible = 0;
 }
 
 DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_BeginFrame(float width, float height, float deltaSeconds)
@@ -75,13 +73,6 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_BeginFrame(float width, float he
     io.DeltaTime   = deltaSeconds > kMinDeltaSeconds ? deltaSeconds : kMinDeltaSeconds;
 
     ImGui::NewFrame();
-    if (s_DemoWindowVisible)
-    {
-        bool open = true;
-        ImGui::ShowDemoWindow(&open);
-        if (!open)
-            s_DemoWindowVisible = 0; // user closed it via the window's close button
-    }
 }
 
 DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_EndFrame(void)
@@ -102,7 +93,19 @@ DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetFontAtlasPixels(unsigned char*
     return 0;
 }
 
-DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_SetDemoWindowVisible(int visible)
+DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_GetIoCaptureState(int* wantMouse, int* wantKeyboard)
 {
-    s_DemoWindowVisible = visible ? 1 : 0;
+    if (wantMouse != nullptr)
+        *wantMouse = 0;
+    if (wantKeyboard != nullptr)
+        *wantKeyboard = 0;
+
+    if (s_Context == nullptr)
+        return;
+
+    ImGuiIO& io = ImGui::GetIO();
+    if (wantMouse != nullptr)
+        *wantMouse = io.WantCaptureMouse ? 1 : 0;
+    if (wantKeyboard != nullptr)
+        *wantKeyboard = io.WantCaptureKeyboard ? 1 : 0;
 }
