@@ -9,7 +9,7 @@ namespace DearImGuiKSP.Infrastructure
     /// Thin shell only: initializes the native bridge, drives the frame loop
     /// (Update → FrameLoopOrchestrator.RunFrame; WaitForEndOfFrame coroutine →
     /// GL.IssuePluginEvent), and runs the lifecycle state machine (C12). All logic
-    /// lives in NativeBridge/Composition/Application; the failure popup arrives in C13.
+    /// lives in NativeBridge/Composition/Application.
     /// </summary>
     [KSPAddon(KSPAddon.Startup.MainMenu, true)]
     public sealed class DearImGuiKSPAddon : MonoBehaviour
@@ -41,8 +41,10 @@ namespace DearImGuiKSP.Infrastructure
             }
             else
             {
-                // Terminal failure state (C12); the player-facing popup arrives in C13.
-                Composition.StateMachine.Fail("native bridge init failed with code " + Composition.BridgeInitResult);
+                // Terminal failure state (C12) + one plain-language popup (C13, spec §5.4/§7).
+                Composition.StateMachine.Fail(
+                    NativeBridge.KindForInitResult(Composition.BridgeInitResult),
+                    "native bridge init failed with code " + Composition.BridgeInitResult);
                 Composition.Logger.Error("Native bridge initialization failed with code " + Composition.BridgeInitResult + "; library inactive for this session.");
             }
             StartCoroutine(RenderEventPump());

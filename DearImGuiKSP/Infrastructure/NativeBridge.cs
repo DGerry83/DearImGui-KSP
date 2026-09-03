@@ -29,6 +29,7 @@ namespace DearImGuiKSP.Infrastructure
         internal const int InitErrUnsupportedDevice = 5;
         internal const int InitErrContextInit = 6;
         internal const int InitErrDeviceTexture = 7;
+        internal const int InitErrRenderHook = 8;
 
         // Managed/native handshake constant (spec §5.4, D17); must match
         // DearImGuiKSPNative_GetVersion(). Bump both DLLs in lockstep.
@@ -144,10 +145,37 @@ namespace DearImGuiKSP.Infrastructure
             }
 
             RenderEventFunc = _getRenderEventFunc();
+            if (RenderEventFunc == IntPtr.Zero)
+            {
+                _logger.Error("DearImGuiKSPNative_GetRenderEventFunc returned a null pointer; the render hook is unavailable.");
+                _contextShutdown();
+                DestroyDeviceTexture();
+                Unload();
+                return InitErrRenderHook;
+            }
 
             _initialized = true;
             _logger.Info("Native bridge initialized: DearImGuiKSPNative v" + nativeVersion + " on D3D11, context up.");
             return InitOk;
+        }
+
+        /// <summary>
+        /// Maps an <see cref="Initialize"/> result code to the failure kind used for the
+        /// player-facing popup (C13; spec §7.1 bodies cover native/graphics/version only).
+        /// </summary>
+        internal static FailureKind KindForInitResult(int result)
+        {
+            switch (result)
+            {
+                case InitErrVersionMismatch:
+                    return FailureKind.VersionMismatch;
+                case InitErrUnsupportedDevice:
+                    return FailureKind.GraphicsApi;
+                case InitErrRenderHook:
+                    return FailureKind.RenderHook;
+                default:
+                    return FailureKind.NativeComponent;
+            }
         }
 
         /// <inheritdoc/>

@@ -22,6 +22,7 @@ namespace DearImGuiKSP.Infrastructure
         private static FaultBarrier _faultBarrier;
         private static LifecycleStateMachine _stateMachine;
         private static GameEventHooks _gameEventHooks;
+        private static FailureNotifier _failureNotifier;
 
         /// <summary>The library-wide logger. Created once; safe to call before Init.</summary>
         internal static ILogger Logger => _logger ?? (_logger = CreateLogger());
@@ -77,16 +78,30 @@ namespace DearImGuiKSP.Infrastructure
         internal static FrameLoopOrchestrator Orchestrator =>
             _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine));
 
+        /// <summary>The failure notifier singleton (C13). Shows the one-per-session failure popup.</summary>
+        internal static FailureNotifier Notifier =>
+            _failureNotifier ?? (_failureNotifier = new FailureNotifier(Logger));
+
         /// <summary>
-        /// Wires the public facade's internal hooks (C7, C12): Application cannot see
-        /// Infrastructure, so the logger, registry, and state machine are handed over
-        /// from here. Called once from DearImGuiKSPAddon.Awake(); idempotent.
+        /// Wires the public facade's internal hooks (C7, C12) and arms failure
+        /// notification (C13): the notifier is subscribed here, before bridge init in
+        /// Start(), so a failed initialization still produces the popup. Called once
+        /// from DearImGuiKSPAddon.Awake(); idempotent.
         /// </summary>
         internal static void WireApplicationFacade()
         {
             DearImGuiKSP.Log = Logger;
             DearImGuiKSP.Registry = Registry;
             DearImGuiKSP.Lifecycle = StateMachine;
+
+            // -=/+= keeps the call idempotent: event subscription is not.
+            StateMachine.EnteredFailed -= OnEnteredFailed;
+            StateMachine.EnteredFailed += OnEnteredFailed;
+        }
+
+        private static void OnEnteredFailed(FailureKind kind)
+        {
+            Notifier.Notify(kind);
         }
 
         /// <summary>
@@ -110,7 +125,5 @@ namespace DearImGuiKSP.Infrastructure
             Hooks.ResolutionChanged += (w, h) => Bridge.RebuildViewport(w, h);
             Hooks.Subscribe();
         }
-
-        // Later chunks add: failure notifier (C13).
     }
 }

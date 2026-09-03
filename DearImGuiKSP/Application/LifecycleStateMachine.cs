@@ -1,3 +1,4 @@
+using System;
 using DearImGuiKSP.Application.Interfaces;
 
 namespace DearImGuiKSP.Application
@@ -30,6 +31,12 @@ namespace DearImGuiKSP.Application
         internal LifecycleState State { get; private set; }
 
         internal bool IsRunning => State == LifecycleState.Running;
+
+        /// <summary>
+        /// Fired once per session, after the transition to terminal Failed, with the
+        /// failure kind for the player-facing popup (C13; spec §5.4, §7).
+        /// </summary>
+        internal event Action<FailureKind> EnteredFailed;
 
         internal void MarkInitializing()
         {
@@ -64,15 +71,19 @@ namespace DearImGuiKSP.Application
             EvaluateSuspended();
         }
 
-        internal void Fail(string reason)
+        internal void Fail(FailureKind kind, string reason)
         {
             if (State == LifecycleState.Failed)
             {
                 return;
             }
 
-            _log?.Error("Lifecycle failure: " + reason);
+            _log?.Error("Lifecycle failure (" + kind + "): " + reason);
             TransitionTo(LifecycleState.Failed);
+            if (State == LifecycleState.Failed && EnteredFailed != null)
+            {
+                EnteredFailed(kind);
+            }
         }
 
         private void EvaluateSuspended()
