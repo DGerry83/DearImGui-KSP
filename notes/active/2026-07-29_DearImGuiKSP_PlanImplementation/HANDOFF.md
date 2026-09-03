@@ -1,7 +1,7 @@
 # Handoff: DearImGui-KSP Implementation
 
-## Date: 2026-08-31 (end of session)
-## Resume with: chunk C13 of the PlanImplementation workflow — write CHUNK_13_CONTRACT.md first (gate G2)
+## Date: 2026-09-03 (plan implementation COMPLETE — Phases 0–5 done, session verdict CONTINUE)
+## Resume with: nothing in this workflow — the plan is finished. Next work is post-plan: release packaging (D15), ISSUES #001/#002, deferred backlog (C5 OpenGL, unit tests, spec §3.4 items). Read FINAL_AUDIT.md in this folder for the full picture.
 
 ---
 
@@ -15,7 +15,7 @@
 
 Executing `PlanImplementation.md` (from `C:\Users\Matt\source\repos\FlyByWire\versions\v3\` — the current skill version; earlier chunks ran under v2). Session folder: `notes/active/2026-07-29_DearImGuiKSP_PlanImplementation/` — contains `PLAN_DIGEST.md`, `CHUNK_MAP.md`, `INTEGRATION_CONTRACT.md`, `GATES.md` (frozen), `PROGRESS_LOG.md`, and per-chunk contracts (CHUNK_1…4, 6, 7, 8, 9, 10, 11, 12).
 
-**Phase 3 (chunk execution) is underway.** Status:
+**Phase 3 (chunk execution) is complete.** All chunks C1–C15 done and verified in-game (C5 deferred per D20); Phases 4–5 closed 2026-09-03 with INTEGRATION_REPORT.md and FINAL_AUDIT.md; all gates G1–G6 PASS (AC2 deferred). Historical chunk status:
 
 | Chunk | Result |
 |-------|--------|
