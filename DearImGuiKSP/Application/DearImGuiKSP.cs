@@ -174,5 +174,70 @@ namespace DearImGuiKSP
             }
             return ImGuiInternal.InputText(label, ref value, capacity);
         }
+
+        /// <summary>
+        /// Begins a fixed-height, bordered scrolling child region. Only valid inside a
+        /// registered callback. The manual-virtualization pattern for large lists:
+        /// call <see cref="GetScrollY"/> to read the current scroll offset, compute the
+        /// visible row range from it, <see cref="SetCursorY"/> to
+        /// <c>firstVisibleRow * rowHeight</c>, draw only the visible rows, then
+        /// <see cref="SetCursorY"/> to <c>rowCount * rowHeight</c> so the scrollable
+        /// range covers the full list.
+        /// </summary>
+        /// <param name="id">Region identifier; also its ImGui identity.</param>
+        /// <param name="height">Region height in pixels.</param>
+        /// <returns>
+        /// False when the region is clipped — <see cref="EndScrollRegion"/> is
+        /// still required. Also false when called while unavailable.
+        /// </returns>
+        public static bool BeginScrollRegion(string id, float height)
+        {
+            if (!IsAvailable)
+            {
+                return false;
+            }
+            return ImGuiInternal.BeginScrollRegion(id, height);
+        }
+
+        /// <summary>
+        /// Ends the current scrolling child region. Always required after
+        /// <see cref="BeginScrollRegion"/>, regardless of its return value.
+        /// Only valid inside a registered callback.
+        /// </summary>
+        public static void EndScrollRegion()
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.EndScrollRegion();
+        }
+
+        /// <summary>
+        /// Current vertical scroll offset of the active region/window, in pixels.
+        /// Only valid inside a registered callback.
+        /// </summary>
+        /// <returns>The scroll offset; 0 when unavailable.</returns>
+        public static float GetScrollY()
+        {
+            if (!IsAvailable)
+            {
+                return 0f;
+            }
+            return ImGuiInternal.GetScrollY();
+        }
+
+        /// <summary>
+        /// Sets the vertical cursor position within the active region/window, in local
+        /// coordinates. Only valid inside a registered callback.
+        /// </summary>
+        public static void SetCursorY(float y)
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.SetCursorY(y);
+        }
     }
 }

@@ -101,6 +101,44 @@ namespace DearImGuiKSP.Interop
             return edited;
         }
 
+        /// <summary>
+        /// Begins a fixed-height, bordered scrolling child region. Wraps cimgui
+        /// <c>igBeginChild_Str</c> with child_flags = ImGuiChildFlags_Borders and
+        /// window_flags = 0. Null <paramref name="id"/> renders as an empty string.
+        /// </summary>
+        /// <returns>False when the region is clipped — caller must still call <see cref="EndScrollRegion"/>.</returns>
+        internal static bool BeginScrollRegion(string id, float height)
+        {
+            return ImGuiNative.BeginScrollRegion(ToUtf8(id), height);
+        }
+
+        /// <summary>
+        /// Ends the current child region. Wraps cimgui <c>igEndChild</c>. Always required
+        /// after <see cref="BeginScrollRegion"/>, regardless of its return value.
+        /// </summary>
+        internal static void EndScrollRegion()
+        {
+            ImGuiNative.EndScrollRegion();
+        }
+
+        /// <summary>
+        /// Current vertical scroll offset of the active region/window, in pixels.
+        /// Wraps cimgui <c>igGetScrollY</c>.
+        /// </summary>
+        internal static float GetScrollY()
+        {
+            return ImGuiNative.GetScrollY();
+        }
+
+        /// <summary>
+        /// Sets the vertical cursor position within the active region/window, in local
+        /// coordinates. Wraps cimgui <c>igSetCursorPosY</c>.
+        /// </summary>
+        internal static void SetCursorY(float y)
+        {
+            ImGuiNative.SetCursorY(y);
+        }
+
         // Null-terminated UTF-8. Null becomes "\0" (empty string).
         private static byte[] ToUtf8(string value)
         {

@@ -74,9 +74,9 @@ namespace DearImGuiKSP.Infrastructure
         /// <summary>The game-event hook source singleton (C12). Subscribed by <see cref="WireLifecycle"/>.</summary>
         internal static GameEventHooks Hooks => _gameEventHooks ?? (_gameEventHooks = new GameEventHooks());
 
-        /// <summary>The frame loop orchestrator singleton (C7; C9/C10/C12 wired), driven by DearImGuiKSPAddon.Update().</summary>
+        /// <summary>The frame loop orchestrator singleton (C7; C9/C10/C12 wired, C14 timing), driven by DearImGuiKSPAddon.Update().</summary>
         internal static FrameLoopOrchestrator Orchestrator =>
-            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine));
+            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine, Logger));
 
         /// <summary>The failure notifier singleton (C13). Shows the one-per-session failure popup.</summary>
         internal static FailureNotifier Notifier =>

@@ -43,6 +43,19 @@ namespace DearImGuiKSP.Interop
     }
 
     /// <summary>
+    /// Child-region flags for <see cref="ImGuiInternal.BeginScrollRegion"/>; values match
+    /// <c>ImGuiChildFlags_</c> in imgui.h (typedef int, imgui.h:249). Only the values we use.
+    /// </summary>
+    [Flags]
+    internal enum ImGuiChildFlags
+    {
+        None = 0,
+
+        /// <summary>Outer border + WindowPadding (imgui.h:1270, 1 &lt;&lt; 0).</summary>
+        Borders = 1,
+    }
+
+    /// <summary>
     /// Raw cimgui P/Invoke declarations (private). Implicit <c>[DllImport("DearImGuiKSPNative")]</c>
     /// is the locked mechanism (chunk C6 contract): Windows resolves against the module that
     /// NativeBridge already LoadLibrary'd, with SetDllDirectory(PluginData) covering the search
@@ -88,6 +101,23 @@ namespace DearImGuiKSP.Interop
         [return: MarshalAs(UnmanagedType.I1)]
         private static extern bool igInputText([In] byte[] label, [In, Out] byte[] buf, UIntPtr buf_size, int flags, IntPtr callback, IntPtr user_data);
 
+        // CIMGUI_API bool igBeginChild_Str(const char* str_id, const ImVec2_c size, ImGuiChildFlags child_flags, ImGuiWindowFlags window_flags);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igBeginChild_Str([In] byte[] str_id, ImVec2 size, int child_flags, int window_flags);
+
+        // CIMGUI_API void igEndChild(void);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igEndChild();
+
+        // CIMGUI_API float igGetScrollY(void);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern float igGetScrollY();
+
+        // CIMGUI_API void igSetCursorPosY(float local_y);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igSetCursorPosY(float local_y);
+
         // ---- Internal surface for ImGuiInternal (keeps the raw P/Invokes private) ----
 
         internal static bool Begin(byte[] nameUtf8, ImGuiWindowFlags flags)
@@ -118,6 +148,26 @@ namespace DearImGuiKSP.Interop
         internal static bool InputText(byte[] labelUtf8, byte[] buffer, ImGuiInputTextFlags flags)
         {
             return igInputText(labelUtf8, buffer, (UIntPtr)buffer.Length, (int)flags, IntPtr.Zero, IntPtr.Zero);
+        }
+
+        internal static bool BeginScrollRegion(byte[] idUtf8, float height)
+        {
+            return igBeginChild_Str(idUtf8, new ImVec2(0f, height), (int)ImGuiChildFlags.Borders, (int)ImGuiWindowFlags.None);
+        }
+
+        internal static void EndScrollRegion()
+        {
+            igEndChild();
+        }
+
+        internal static float GetScrollY()
+        {
+            return igGetScrollY();
+        }
+
+        internal static void SetCursorY(float y)
+        {
+            igSetCursorPosY(y);
         }
     }
 }

@@ -7,9 +7,9 @@ namespace DearImGuiKSPDemo
     /// Demo consumer for DearImGui-KSP — ships as a SEPARATE install (GameData/DearImGuiKSPDemo, D7)
     /// so users installing the library as a dependency get no demo UI.
     /// Hosts the example window (AC3): text, a button with click feedback, a slider, and an
-    /// input field, all declared per frame through the public C# API. Zero Unity IMGUI.
+    /// input field, all declared per frame through the public C# API, plus the AC5 benchmark
+    /// window (naive vs virtualized 1000-item list) with its IMGUI reference window (D10).
     /// Toggled via an ApplicationLauncher toolbar button (green placeholder icon).
-    /// TODO(milestone 6): add the naive vs virtualized 1000-item list benchmark (AC5, D10).
     /// </summary>
     [KSPAddon(KSPAddon.Startup.EveryScene, false)]
     public sealed class DemoConsumer : MonoBehaviour
@@ -18,6 +18,8 @@ namespace DearImGuiKSPDemo
 
         private ApplicationLauncherButton _toolbarButton;
         private bool _windowVisible = true;
+        private bool _benchmarkVisible;
+        private BenchmarkUI _benchmark;
         private int _clickCount;
         private float _sliderValue = 0.5f;
         private string _inputText = "edit me";
@@ -31,6 +33,8 @@ namespace DearImGuiKSPDemo
             }
             DearImGuiKSP.DearImGuiKSP.Register(ConsumerId, OnFrame);
             Debug.Log("[DearImGuiKSPDemo] Registered with DearImGui-KSP.");
+
+            _benchmark = new BenchmarkUI();
 
             GameEvents.onGUIApplicationLauncherReady.Add(OnLauncherReady);
             if (ApplicationLauncher.Ready)
@@ -98,6 +102,7 @@ namespace DearImGuiKSPDemo
             if (!DearImGuiKSP.DearImGuiKSP.BeginWindow("DearImGui-KSP Demo"))
             {
                 DearImGuiKSP.DearImGuiKSP.EndWindow();
+                DrawBenchmarkWindow();
                 return;
             }
 
@@ -112,7 +117,42 @@ namespace DearImGuiKSPDemo
             DearImGuiKSP.DearImGuiKSP.SliderFloat("Slider", ref _sliderValue, 0f, 1f);
             DearImGuiKSP.DearImGuiKSP.InputText("Input", ref _inputText);
 
+            // MVP has no checkbox — button-toggle is the pattern.
+            if (DearImGuiKSP.DearImGuiKSP.Button(_benchmarkVisible
+                ? "Hide benchmark window"
+                : "Show benchmark window"))
+            {
+                _benchmarkVisible = !_benchmarkVisible;
+            }
+
             DearImGuiKSP.DearImGuiKSP.EndWindow();
+            DrawBenchmarkWindow();
+        }
+
+        // Second window in the same registered callback — still one consumer ID,
+        // one registration. Skipped entirely (no BeginWindow) while hidden.
+        private void DrawBenchmarkWindow()
+        {
+            if (!_benchmarkVisible || _benchmark == null)
+            {
+                return;
+            }
+            if (DearImGuiKSP.DearImGuiKSP.BeginWindow("DearImGui-KSP Benchmark"))
+            {
+                _benchmark.DrawImGui();
+            }
+            DearImGuiKSP.DearImGuiKSP.EndWindow();
+        }
+
+        // Unity IMGUI callback — hosts the IMGUI reference window so the AC5
+        // side-by-side comparison shows alongside the benchmark window.
+        private void OnGUI()
+        {
+            if (!_windowVisible || !_benchmarkVisible || _benchmark == null)
+            {
+                return;
+            }
+            _benchmark.OnGUIReference();
         }
     }
 }
