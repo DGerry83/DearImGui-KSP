@@ -20,3 +20,6 @@ Desktop.ini
 
 # Issue tracker (local-only; evidence files must never touch history)
 /ISSUES/
+
+# Local visual reference material (being folded into formal docs; not for history)
+/VisualReferenceMaterial/
