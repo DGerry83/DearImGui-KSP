@@ -16,6 +16,7 @@ namespace DearImGuiKSP.Application
         private string _theme;
         private bool _verboseLogging;
         private bool _enabled;
+        private bool _clampWindowsToViewport;
 
         internal SettingsModel(ISettingsStore store)
         {
@@ -27,6 +28,7 @@ namespace DearImGuiKSP.Application
             _theme = NormalizeTheme(loaded.Theme);
             _verboseLogging = loaded.VerboseLogging;
             _enabled = loaded.Enabled;
+            _clampWindowsToViewport = loaded.ClampWindowsToViewport;
         }
 
         /// <summary>Raised after any setting actually changes.</summary>
@@ -92,6 +94,18 @@ namespace DearImGuiKSP.Application
             }
         }
 
+        internal bool ClampWindowsToViewport
+        {
+            get => _clampWindowsToViewport;
+            set
+            {
+                if (Set(ref _clampWindowsToViewport, value))
+                {
+                    Persist();
+                }
+            }
+        }
+
         private bool Set<T>(ref T field, T value)
         {
             if (EqualityComparer<T>.Default.Equals(field, value))
@@ -113,6 +127,7 @@ namespace DearImGuiKSP.Application
                 Theme = _theme,
                 VerboseLogging = _verboseLogging,
                 Enabled = _enabled,
+                ClampWindowsToViewport = _clampWindowsToViewport,
             });
         }
 

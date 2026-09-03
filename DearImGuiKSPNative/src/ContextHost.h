@@ -37,3 +37,13 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_GetIoCaptureState(int* wantMouse
 // NewFrame (spec §5.3 addendum). mouseButtons/keyBits are bitmasks; utf8Chars is
 // a null-terminated UTF-8 string (may be null). No-op before ContextInit.
 DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_FeedFrameInput(float mouseX, float mouseY, float wheel, int mouseButtons, int keyBits, const char* utf8Chars);
+
+// Clamps every visible, active window of the current context fully into
+// the PASSED viewport size (ISSUES #002): pos = clamp(pos, 0, max(0,
+// viewport - size)). width/height are the live new-viewport values; never
+// read io.DisplaySize here — it can still hold the pre-change size when a
+// resolution reduction is being handled. Windows larger than the viewport
+// pin to the top-left corner. No-op before ContextInit. Not part of the
+// exported C ABI itself — the exported wrapper
+// DearImGuiKSPNative_ClampWindowsToViewport lives in DearImGuiKSPNative.cpp.
+void ContextHost_ClampWindowsToViewport(float width, float height);

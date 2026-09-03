@@ -31,6 +31,10 @@
 	<ItemGroup>
 		<PackageReference Include="KSPBuildTools" Version="1.1.1" />
 	</ItemGroup>
+	<!-- Unit tests (tests/Application.Tests) -->
+	<ItemGroup>
+		<InternalsVisibleTo Include="Application.Tests" />
+	</ItemGroup>
 	<!-- Copy text files -->
 	<Target Name="CopyTextFiles" AfterTargets="Build" BeforeTargets="CopyToGame">
 		<Copy SourceFiles="$(RepoRoot)README.md" DestinationFiles="$(KSPBT_ModRoot)/Readme.txt" />

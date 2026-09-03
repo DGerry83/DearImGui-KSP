@@ -17,6 +17,7 @@
 #include "IUnityGraphics.h" // UnityRenderingEvent only — the interface itself is unavailable to a LoadLibrary'd plugin
 
 #include "BackendD3D11.h"
+#include "ContextHost.h"
 
 #define DEARIMGUIKSP_NATIVE_API extern "C" __declspec(dllexport)
 
@@ -24,7 +25,15 @@
 // managed ExpectedNativeVersion constant; mismatch -> Failed state.
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetVersion()
 {
-    return 3; // handshake constant value 3
+    return 4; // handshake constant value 4
+}
+
+// Clamps all visible ImGui windows into the viewport of the passed size after
+// a resolution change (ISSUES #002); the setting gate and the size-change
+// detection live managed-side (frame loop). No-op before ContextInit.
+DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_ClampWindowsToViewport(float width, float height)
+{
+    ContextHost_ClampWindowsToViewport(width, height);
 }
 
 // Hands the D3D11 backend a Unity-created ID3D11Texture2D

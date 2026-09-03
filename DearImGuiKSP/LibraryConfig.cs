@@ -30,6 +30,7 @@ namespace DearImGuiKSP
         internal const string DefaultTheme = "dark";
         internal const bool DefaultVerboseLogging = false;
         internal const bool DefaultEnabled = true;
+        internal const bool DefaultClampWindowsToViewport = true;
         internal const float MinScale = 0.5f;
         internal const float MaxScale = 2.0f;
 

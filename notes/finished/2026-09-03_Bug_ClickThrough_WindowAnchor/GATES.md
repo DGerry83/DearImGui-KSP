@@ -1,0 +1,17 @@
+# Frozen Acceptance Gates: ISSUES #001, #002, unit tests
+## Frozen At: 2026-09-03T00:00:00 (local session date; frozen before any implementation)
+## Source: [ARCHITECTURE_CONTRACT.md](ARCHITECTURE_CONTRACT.md)
+
+| Gate ID | Criterion | Owner | Verdict | Evidence |
+|---------|-----------|-------|---------|----------|
+| G1 | With the demo window over a stock uGUI element, clicking a demo widget no longer activates the uGUI element beneath, at main menu, KSC, and flight; ImGui widgets still receive their clicks normally. | User (in-game) + Auditor | **PASS** (2026-09-03 run 3: stock toolbar and save-load menu confirmed blocked; residual click-through is to IMGUI (OnGUI) menus only — the demo's IMGUI benchmark window and Cinematic Shaders' menu — which bypass EventSystem by design and are outside this gate's uGUI scope; documented as a known limitation, ISSUES #003) | user report run 3 |
+| G2 | While the pointer is over an ImGui window: main-menu 3D buttons are inert (MAIN_MENU lock); stock PopupDialog modals still open/click/dismiss normally; F2 UI-hide fully restores stock clicking; Deferred, TUFX, Scatterer, Parallax UI unaffected in the D16 environment; no interference when merely hovering stock UI with no ImGui window under the cursor. | User (in-game) + Auditor | **PASS** (2026-09-03 user run) | user report |
+| G3 | With `clampWindowsToViewport = true` (shipped default): after lowering resolution with the demo window near the screen edge, the window ends fully inside the new viewport (or top-left-pinned if larger than the viewport). With `= false`, pre-fix behavior is preserved. The setting round-trips through settings.cfg across a game restart. | User (in-game) + Auditor | **PASS** (2026-09-03 run 2) | user report |
+| G4 | Managed and native both report handshake version 4; a deliberate mismatch (v3 native with v4 managed) still terminates in the existing Failed state with the one plain-language version-mismatch popup and `[DearImGuiKSP]` log detail. | Implementer + User (in-game) | **PASS** (2026-09-03 run 2, using the v3 backup DLL at `DearImGuiKSPNative/build/DearImGuiKSPNative-v3.dll`) | user report |
+| G5 | `dotnet test tests/Application.Tests` (or solution-level `dotnet test`) runs green locally, with suites covering LifecycleStateMachine, ConsumerRegistry, FaultBarrier, SettingsModel (incl. clampWindowsToViewport), and InputCaptureTracker (incl. blocker transitions). | Implementer | PASS | `Passed! - Failed: 0, Passed: 53, Skipped: 0` (post-rework auditor run incl. 4 FrameLoopOrchestrator clamp tests) |
+| G6 | Full build green: `build.bat` (native debug), `build_release.bat`, `harness.exe` prints HARNESS PASS, `dotnet build DearImGui-KSP.slnx` succeeds; `DearImGuiKSP/Application/DearImGuiKSP.cs` public surface unchanged (empty diff). | Auditor | PASS | build/harness output; git status 2026-09-03 |
+| G7 | Post-change D16 in-game smoke: demo opens via toolbar, benchmark window runs, input locks engage/release on hover as before, no new `[DearImGuiKSP]` errors in KSP.log. | User (in-game) | **PASS** (2026-09-03 user run) | user report |
+
+## Session Verdict
+- **Verdict**: CONTINUE
+- **Reason**: All gates PASS. G1 passed on run 3 per its frozen uGUI-scoped criterion after the sort-layer rework (the residual IMGUI click-through is outside the criterion and the issue's own scope; filed as KNOWNLIMIT ISSUES #003). G2–G7 PASS. Mechanical evidence: 53/53 tests, all builds green, harness PASS, public API unchanged.

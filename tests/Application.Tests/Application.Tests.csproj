@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<RootNamespace>Application.Tests</RootNamespace>
+		<AssemblyName>Application.Tests</AssemblyName>
+		<TargetFramework>net48</TargetFramework>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+	<!-- Machine-specific KSP pin (same mechanism as the library build); needed when
+	     this project is built/tested outside the solution, where $(SolutionDir) is unset. -->
+	<Import Project="..\..\DearImGui-KSP.props.user" Condition="Exists('..\..\DearImGui-KSP.props.user')" />
+	<!-- Packages -->
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+		<PackageReference Include="xunit" Version="2.9.2" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+	</ItemGroup>
+	<!-- System under test -->
+	<ItemGroup>
+		<ProjectReference Include="..\..\DearImGuiKSP\DearImGuiKSP.csproj" />
+	</ItemGroup>
+</Project>

@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="DearImGuiKSP/DearImGuiKSP.csproj" Id="7a3f1c2e-9b4d-4e1a-8c5f-2d6b0a1e3f45" />
   <Project Path="DearImGuiKSPDemo/DearImGuiKSPDemo.csproj" Id="b8e4d2f1-3a5c-4f7b-9d1e-6c2a8b4d5e67" />
+  <Project Path="tests/Application.Tests/Application.Tests.csproj" Id="c1d9e3a2-4b6f-48a0-9e2c-7d3b5f1a8c40" />
 </Solution>

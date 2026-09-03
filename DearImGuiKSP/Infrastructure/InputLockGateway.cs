@@ -75,7 +75,10 @@ namespace DearImGuiKSP.Infrastructure
 
             if (state.MouseCaptured)
             {
-                mask |= ControlTypes.CAMERACONTROLS | ControlTypes.GUI;
+                // MAIN_MENU disables the main-menu 3D buttons (TextProButton3D),
+                // which bypass EventSystem and answer only to this lock — the same
+                // lock stock uses (ISSUES #001 spike; MainMenu.cs:1850-1893).
+                mask |= ControlTypes.CAMERACONTROLS | ControlTypes.GUI | ControlTypes.MAIN_MENU;
             }
 
             if (state.KeyboardCaptured)

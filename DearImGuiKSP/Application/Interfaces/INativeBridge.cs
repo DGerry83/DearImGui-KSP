@@ -46,6 +46,18 @@ namespace DearImGuiKSP.Application.Interfaces
         void RebuildViewport(int width, int height);
 
         /// <summary>
+        /// Clamps every visible ImGui window fully into the viewport of the
+        /// PASSED size (width/height are the live values for the new viewport —
+        /// io.DisplaySize may still be stale at call time): each window's
+        /// position is clamped to [0, viewport - window size], pinning oversized
+        /// windows to the top-left corner. Called from the frame loop when the
+        /// viewport size changes and the clampWindowsToViewport setting is on
+        /// (ISSUES #002, G3 rework).
+        /// No-op when not initialized.
+        /// </summary>
+        void ClampWindowsToViewport(float width, float height);
+
+        /// <summary>
         /// Shuts down the native context and frees the DLL. No-op when not loaded.
         /// </summary>
         void Shutdown();

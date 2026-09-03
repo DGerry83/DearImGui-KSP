@@ -6,7 +6,7 @@
 
 - **Target**: KSP 1.12.x, Unity 2019.4.18f1, Mono x64, Windows-first, D3D11 (OpenGL deferred post-MVP, D20).
 - **Structure**: `DearImGuiKSPNative.dll` (C++: Dear ImGui + cimgui + render backends) + `DearImGuiKSP.dll` (C#: KSP plugin, frame loop, input locks, public API).
-- **Current status**: implementation plan complete (2026-09-03) — all milestones M1–M6 verified in-game, all gates PASS, session verdict CONTINUE. See `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`. Next: release packaging (D15) and follow-ups.
+- **Current status**: implementation plan complete (2026-09-03) — all milestones M1–M6 verified in-game, all gates PASS, session verdict CONTINUE. See `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`. Post-MVP follow-ups landed 2026-09-03 (`notes\finished\2026-09-03_Bug_ClickThrough_WindowAnchor\`): ISSUES #001 (uGUI click bleed-through) and #002 (resolution-change window clamp, handshake v4) resolved; xUnit Application test suite live; IMGUI click-through documented as KNOWNLIMIT #003. Next: styling/theming work (spec §3.4), release packaging (D15, user-deferred), OpenGL (backlog).
 
 ## Working on this repo — read these first
 
@@ -27,7 +27,7 @@ The design of this project was produced by `DesignSpecRefinement.md`; bootstrap 
 - `DearImGuiKSPNative/` — C++ Core (ImGui context, frame lifecycle, backends). Zero KSP/Unity knowledge. Sources come from the sibling clone `~\source\repos\cimgui` (pinned imgui 1.92.9), compiled in directly.
 - `DearImGuiKSPDemo/` — demo/benchmark mod, separate install.
 - `GameData/` — staging tree; mirrored into the game on every managed build.
-- `tests/` — mirrors the layers (placeholders).
+- `tests/` — mirrors the layers (`Application.Tests` = real xUnit suite; Infrastructure/Core intentionally placeholders).
 - `notes/` — artifact taxonomy (`active\`, `finished\`, `archive\`, `knowledge\`, `indices\`, `plans\`).
 - `ISSUES/` — local issue tracker (gitignored). Schema and workflow in `ISSUES/README.md`; file new issues per its naming convention and keep `TRACKER.md` in sync.
 
@@ -35,7 +35,7 @@ The design of this project was produced by `DesignSpecRefinement.md`; bootstrap 
 
 - Managed: `dotnet build DearImGui-KSP.slnx` (Debug) / `-c Release`. Requires `DearImGui-KSP.props.user` pinning `KSPBT_GameRoot` (gitignored; each machine pins its own KSP test instance).
 - Native: `cd DearImGuiKSPNative; build.bat` (debug) / `build_release.bat` (release) — plain `cl.exe`, no CMake/vcxproj.
-- Test: in-game acceptance per milestone ACs (all PASS — `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`); unit tests deferred by plan decision.
+- Test: `dotnet test DearImGui-KSP.slnx` (xUnit Application-layer suite; Infrastructure/Core deferred — see `tests/*/README.md`). In-game acceptance per milestone ACs (`notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`).
 
 ### Design artifacts (this repo)
 
@@ -44,7 +44,7 @@ Authoritative design record, in `notes\finished\2026-07-29_DesignSpec_DearImGuiK
 | File | Contents |
 |------|----------|
 | `DESIGN_SPEC.md` | **The spec.** Confirmed by the user 2026-07-29. Build from this. |
-| `DECISION_LOG.md` | D1–D18: every design decision, alternatives, rationale. Check before reversing anything. |
+| `DECISION_LOG.md` | D1–D22: every design decision, alternatives, rationale. Check before reversing anything. |
 | `QUESTION_LOG.md` | Q1–Q47: the user's answers that the spec is built from. |
 | `RESEARCH_NOTES.md` | KSP API findings, precedents, compatibility concerns, open gaps. |
 
@@ -52,7 +52,7 @@ Authoritative design record, in `notes\finished\2026-07-29_DesignSpec_DearImGuiK
 
 - `~\source\repos\TOOLS\KSP Knowledge Library\README.md` — how to use it.
 - An ILSpy dump of KSP's `Assembly-CSharp.dll` with search indexes. **Check its `NOTES\` folder first** before researching any "how does the game do X" question — and record any new non-trivial finding there (with `file:line` citations) so it is never researched twice.
-- Already captured from this project: `NOTES\assembly-loading-and-dependencies.md`, `NOTES\ui-rendering-and-input.md`.
+- Already captured from this project: `NOTES\assembly-loading-and-dependencies.md`, `NOTES\ui-rendering-and-input.md`, `NOTES\ugui-click-blocking-and-canvas-sorting.md`.
 
 ## Hard constraints (from the spec — do not regress)
 

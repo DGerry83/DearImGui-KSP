@@ -8,6 +8,7 @@
 #include "ContextHost.h"
 
 #include "imgui.h"
+#include "imgui_internal.h" // ImGuiContext::Windows / ImGuiWindow (ISSUES #002 clamp)
 
 // The one ImGui context for the DLL.
 static ImGuiContext* s_Context = nullptr;
@@ -168,4 +169,28 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_FeedFrameInput(float mouseX, flo
 
     if (utf8Chars != nullptr && utf8Chars[0] != '\0')
         io.AddInputCharactersUTF8(utf8Chars);
+}
+
+void ContextHost_ClampWindowsToViewport(float width, float height)
+{
+    if (s_Context == nullptr)
+        return;
+
+    // Clamp against the PASSED viewport size, never io.DisplaySize: when the
+    // resolution drops, io.DisplaySize still holds the old (larger) value at
+    // the moment the change is handled, so reading it here would clamp against
+    // a stale size and the fix would be a no-op (ISSUES #002 G3 rework).
+    const ImVec2 viewport(width, height);
+    ImVector<ImGuiWindow*>& windows = s_Context->Windows;
+    for (int i = 0; i < windows.Size; ++i)
+    {
+        ImGuiWindow* window = windows[i];
+        if (window == nullptr || window->Hidden || !window->WasActive)
+            continue; // hidden this frame or not submitted by any consumer
+
+        const float maxX = ImMax(0.0f, viewport.x - window->Size.x);
+        const float maxY = ImMax(0.0f, viewport.y - window->Size.y);
+        window->Pos.x = ImClamp(window->Pos.x, 0.0f, maxX);
+        window->Pos.y = ImClamp(window->Pos.y, 0.0f, maxY);
+    }
 }

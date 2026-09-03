@@ -33,7 +33,7 @@ namespace DearImGuiKSP.Infrastructure
 
         // Managed/native handshake constant (spec §5.4, D17); must match
         // DearImGuiKSPNative_GetVersion(). Bump both DLLs in lockstep.
-        private const int ExpectedNativeVersion = 3;
+        private const int ExpectedNativeVersion = 4;
 
         private readonly ILogger _logger;
         private readonly InputCaptureState _captureState = new InputCaptureState();
@@ -56,6 +56,7 @@ namespace DearImGuiKSP.Infrastructure
         private GetRenderEventFuncDelegate _getRenderEventFunc;
         private GetIoCaptureStateDelegate _getIoCaptureState;
         private FeedFrameInputDelegate _feedFrameInput;
+        private ClampWindowsToViewportDelegate _clampWindowsToViewport;
 
         internal NativeBridge(ILogger logger)
         {
@@ -98,7 +99,11 @@ namespace DearImGuiKSP.Infrastructure
                 return InitErrLoadLibrary;
             }
 
-            if (!BindExports())
+            // Version handshake FIRST (spec §5.4): a stale native DLL must fail
+            // with the version-mismatch popup (gates G4) before we require any
+            // newer-version exports it does not have.
+            _getVersion = Bind<GetVersionDelegate>("DearImGuiKSPNative_GetVersion");
+            if (_getVersion == null)
             {
                 Unload();
                 return InitErrMissingExport;
@@ -110,6 +115,12 @@ namespace DearImGuiKSP.Infrastructure
                 _logger.Error("Native/managed handshake mismatch: expected version " + ExpectedNativeVersion + ", DearImGuiKSPNative reported " + nativeVersion + " (spec §5.4).");
                 Unload();
                 return InitErrVersionMismatch;
+            }
+
+            if (!BindExports())
+            {
+                Unload();
+                return InitErrMissingExport;
             }
 
             // Device gate managed-side: Unity only calls UnityPluginLoad for plugins
@@ -284,6 +295,16 @@ namespace DearImGuiKSP.Infrastructure
         }
 
         /// <inheritdoc/>
+        public void ClampWindowsToViewport(float width, float height)
+        {
+            if (!_initialized)
+            {
+                return;
+            }
+            _clampWindowsToViewport(width, height);
+        }
+
+        /// <inheritdoc/>
         public void Shutdown()
         {
             if (_library == IntPtr.Zero)
@@ -310,9 +331,9 @@ namespace DearImGuiKSP.Infrastructure
         }
 
         // Binds every native export; logs and returns false on the first missing one.
+        // GetVersion is bound earlier in Initialize(), before this full binding pass.
         private bool BindExports()
         {
-            _getVersion = Bind<GetVersionDelegate>("DearImGuiKSPNative_GetVersion");
             _setD3D11DeviceTexture = Bind<SetD3D11DeviceTextureDelegate>("DearImGuiKSPNative_SetD3D11DeviceTexture");
             _contextInit = Bind<ContextInitDelegate>("DearImGuiKSPNative_ContextInit");
             _contextShutdown = Bind<ContextShutdownDelegate>("DearImGuiKSPNative_ContextShutdown");
@@ -321,15 +342,16 @@ namespace DearImGuiKSP.Infrastructure
             _getRenderEventFunc = Bind<GetRenderEventFuncDelegate>("DearImGuiKSPNative_GetRenderEventFunc");
             _getIoCaptureState = Bind<GetIoCaptureStateDelegate>("DearImGuiKSPNative_GetIoCaptureState");
             _feedFrameInput = Bind<FeedFrameInputDelegate>("DearImGuiKSPNative_FeedFrameInput");
-            return _getVersion != null
-                && _setD3D11DeviceTexture != null
+            _clampWindowsToViewport = Bind<ClampWindowsToViewportDelegate>("DearImGuiKSPNative_ClampWindowsToViewport");
+            return _setD3D11DeviceTexture != null
                 && _contextInit != null
                 && _contextShutdown != null
                 && _beginFrame != null
                 && _endFrame != null
                 && _getRenderEventFunc != null
                 && _getIoCaptureState != null
-                && _feedFrameInput != null;
+                && _feedFrameInput != null
+                && _clampWindowsToViewport != null;
         }
 
         private T Bind<T>(string exportName) where T : class
@@ -379,6 +401,9 @@ namespace DearImGuiKSP.Infrastructure
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void FeedFrameInputDelegate(float mouseX, float mouseY, float wheel, int mouseButtons, int keyBits, [In] byte[] utf8Chars);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void ClampWindowsToViewportDelegate(float width, float height);
 
         // kernel32 only — the GameData load-path gotcha applies to OUR dll, not these.
         [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]

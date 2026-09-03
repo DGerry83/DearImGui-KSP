@@ -2,7 +2,7 @@
 
 A shared KSP mod library providing a modern, high-performance UI framework as a drop-in replacement for Unity IMGUI. Other mods hard-depend on it and get a clean C# ImGui-style API; players get snappy, non-IMGUI mod UIs with no measurable framerate cost.
 
-**Status: feature-complete and verified in-game** (2026-09-03). All milestones M1–M6 pass their acceptance criteria in a heavily modded environment (Deferred, TUFX, Scatterer, Parallax, Cinematic Shaders, Cinematic Recorder, IMGUI mods). OpenGL support is deferred (D3D11 only for now). The confirmed design spec lives at
+**Status: feature-complete and verified in-game** (2026-09-03). All milestones M1–M6 pass their acceptance criteria in a heavily modded environment (Deferred, TUFX, Scatterer, Parallax, Cinematic Shaders, Cinematic Recorder, IMGUI mods). Post-MVP follow-ups landed 2026-09-03: uGUI click bleed-through fix, viewport clamp on resolution change (`clampWindowsToViewport` setting), and the xUnit Application test suite. OpenGL support is deferred (D3D11 only for now). The confirmed design spec lives at
 [`notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md`](notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md);
 the implementation record and final audit at
 [`notes/finished/2026-07-29_DearImGuiKSP_PlanImplementation/FINAL_AUDIT.md`](notes/finished/2026-07-29_DearImGuiKSP_PlanImplementation/FINAL_AUDIT.md).
@@ -46,5 +46,9 @@ Extract the release zip into the KSP root so `GameData\DearImGuiKSP\` sits along
 - `DearImGuiKSPNative/` — C++ core + batch build scripts
 - `DearImGuiKSPDemo/` — demo mod (separate install)
 - `GameData/` — staging tree deployed into the game on build
-- `tests/` — mirrors the layers (placeholders)
+- `tests/` — mirrors the layers (`Application.Tests` = real xUnit suite, `dotnet test`; Infrastructure/Core intentionally placeholders — see their READMEs)
+
+## Known limitations
+
+- Clicks pass through ImGui windows to Unity **IMGUI** (`OnGUI`) windows/menus beneath them (stock uGUI is blocked correctly). IMGUI input bypasses Unity's EventSystem, so the library's uGUI raycast blocker cannot intercept it (ISSUES #003).
 - `notes/` — FlyByWire workflow artifacts: design spec, decision/question logs, plans (see AGENTS.md)

@@ -25,10 +25,17 @@ namespace DearImGuiKSP.Application
         private readonly FaultBarrier _faultBarrier;
         private readonly LifecycleStateMachine _lifecycle;
         private readonly ILogger _log;
+        private readonly SettingsModel _settings;
 
         private readonly Stopwatch _frameWatch = new Stopwatch();
         private double _frameMsSum;
         private int _frameCount;
+
+        // Last viewport size seen by RunFrame; drives the resolution-change
+        // clamp detection (ISSUES #002 G3 rework). Allocation-free: two compares.
+        private bool _hasLastSize;
+        private float _lastWidth;
+        private float _lastHeight;
 
         internal FrameLoopOrchestrator(
             INativeBridge bridge,
@@ -36,7 +43,8 @@ namespace DearImGuiKSP.Application
             InputCaptureTracker captureTracker,
             FaultBarrier faultBarrier,
             LifecycleStateMachine lifecycle,
-            ILogger log)
+            ILogger log,
+            SettingsModel settings)
         {
             _bridge = bridge;
             _registry = registry;
@@ -44,6 +52,7 @@ namespace DearImGuiKSP.Application
             _faultBarrier = faultBarrier;
             _lifecycle = lifecycle;
             _log = log;
+            _settings = settings;
         }
 
         /// <summary>
@@ -57,6 +66,21 @@ namespace DearImGuiKSP.Application
             {
                 return;
             }
+
+            // Viewport clamp (ISSUES #002, G3 rework): GameEvents.onScreenResolutionModified
+            // may never fire, and at event time io.DisplaySize still holds the OLD size,
+            // so the clamp must be driven from the live values fed to BeginUiFrame. The
+            // first observed frame only records the size; every later size change clamps
+            // against the NEW size when the setting is on.
+            if (_hasLastSize &&
+                (_lastWidth != width || _lastHeight != height) &&
+                _settings.ClampWindowsToViewport)
+            {
+                _bridge.ClampWindowsToViewport(width, height);
+            }
+            _lastWidth = width;
+            _lastHeight = height;
+            _hasLastSize = true;
 
             _frameWatch.Restart();
 

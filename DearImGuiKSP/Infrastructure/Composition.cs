@@ -18,6 +18,7 @@ namespace DearImGuiKSP.Infrastructure
         private static SettingsStore _settingsStore;
         private static SettingsModel _settings;
         private static InputLockGateway _lockGateway;
+        private static PointerBlockerGateway _pointerBlockerGateway;
         private static InputCaptureTracker _captureTracker;
         private static FaultBarrier _faultBarrier;
         private static LifecycleStateMachine _stateMachine;
@@ -60,9 +61,13 @@ namespace DearImGuiKSP.Infrastructure
         /// <summary>The input lock gateway singleton (C9).</summary>
         internal static InputLockGateway LockGateway => _lockGateway ?? (_lockGateway = new InputLockGateway());
 
+        /// <summary>The pointer blocker gateway singleton (ISSUES #001; G1 rework: logger + verboseLogging lambda).</summary>
+        internal static PointerBlockerGateway PointerBlocker =>
+            _pointerBlockerGateway ?? (_pointerBlockerGateway = new PointerBlockerGateway(Logger, () => Settings.VerboseLogging));
+
         /// <summary>The input capture tracker singleton (C9), driven by the orchestrator.</summary>
         internal static InputCaptureTracker CaptureTracker =>
-            _captureTracker ?? (_captureTracker = new InputCaptureTracker(LockGateway, Registry));
+            _captureTracker ?? (_captureTracker = new InputCaptureTracker(LockGateway, PointerBlocker, Registry));
 
         /// <summary>The consumer fault barrier singleton (C10), driven by the orchestrator.</summary>
         internal static FaultBarrier Barrier => _faultBarrier ?? (_faultBarrier = new FaultBarrier(Logger));
@@ -76,7 +81,7 @@ namespace DearImGuiKSP.Infrastructure
 
         /// <summary>The frame loop orchestrator singleton (C7; C9/C10/C12 wired, C14 timing), driven by DearImGuiKSPAddon.Update().</summary>
         internal static FrameLoopOrchestrator Orchestrator =>
-            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine, Logger));
+            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine, Logger, Settings));
 
         /// <summary>The failure notifier singleton (C13). Shows the one-per-session failure popup.</summary>
         internal static FailureNotifier Notifier =>
@@ -122,6 +127,9 @@ namespace DearImGuiKSP.Infrastructure
                 if (loading) CaptureTracker.ReleaseAll();
                 StateMachine.SetLoading(loading);
             };
+            // The viewport clamp moved into the frame loop (G3 rework, 2026-09-03):
+            // onScreenResolutionModified may never fire, and io.DisplaySize is stale
+            // at event time — the orchestrator detects the size change per frame.
             Hooks.ResolutionChanged += (w, h) => Bridge.RebuildViewport(w, h);
             Hooks.Subscribe();
         }
