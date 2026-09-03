@@ -50,6 +50,12 @@ namespace DearImGuiKSPDemo
         private float _imGuiAvgMs = -1f;
         private float _imguiAvgMs = -1f;
 
+        // IMGUI runs OnGUI several times per frame (Layout, Repaint, input passes) and
+        // does real layout work in all of them, so per-pass timing undercounts badly.
+        // Accumulate every pass and publish the per-frame total when the frame changes.
+        private int _imguiFrame = -1;
+        private float _imguiFrameMs;
+
         public BenchmarkUI()
         {
             for (int i = 0; i < ItemCount; i++)
@@ -75,26 +81,29 @@ namespace DearImGuiKSPDemo
 
         /// <summary>
         /// Unity IMGUI callback body: declares the draggable "IMGUI Reference" window.
-        /// The declaration cost is timed only during Repaint passes — Layout and input
-        /// passes run untimed, matching how IMGUI_Helper measures the reference.
+        /// Every OnGUI pass is timed and summed per frame (IMGUI does layout work in
+        /// Layout/Repaint/input passes alike, so timing any single pass undercounts).
         /// </summary>
         public void OnGUIReference()
         {
-            bool repaint = Event.current.type == EventType.Repaint;
-            if (repaint)
-            {
-                _imguiWatch.Restart();
-            }
+            _imguiWatch.Restart();
 
             _imguiWindowRect = GUILayout.Window(
                 ImguiReferenceWindowId, _imguiWindowRect, DrawImguiReferenceWindow, "IMGUI Reference");
 
-            if (repaint)
+            _imguiWatch.Stop();
+
+            if (Time.frameCount != _imguiFrame)
             {
-                _imguiWatch.Stop();
-                AddSample((float)_imguiWatch.Elapsed.TotalMilliseconds,
-                    ref _imguiSampleSum, ref _imguiSampleCount, ref _imguiAvgMs);
+                if (_imguiFrame >= 0)
+                {
+                    AddSample(_imguiFrameMs,
+                        ref _imguiSampleSum, ref _imguiSampleCount, ref _imguiAvgMs);
+                }
+                _imguiFrame = Time.frameCount;
+                _imguiFrameMs = 0f;
             }
+            _imguiFrameMs += (float)_imguiWatch.Elapsed.TotalMilliseconds;
         }
 
         private void DrawImGuiContent()
@@ -103,7 +112,7 @@ namespace DearImGuiKSPDemo
             DearImGuiKSP.DearImGuiKSP.Text(string.Format(
                 "ImGui declaration: {0} ms (60-frame avg)", FormatMs(_imGuiAvgMs)));
             DearImGuiKSP.DearImGuiKSP.Text(string.Format(
-                "IMGUI declaration (Repaint): {0} ms", FormatMs(_imguiAvgMs)));
+                "IMGUI declaration (all passes): {0} ms", FormatMs(_imguiAvgMs)));
 
             // MVP has no checkbox — button-toggle is the pattern; the label shows the mode.
             if (DearImGuiKSP.DearImGuiKSP.Button(_virtualized
@@ -171,7 +180,7 @@ namespace DearImGuiKSPDemo
 
             GUILayout.Label(string.Format("FPS: {0:0.0}", 1f / _fpsEma));
             GUILayout.Label(string.Format(
-                "IMGUI declaration (Repaint): {0} ms (60-frame avg)", FormatMs(_imguiAvgMs)));
+                "IMGUI declaration (all passes): {0} ms (60-frame avg)", FormatMs(_imguiAvgMs)));
             GUILayout.Space(4f);
 
             if (_imguiVirtualized)
