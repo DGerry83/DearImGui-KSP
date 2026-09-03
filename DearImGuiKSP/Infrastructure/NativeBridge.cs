@@ -86,6 +86,11 @@ namespace DearImGuiKSP.Infrastructure
             }
 
             _library = LoadLibrary(LibraryConfig.NativeDllName);
+
+            // SetDllDirectory is process-global; restore the default search path
+            // immediately so other mods' later LoadLibrary calls are unaffected.
+            SetDllDirectory(null);
+
             if (_library == IntPtr.Zero)
             {
                 _logger.Error("LoadLibrary('" + LibraryConfig.NativeDllName + "') failed (Win32 error " + Marshal.GetLastWin32Error() + ").");
@@ -124,6 +129,7 @@ namespace DearImGuiKSP.Infrastructure
             if (deviceResult != 0)
             {
                 _logger.Error("DearImGuiKSPNative_SetD3D11DeviceTexture failed with code " + deviceResult + ".");
+                DestroyDeviceTexture();
                 Unload();
                 return InitErrDeviceTexture;
             }
@@ -132,6 +138,7 @@ namespace DearImGuiKSP.Infrastructure
             if (contextResult != 0)
             {
                 _logger.Error("DearImGuiKSPNative_ContextInit failed with code " + contextResult + ".");
+                DestroyDeviceTexture();
                 Unload();
                 return InitErrContextInit;
             }
@@ -261,7 +268,17 @@ namespace DearImGuiKSP.Infrastructure
                 _initialized = false;
             }
             RenderEventFunc = IntPtr.Zero;
+            DestroyDeviceTexture();
             Unload();
+        }
+
+        private void DestroyDeviceTexture()
+        {
+            if (_deviceTexture != null)
+            {
+                UnityEngine.Object.Destroy(_deviceTexture);
+                _deviceTexture = null;
+            }
         }
 
         // Binds every native export; logs and returns false on the first missing one.

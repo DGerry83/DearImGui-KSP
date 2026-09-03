@@ -68,6 +68,8 @@ Install = extract into the KSP root. CKAN metadata deferred to release time. The
 - Controller/touch input support.
 - Linux/Mac builds (long-term goal, not MVP).
 
+Known MVP input limitation: ImGui is fed navigation/edit keys and Ctrl only — no Shift/Alt modifiers. Ctrl+A works in input fields; Shift+Arrow and Shift+Home/End selection do not. (Recorded 2026-09-03 per external review; revisit post-MVP.)
+
 ### 3.3 Minimum Viable Product (MVP)
 
 - Native renderer injected via the Unity low-level native plugin pattern, validated on D3D11.

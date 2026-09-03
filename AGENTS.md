@@ -12,11 +12,12 @@
 
 ### Workflow (mandatory)
 
-All work follows the FlyByWire workflow skill in:
+All work follows the FlyByWire workflow skill (v3) in:
 
-- `C:\Users\Matt\source\repos\FlyByWire\versions\v2\README.md` — skill overview, template index, and shared rules.
+- `C:\Users\Matt\source\repos\FlyByWire\versions\v3\README.md` — skill overview, template index, and shared rules. `SKILL.md` in that folder is the skill entry point (progressive loading sequence).
 - **Start every task with `Router.md` in that folder** — it classifies the request and routes to the right template (BugfixPlanning, DesignSpecRefinement, ProjectBootstrap, etc.).
-- `C:\Users\Matt\source\repos\FlyByWire\versions\v2\CORE_PROTOCOLS.md` — artifact taxonomy (`notes\active\`, `notes\knowledge\`, `notes\plans\`, `notes\indices\`), session naming, and shared engineering principles. All Markdown artifacts go in the taxonomy folders, never loose in `notes\`.
+- `C:\Users\Matt\source\repos\FlyByWire\versions\v3\CORE_PROTOCOLS.md` — artifact taxonomy (`notes\active\`, `notes\knowledge\`, `notes\plans\`, `notes\indices\`), session naming, and shared engineering principles. All Markdown artifacts go in the taxonomy folders, never loose in `notes\`.
+- v3 adds the Native Interop & Hot-Path Checklist (`versions\v3\reference\08-native-interop.md`), which applies to any chunk touching P/Invoke, native loading, or per-frame code.
 
 The design of this project was produced by `DesignSpecRefinement.md`; bootstrap was produced by `ProjectBootstrap.md` (session `notes\active\2026-07-29_NewProject_DearImGuiKSP\`: `PLANNING_WORKSHEET.md`, `IMPLEMENTATION_PLAN.md`, `PROJECT_SKELETON.md`, `GATES.md`). Implementation proceeds via `PlanImplementation.md`, milestone by milestone; do not start milestone N until N-1 is verified.
 

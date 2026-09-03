@@ -13,7 +13,7 @@
 
 ## 2. Where we are in the workflow
 
-Executing `PlanImplementation.md` (from `C:\Users\Matt\source\repos\FlyByWire\versions\v2\`). Session folder: `notes/active/2026-07-29_DearImGuiKSP_PlanImplementation/` — contains `PLAN_DIGEST.md`, `CHUNK_MAP.md`, `INTEGRATION_CONTRACT.md`, `GATES.md` (frozen), `PROGRESS_LOG.md`, and per-chunk contracts (CHUNK_1…4, 6, 7, 8, 9, 10, 11, 12).
+Executing `PlanImplementation.md` (from `C:\Users\Matt\source\repos\FlyByWire\versions\v3\` — the current skill version; earlier chunks ran under v2). Session folder: `notes/active/2026-07-29_DearImGuiKSP_PlanImplementation/` — contains `PLAN_DIGEST.md`, `CHUNK_MAP.md`, `INTEGRATION_CONTRACT.md`, `GATES.md` (frozen), `PROGRESS_LOG.md`, and per-chunk contracts (CHUNK_1…4, 6, 7, 8, 9, 10, 11, 12).
 
 **Phase 3 (chunk execution) is underway.** Status:
 

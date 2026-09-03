@@ -12,6 +12,9 @@ namespace DearImGuiKSP.Application
         private readonly IInputLockGateway _gateway;
         private readonly ConsumerRegistry _registry;
 
+        // Reused every frame: this is a per-frame hot path, so no fresh List per Update.
+        private readonly List<string> _enabledIds = new List<string>();
+
         internal InputCaptureTracker(IInputLockGateway gateway, ConsumerRegistry registry)
         {
             _gateway = gateway;
@@ -24,17 +27,17 @@ namespace DearImGuiKSP.Application
         /// </summary>
         internal void Update(InputCaptureState state)
         {
-            List<string> enabledIds = new List<string>();
+            _enabledIds.Clear();
 
             foreach (ConsumerRegistry.ConsumerRegistration consumer in _registry.Ordered)
             {
                 if (consumer.Enabled)
                 {
-                    enabledIds.Add(consumer.Id);
+                    _enabledIds.Add(consumer.Id);
                 }
             }
 
-            _gateway.ApplyLocks(state, enabledIds);
+            _gateway.ApplyLocks(state, _enabledIds);
         }
 
         /// <summary>Releases every input lock held by the gateway.</summary>
