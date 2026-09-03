@@ -118,6 +118,10 @@ namespace DearImGuiKSP.Interop
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         private static extern void igSetCursorPosY(float local_y);
 
+        // CIMGUI_API void igDummy(const ImVec2_c size);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igDummy(ImVec2 size);
+
         // ---- Internal surface for ImGuiInternal (keeps the raw P/Invokes private) ----
 
         internal static bool Begin(byte[] nameUtf8, ImGuiWindowFlags flags)
@@ -168,6 +172,11 @@ namespace DearImGuiKSP.Interop
         internal static void SetCursorY(float y)
         {
             igSetCursorPosY(y);
+        }
+
+        internal static void Dummy(float width, float height)
+        {
+            igDummy(new ImVec2(width, height));
         }
     }
 }

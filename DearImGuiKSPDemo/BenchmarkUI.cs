@@ -134,7 +134,9 @@ namespace DearImGuiKSPDemo
 
         // Manual virtualization on the public API: reserve the full scroll range with
         // SetCursorY, draw only the rows intersecting the viewport. Rows come from the
-        // pre-built list verbatim — no per-row string building.
+        // pre-built list verbatim — no per-row string building. The trailing Dummy is
+        // required: ImGui asserts when SetCursorY extends parent boundaries without a
+        // following item (imgui.cpp ErrorCheckUsingSetCursorPosToExtendParentBoundaries).
         private void DrawImGuiVirtualizedList()
         {
             float scrollY = DearImGuiKSP.DearImGuiKSP.GetScrollY();
@@ -153,6 +155,7 @@ namespace DearImGuiKSPDemo
                 DearImGuiKSP.DearImGuiKSP.Text(_items[i]);
             }
             DearImGuiKSP.DearImGuiKSP.SetCursorY(_items.Count * RowHeight);
+            DearImGuiKSP.DearImGuiKSP.Dummy(0f, 0f);
         }
 
         private void DrawImguiReferenceWindow(int windowId)

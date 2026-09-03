@@ -75,3 +75,9 @@ Each guarded by `IsAvailable` exactly like the existing methods (GetScrollY retu
 ### Rollback
 
 - `git checkout -- DearImGuiKSP/Interop/ImGuiNative.cs DearImGuiKSP/Interop/ImGuiInternal.cs DearImGuiKSP/Application/DearImGuiKSP.cs DearImGuiKSP/Application/FrameLoopOrchestrator.cs DearImGuiKSP/Infrastructure/Composition.cs DearImGuiKSPDemo/DemoConsumer.cs` and delete `DearImGuiKSPDemo/BenchmarkUI.cs`.
+
+---
+
+## Addendum C14b (2026-09-03): Dummy binding — boundary-growth assert
+
+First in-game run hard-failed on the imgui debug assert `ErrorCheckUsingSetCursorPosToExtendParentBoundaries` (imgui.cpp:11693): the virtualized pattern's trailing `SetCursorY(rowCount * rowHeight)` extends the child region's boundaries, and ImGui requires an item (not a bare cursor move) to legitimize that growth before `End`/`EndChild`. Fix: new additive binding `igDummy` (cimgui.h:4193) → `ImGuiInternal.Dummy` → public `DearImGuiKSP.Dummy(float width, float height)`; the benchmark's virtualized path now ends `SetCursorY(total) + Dummy(0, 0)`. Verified against imgui.cpp that any submitted item clears `DC.IsSetPos`, so one trailing Dummy covers the pattern. Public API docs for BeginScrollRegion updated to include the Dummy step. Implemented directly by lead; no native change, handshake stays v3.

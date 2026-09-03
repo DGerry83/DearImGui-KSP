@@ -139,6 +139,18 @@ namespace DearImGuiKSP.Interop
             ImGuiNative.SetCursorY(y);
         }
 
+        /// <summary>
+        /// Submits an invisible item of the given size, advancing the cursor and growing
+        /// the window's content bounds. Wraps cimgui <c>igDummy</c>. Required after using
+        /// <see cref="SetCursorY"/> to extend a region's scrollable range — ImGui asserts
+        /// (imgui.cpp ErrorCheckUsingSetCursorPosToExtendParentBoundaries) when a cursor
+        /// move extends parent boundaries without a following item.
+        /// </summary>
+        internal static void Dummy(float width, float height)
+        {
+            ImGuiNative.Dummy(width, height);
+        }
+
         // Null-terminated UTF-8. Null becomes "\0" (empty string).
         private static byte[] ToUtf8(string value)
         {

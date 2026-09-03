@@ -181,8 +181,9 @@ namespace DearImGuiKSP
         /// call <see cref="GetScrollY"/> to read the current scroll offset, compute the
         /// visible row range from it, <see cref="SetCursorY"/> to
         /// <c>firstVisibleRow * rowHeight</c>, draw only the visible rows, then
-        /// <see cref="SetCursorY"/> to <c>rowCount * rowHeight</c> so the scrollable
-        /// range covers the full list.
+        /// <see cref="SetCursorY"/> to <c>rowCount * rowHeight</c> followed by
+        /// <see cref="Dummy"/> so the scrollable range legitimately covers the full list
+        /// (ImGui requires an item, not a bare cursor move, to grow content bounds).
         /// </summary>
         /// <param name="id">Region identifier; also its ImGui identity.</param>
         /// <param name="height">Region height in pixels.</param>
@@ -238,6 +239,21 @@ namespace DearImGuiKSP
                 return;
             }
             ImGuiInternal.SetCursorY(y);
+        }
+
+        /// <summary>
+        /// Submits an invisible item of the given size, advancing the cursor and growing
+        /// the window's content bounds. Only valid inside a registered callback.
+        /// Required after a <see cref="SetCursorY"/> that extends a region's scrollable
+        /// range — ImGui asserts when a bare cursor move grows parent boundaries.
+        /// </summary>
+        public static void Dummy(float width, float height)
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.Dummy(width, height);
         }
     }
 }
