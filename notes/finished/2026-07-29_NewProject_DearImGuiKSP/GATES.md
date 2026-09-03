@@ -1,7 +1,7 @@
 # Frozen Gates: DearImGui-KSP Bootstrap
 
 ## Date Frozen: 2026-07-29
-## Session: `notes/active/2026-07-29_NewProject_DearImGuiKSP/`
+## Session: `notes/finished/2026-07-29_NewProject_DearImGuiKSP/`
 
 | Gate ID | Criterion | Evidence Required | Verdict |
 |---------|-----------|-------------------|---------|

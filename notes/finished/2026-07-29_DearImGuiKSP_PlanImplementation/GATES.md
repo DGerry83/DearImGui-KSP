@@ -1,7 +1,7 @@
 # Frozen Gates: DearImGui-KSP Implementation
 
 ## Date Frozen: 2026-07-29
-## Session: `notes/active/2026-07-29_DearImGuiKSP_PlanImplementation/`
+## Session: `notes/finished/2026-07-29_DearImGuiKSP_PlanImplementation/`
 ## Frozen By: Agent (pending user approval to enter Phase 3)
 
 | Gate ID | Criterion | Evidence Required | Verdict |

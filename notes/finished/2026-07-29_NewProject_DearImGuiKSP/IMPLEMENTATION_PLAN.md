@@ -19,7 +19,7 @@ DearImGui-KSP is a shared KSP mod library that gives other mods a modern, high-p
 ### 1.4 Language & Dependencies
 
 - Primary languages: C# (managed), C++17 (native).
-- Core framework/engine: Dear ImGui 1.92.9 via cimgui (cloned at `C:\Users\Matt\source\repos\cimgui`, submodule-pinned); Unity low-level native plugin API.
+- Core framework/engine: Dear ImGui 1.92.9 via cimgui (cloned at `~\source\repos\cimgui`, submodule-pinned); Unity low-level native plugin API.
 - External libraries:
   - KSPBuildTools 1.1.1 (NuGet) — game detection, references, staging, AVC version file, deploy.
   - System libs only for native: `d3d11`, `dxgi`, `opengl32`.

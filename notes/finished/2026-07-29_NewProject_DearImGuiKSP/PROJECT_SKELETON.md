@@ -1,7 +1,7 @@
 # Project Skeleton: DearImGui-KSP
 
 ## Date: 2026-07-29
-## Session: `notes/active/2026-07-29_NewProject_DearImGuiKSP/`
+## Session: `notes/finished/2026-07-29_NewProject_DearImGuiKSP/`
 
 File tree as created, with status. Layering follows CORE_PROTOCOLS §5.6 adapted to the KSP mod stack: **Core = native C++** (`DearImGuiKSPNative/`), **Application + Infrastructure = managed** (`DearImGuiKSP/`).
 
@@ -59,13 +59,13 @@ DearImGui-KSP/
 ## Conventions established
 
 - **Build model** mirrors CinematicRecorder: SDK-style `net48` + KSPBuildTools 1.1.1 (game detection via gitignored `*.props.user`, auto game references, GameData staging, AVC version generation, deploy-on-build); native via raw `cl.exe` batch scripts after `vcvars64`, no CMake/vcxproj/vcpkg.
-- **imgui/cimgui are not vendored** — compiled from the sibling clone `C:\Users\Matt\source\repos\cimgui` (imgui 1.92.9 pinned by submodule).
+- **imgui/cimgui are not vendored** — compiled from the sibling clone `~\source\repos\cimgui` (imgui 1.92.9 pinned by submodule).
 - **`KSPAssembly` is KSPBuildTools-generated** from csproj `<Version>`; only `KSPAssemblyDependencyEqualMajor` is declared by hand (demo), per D17.
 - Dependency direction enforced: Application is Unity-free; only Infrastructure references KSP/Unity; native Core references neither.
 
 ## Verification performed (beyond gate requirements)
 
 - `dotnet build DearImGuiKSP.slnx` — clean, 0 warnings (after removing duplicate KSPAssembly attribute).
-- Staging + deploy confirmed: `GameData/DearImGuiKSP/{Plugins/DearImGuiKSP.dll, settings.cfg, DearImGuiKSP.version, Readme.txt}` and `GameData/DearImGuiKSPDemo/` mirrored into `C:\SSDGames\ReformTestInstance\GameData\`.
+- Staging + deploy confirmed: `GameData/DearImGuiKSP/{Plugins/DearImGuiKSP.dll, settings.cfg, DearImGuiKSP.version, Readme.txt}` and `GameData/DearImGuiKSPDemo/` mirrored into `the pinned KSP test instance\GameData\`.
 - `DearImGuiKSPNative\build.bat` — compiles and copies `DearImGuiKSPNative.dll` into staging; mirror confirmed in game instance.
 - Not yet verified (milestone 1 completion): in-game `[DearImGuiKSP]` startup log line.

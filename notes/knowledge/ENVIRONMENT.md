@@ -2,7 +2,7 @@
 
 ## Project Root
 
-`C:/Users/Matt/source/repos/DearImGui-KSP`
+`~/source/repos/DearImGui-KSP`
 
 ## Shell
 

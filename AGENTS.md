@@ -4,9 +4,9 @@
 
 **DearImGui-KSP** is a shared KSP mod library providing a modern, high-performance UI framework as a drop-in replacement for Unity IMGUI. Other mods hard-depend on it via `KSPAssemblyDependencyEqualMajor("DearImGuiKSP", x, y)`.
 
-- **Target**: KSP 1.12.x, Unity 2019.4.18f1, Mono x64, Windows-first, D3D11 primary + OpenGL secondary.
+- **Target**: KSP 1.12.x, Unity 2019.4.18f1, Mono x64, Windows-first, D3D11 (OpenGL deferred post-MVP, D20).
 - **Structure**: `DearImGuiKSPNative.dll` (C++: Dear ImGui + cimgui + render backends) + `DearImGuiKSP.dll` (C#: KSP plugin, frame loop, input locks, public API).
-- **Current status**: bootstrap complete (2026-07-29). Confirmed spec + implementation plan exist; skeleton compiles; implementation proceeds milestone-by-milestone via `PlanImplementation.md`.
+- **Current status**: implementation plan complete (2026-09-03) — all milestones M1–M6 verified in-game, all gates PASS, session verdict CONTINUE. See `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`. Next: release packaging (D15) and follow-ups.
 
 ## Working on this repo — read these first
 
@@ -14,17 +14,17 @@
 
 All work follows the FlyByWire workflow skill (v3) in:
 
-- `C:\Users\Matt\source\repos\FlyByWire\versions\v3\README.md` — skill overview, template index, and shared rules. `SKILL.md` in that folder is the skill entry point (progressive loading sequence).
+- `~\source\repos\FlyByWire\versions\v3\README.md` — skill overview, template index, and shared rules. `SKILL.md` in that folder is the skill entry point (progressive loading sequence).
 - **Start every task with `Router.md` in that folder** — it classifies the request and routes to the right template (BugfixPlanning, DesignSpecRefinement, ProjectBootstrap, etc.).
-- `C:\Users\Matt\source\repos\FlyByWire\versions\v3\CORE_PROTOCOLS.md` — artifact taxonomy (`notes\active\`, `notes\knowledge\`, `notes\plans\`, `notes\indices\`), session naming, and shared engineering principles. All Markdown artifacts go in the taxonomy folders, never loose in `notes\`.
+- `~\source\repos\FlyByWire\versions\v3\CORE_PROTOCOLS.md` — artifact taxonomy (`notes\active\`, `notes\knowledge\`, `notes\plans\`, `notes\indices\`), session naming, and shared engineering principles. All Markdown artifacts go in the taxonomy folders, never loose in `notes\`.
 - v3 adds the Native Interop & Hot-Path Checklist (`versions\v3\reference\08-native-interop.md`), which applies to any chunk touching P/Invoke, native loading, or per-frame code.
 
-The design of this project was produced by `DesignSpecRefinement.md`; bootstrap was produced by `ProjectBootstrap.md` (session `notes\active\2026-07-29_NewProject_DearImGuiKSP\`: `PLANNING_WORKSHEET.md`, `IMPLEMENTATION_PLAN.md`, `PROJECT_SKELETON.md`, `GATES.md`). Implementation proceeds via `PlanImplementation.md`, milestone by milestone; do not start milestone N until N-1 is verified.
+The design of this project was produced by `DesignSpecRefinement.md`; bootstrap was produced by `ProjectBootstrap.md` (session `notes\finished\2026-07-29_NewProject_DearImGuiKSP\`: `PLANNING_WORKSHEET.md`, `IMPLEMENTATION_PLAN.md`, `PROJECT_SKELETON.md`, `GATES.md`). Implementation ran via `PlanImplementation.md` (session `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\`), milestone by milestone; do not start milestone N until N-1 is verified.
 
 ## Repository Layout
 
 - `DearImGuiKSP/` — managed library. `Application/` = Unity-free orchestration + public API (depends on Core only via interfaces); `Infrastructure/` = the **only** KSP/Unity-touching layer.
-- `DearImGuiKSPNative/` — C++ Core (ImGui context, frame lifecycle, backends). Zero KSP/Unity knowledge. Sources come from the sibling clone `C:\Users\Matt\source\repos\cimgui` (pinned imgui 1.92.9), compiled in directly.
+- `DearImGuiKSPNative/` — C++ Core (ImGui context, frame lifecycle, backends). Zero KSP/Unity knowledge. Sources come from the sibling clone `~\source\repos\cimgui` (pinned imgui 1.92.9), compiled in directly.
 - `DearImGuiKSPDemo/` — demo/benchmark mod, separate install.
 - `GameData/` — staging tree; mirrored into the game on every managed build.
 - `tests/` — mirrors the layers (placeholders).
@@ -33,13 +33,13 @@ The design of this project was produced by `DesignSpecRefinement.md`; bootstrap 
 
 ## Build & Test Commands
 
-- Managed: `dotnet build DearImGui-KSP.slnx` (Debug) / `-c Release`. Requires `DearImGui-KSP.props.user` pinning `KSPBT_GameRoot` (gitignored; currently `C:\SSDGames\ReformTestInstance`).
+- Managed: `dotnet build DearImGui-KSP.slnx` (Debug) / `-c Release`. Requires `DearImGui-KSP.props.user` pinning `KSPBT_GameRoot` (gitignored; each machine pins its own KSP test instance).
 - Native: `cd DearImGuiKSPNative; build.bat` (debug) / `build_release.bat` (release) — plain `cl.exe`, no CMake/vcxproj.
-- Test: in-game acceptance per `IMPLEMENTATION_PLAN.md` §9 milestones; unit tests deferred to milestone 3+.
+- Test: in-game acceptance per milestone ACs (all PASS — `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`); unit tests deferred by plan decision.
 
 ### Design artifacts (this repo)
 
-Authoritative design record, in `notes\active\2026-07-29_DesignSpec_DearImGuiKSP_UI_Library\`:
+Authoritative design record, in `notes\finished\2026-07-29_DesignSpec_DearImGuiKSP_UI_Library\`:
 
 | File | Contents |
 |------|----------|
@@ -50,7 +50,7 @@ Authoritative design record, in `notes\active\2026-07-29_DesignSpec_DearImGuiKSP
 
 ### KSP Knowledge Library (external, read-only ground truth)
 
-- `C:\Users\Matt\source\repos\TOOLS\KSP Knowledge Library\README.md` — how to use it.
+- `~\source\repos\TOOLS\KSP Knowledge Library\README.md` — how to use it.
 - An ILSpy dump of KSP's `Assembly-CSharp.dll` with search indexes. **Check its `NOTES\` folder first** before researching any "how does the game do X" question — and record any new non-trivial finding there (with `file:line` citations) so it is never researched twice.
 - Already captured from this project: `NOTES\assembly-loading-and-dependencies.md`, `NOTES\ui-rendering-and-input.md`.
 

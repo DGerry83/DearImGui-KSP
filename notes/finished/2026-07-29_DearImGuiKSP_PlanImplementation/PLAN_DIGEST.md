@@ -1,7 +1,7 @@
 # Plan Digest: DearImGui-KSP Implementation
 
 ## Date: 2026-07-29
-## Source Plan: `notes/active/2026-07-29_NewProject_DearImGuiKSP/IMPLEMENTATION_PLAN.md` (+ `PLANNING_WORKSHEET.md`, confirmed `DESIGN_SPEC.md`)
+## Source Plan: `notes/finished/2026-07-29_NewProject_DearImGuiKSP/IMPLEMENTATION_PLAN.md` (+ `PLANNING_WORKSHEET.md`, confirmed `DESIGN_SPEC.md`)
 
 ### Plan-Specific Invariants (filled in for this codebase — always enforced)
 
@@ -52,8 +52,8 @@ None beyond what the spec's §8.1 inventory lists (embedded ProggyClean — no f
 
 | Dependency | Required? | How Verified |
 |------------|-----------|--------------|
-| cimgui + imgui 1.92.9 at `C:\Users\Matt\source\repos\cimgui` | Yes | Cloned 2026-07-29, submodule checked out |
-| KSP test instance `C:\SSDGames\ReformTestInstance` | Yes | Present; DearImGuiKSP + DearImGuiKSPDemo already deploy there |
+| cimgui + imgui 1.92.9 at `~\source\repos\cimgui` | Yes | Cloned 2026-07-29, submodule checked out |
+| KSP test instance `the pinned KSP test instance` | Yes | Present; DearImGuiKSP + DearImGuiKSPDemo already deploy there |
 | Unity native plugin pattern reference `repos\nativerenderingplugin` | Reference | Present on disk |
 | VS 2026 vcvars64 + .NET SDK 10 | Yes | Both builds verified during bootstrap |
 | KSP Knowledge Library | Reference | NOTES cover assembly loading + render/input facts |

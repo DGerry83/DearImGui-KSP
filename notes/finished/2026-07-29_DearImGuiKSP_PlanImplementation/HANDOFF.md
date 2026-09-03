@@ -7,13 +7,13 @@
 
 ## 1. What this project is
 
-**DearImGui-KSP** — a shared KSP 1.12.x mod library: modern, high-performance UI framework replacing Unity IMGUI for mods. Native C++ core (Dear ImGui 1.92.9 + cimgui, D3D11 backend, Unity render-thread injection) + managed C# wrapper (frame loop, consumer API, input locks, settings, lifecycle). Repo: `C:\Users\Matt\source\repos\DearImGui-KSP` (GitHub: `DGerry83/DearImGui-KSP`, private until release).
+**DearImGui-KSP** — a shared KSP 1.12.x mod library: modern, high-performance UI framework replacing Unity IMGUI for mods. Native C++ core (Dear ImGui 1.92.9 + cimgui, D3D11 backend, Unity render-thread injection) + managed C# wrapper (frame loop, consumer API, input locks, settings, lifecycle). Repo: `~\source\repos\DearImGui-KSP` (GitHub: `DGerry83/DearImGui-KSP`, private until release).
 
-**Confirmed design spec**: `notes/active/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md` (with `DECISION_LOG.md` D1–D20, `QUESTION_LOG.md` Q1–Q47, `RESEARCH_NOTES.md`). Read `AGENTS.md` at the repo root first — it encodes the workflow and hard constraints. A current-status snapshot lives at `notes/active/2026-08-31_Status_DearImGuiKSP/STATUS_AND_NEXT_STEPS.md`.
+**Confirmed design spec**: `notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md` (with `DECISION_LOG.md` D1–D20, `QUESTION_LOG.md` Q1–Q47, `RESEARCH_NOTES.md`). Read `AGENTS.md` at the repo root first — it encodes the workflow and hard constraints. A current-status snapshot lives at `notes/finished/2026-08-31_Status_DearImGuiKSP/STATUS_AND_NEXT_STEPS.md`.
 
 ## 2. Where we are in the workflow
 
-Executing `PlanImplementation.md` (from `C:\Users\Matt\source\repos\FlyByWire\versions\v3\` — the current skill version; earlier chunks ran under v2). Session folder: `notes/active/2026-07-29_DearImGuiKSP_PlanImplementation/` — contains `PLAN_DIGEST.md`, `CHUNK_MAP.md`, `INTEGRATION_CONTRACT.md`, `GATES.md` (frozen), `PROGRESS_LOG.md`, and per-chunk contracts (CHUNK_1…4, 6, 7, 8, 9, 10, 11, 12).
+Executing `PlanImplementation.md` (from `~\source\repos\FlyByWire\versions\v3\` — the current skill version; earlier chunks ran under v2). Session folder: `notes/finished/2026-07-29_DearImGuiKSP_PlanImplementation/` — contains `PLAN_DIGEST.md`, `CHUNK_MAP.md`, `INTEGRATION_CONTRACT.md`, `GATES.md` (frozen), `PROGRESS_LOG.md`, and per-chunk contracts (CHUNK_1…4, 6, 7, 8, 9, 10, 11, 12).
 
 **Phase 3 (chunk execution) is complete.** All chunks C1–C15 done and verified in-game (C5 deferred per D20); Phases 4–5 closed 2026-09-03 with INTEGRATION_REPORT.md and FINAL_AUDIT.md; all gates G1–G6 PASS (AC2 deferred). Historical chunk status:
 
@@ -44,7 +44,7 @@ Milestones: **M1, M2, M3, M4 complete.** M5 needs only C13. M6 = C14+C15.
 2. Implementation is delegated to a coder sub-agent with a detailed prompt (read contract + relevant files first, mandatory disagreement check — agents proceed when no disagreements, no git commits, raw-results report ending `STATUS: PASS|FAIL|INVALID`). Small chunks may be done directly by the lead.
 3. **Lead owns the shared wiring files** — `Composition.cs`, `DearImGuiKSPAddon.cs`, `FrameLoopOrchestrator.cs` — so parallel agents never collide. Agents get exclusive ownership of their unit files only.
 4. Lead spot-reviews key files (diffs), builds, updates `PROGRESS_LOG.md`, commits with message `CN: …` and pushes.
-5. In-game verification (when a chunk requires it) is done by **the user**: they launch KSP (`C:\SSDGames\ReformTestInstance`) and report what they see; the lead diagnoses from `KSP.log` (instance root) and `Player.log` (`%LOCALAPPDATA%\LocalLow\Squad\Kerbal Space Program`).
+5. In-game verification (when a chunk requires it) is done by **the user**: they launch KSP (`the pinned KSP test instance`) and report what they see; the lead diagnoses from `KSP.log` (instance root) and `Player.log` (`%LOCALAPPDATA%\LocalLow\Squad\Kerbal Space Program`).
 6. Never touch the KSP install beyond files this project deploys.
 
 ## 4. Build & deploy (all verified working)
@@ -55,9 +55,9 @@ dotnet build DearImGui-KSP.slnx                  # managed; KSPBuildTools stages
 cd DearImGuiKSPNative && cmd //c build_harness.bat && build/harness.exe   # headless native smoke test, expect HARNESS PASS
 ```
 
-- KSP install pin: `DearImGui-KSP.props.user` (gitignored) → `C:\SSDGames\ReformTestInstance`.
+- KSP install pin: `DearImGui-KSP.props.user` (gitignored) → `the pinned KSP test instance`.
 - **Every managed build re-mirrors the repo's `GameData/DearImGuiKSP/settings.cfg` (defaults) over the instance copy** — re-apply test edits (e.g. `enabled = false`) after any build.
-- cimgui/imgui sources: sibling clone `C:\Users\Matt\source\repos\cimgui` (imgui 1.92.9 pinned by submodule — **never update casually**).
+- cimgui/imgui sources: sibling clone `~\source\repos\cimgui` (imgui 1.92.9 pinned by submodule — **never update casually**).
 - Layout rule (D19): managed DLLs → `GameData/DearImGuiKSP/Plugins/`, native DLL → `GameData/DearImGuiKSP/PluginData/` (native DLLs in the assembly scan path hang the game loader).
 
 ## 5. Hard-won technical facts (do not relearn)
@@ -107,4 +107,4 @@ Goal: failure notifier + failure-mode tests — **AC8**: each failure mode (miss
 - Environment cache: `notes/knowledge/ENVIRONMENT.md` (created during C11 onboarding).
 - Commit cadence so far: one commit per chunk + one per in-game verification.
 - Untracked `VisualReferenceMaterial/` folder exists at repo root — not created by this workflow; left alone.
-- Knowledge Library rule: any new non-trivial "how does KSP do X" finding gets recorded in `C:\Users\Matt\source\repos\TOOLS\KSP Knowledge Library\NOTES\` with file:line citations (four notes so far: assembly-loading, ui-rendering-and-input, config-node-persistence, plus the D19 native-DLL finding).
+- Knowledge Library rule: any new non-trivial "how does KSP do X" finding gets recorded in `~\source\repos\TOOLS\KSP Knowledge Library\NOTES\` with file:line citations (four notes so far: assembly-loading, ui-rendering-and-input, config-node-persistence, plus the D19 native-DLL finding).

@@ -1,6 +1,6 @@
 # Status & Next Steps — DearImGui-KSP (2026-08-31)
 
-Snapshot of where the project stands against `DESIGN_SPEC.md` and `IMPLEMENTATION_PLAN.md`, taken after the project rename. Sources: `notes/active/2026-07-29_DearImGuiKSP_PlanImplementation/` (PROGRESS_LOG, HANDOFF, CHUNK_MAP, GATES) and a spot-check of the code on 2026-08-31.
+Snapshot of where the project stands against `DESIGN_SPEC.md` and `IMPLEMENTATION_PLAN.md`, taken after the project rename. Sources: `notes/finished/2026-07-29_DearImGuiKSP_PlanImplementation/` (PROGRESS_LOG, HANDOFF, CHUNK_MAP, GATES) and a spot-check of the code on 2026-08-31.
 
 ## Recent event: project rename (2026-08-31)
 

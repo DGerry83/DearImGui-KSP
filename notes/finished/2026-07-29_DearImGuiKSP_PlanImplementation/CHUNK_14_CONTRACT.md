@@ -14,8 +14,8 @@
 ### Inputs (must exist before starting)
 
 - Public API + frame loop (C7), input feeding (C9), demo consumer with toolbar toggle (C8) — all verified in-game.
-- Reference implementation: `C:\Users\Matt\source\repos\IMGUI_Helper\UI\Tabs\PerformanceTab.cs` (read-only reference; naive = 1000 `GUILayout.Label` in a scroll view; virtualized = reserve total height, draw only visible rows at explicit rects; row height 22, view height 200).
-- cimgui signatures verified against the pinned clone (`C:\Users\Matt\source\repos\cimgui`, imgui 1.92.9):
+- Reference implementation: `~\source\repos\IMGUI_Helper\UI\Tabs\PerformanceTab.cs` (read-only reference; naive = 1000 `GUILayout.Label` in a scroll view; virtualized = reserve total height, draw only visible rows at explicit rects; row height 22, view height 200).
+- cimgui signatures verified against the pinned clone (`~\source\repos\cimgui`, imgui 1.92.9):
   - `cimgui.h:4112` `bool igBeginChild_Str(const char* str_id, const ImVec2_c size, ImGuiChildFlags child_flags, ImGuiWindowFlags window_flags)`
   - `cimgui.h:4114` `void igEndChild(void)`
   - `cimgui.h:4144` `float igGetScrollY(void)`

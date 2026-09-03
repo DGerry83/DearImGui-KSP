@@ -7,7 +7,7 @@
 
 ### Scope
 
-- Vendor the minimal Unity low-level plugin headers (`IUnityInterface.h`, `IUnityGraphics.h`) into `DearImGuiKSPNative/include/`, copied from `C:\Users\Matt\source\repos\nativerenderingplugin\PluginSource\source\Unity\`.
+- Vendor the minimal Unity low-level plugin headers (`IUnityInterface.h`, `IUnityGraphics.h`) into `DearImGuiKSPNative/include/`, copied from `~\source\repos\nativerenderingplugin\PluginSource\source\Unity\`.
 - Rework `DearImGuiKSPNative/src/DearImGuiKSPNative.cpp` so that:
   - `UnityPluginLoad` stores `IUnityInterfaces*` and obtains `IUnityGraphics`.
   - New export `DearImGuiKSPNative_GetGraphicsDeviceKind()` returns the `UnityGfxRenderer` enum value from `IUnityGraphics::GetRenderer()`, or -1 when unavailable.
@@ -20,7 +20,7 @@
 
 - M1 verified (`[DearImGuiKSP]` line in KSP.log).
 - C1 committed; native build scripts deploy to `GameData/DearImGuiKSP/PluginData/` (D19).
-- Header sources at `C:\Users\Matt\source\repos\nativerenderingplugin\PluginSource\source\Unity\`.
+- Header sources at `~\source\repos\nativerenderingplugin\PluginSource\source\Unity\`.
 
 ### Outputs (must be created/changed)
 

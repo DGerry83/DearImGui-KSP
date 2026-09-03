@@ -17,7 +17,7 @@
 - `LibraryConfig.cs`: `SettingsPath`, `DefaultUiScale/DefaultFontScale/DefaultTheme/MinScale/MaxScale` constants.
 - Skeletons: `Application/SettingsModel.cs`, `Application/Interfaces/ISettingsStore.cs` (TODO pins `Load()` / `Save(LibrarySettings)`), `Infrastructure/SettingsStore.cs`.
 - Spec §9.1 setting table: `uiScale`/`fontScale` float 0.5–2.0 default 1.0; `theme` string "dark" only; `verboseLogging` bool default false; `enabled` bool default true (global kill switch — dormant when false).
-- KSP Knowledge Library (`C:\Users\Matt\source\repos\TOOLS\KSP Knowledge Library`): verify `ConfigNode` load/save/parse API against the ILSpy dump before writing file IO — do not guess signatures.
+- KSP Knowledge Library (`~\source\repos\TOOLS\KSP Knowledge Library`): verify `ConfigNode` load/save/parse API against the ILSpy dump before writing file IO — do not guess signatures.
 
 ### Outputs (must be created/changed) — exclusive file ownership
 

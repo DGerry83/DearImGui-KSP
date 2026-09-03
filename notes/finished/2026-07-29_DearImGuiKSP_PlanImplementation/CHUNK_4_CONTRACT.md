@@ -15,8 +15,8 @@
 
 - C2: Unity headers, `GetGraphicsDeviceKind`, `GetRenderEventFunc` export surface.
 - C3: context host C ABI (locked), ProggyClean atlas built CPU-side, harness.
-- cimgui clone with `imgui/backends/imgui_impl_dx11.{h,cpp}` at `C:\Users\Matt\source\repos\cimgui`.
-- `IUnityGraphicsD3D11.h` at `C:\Users\Matt\source\repos\nativerenderingplugin\PluginSource\source\Unity\`.
+- cimgui clone with `imgui/backends/imgui_impl_dx11.{h,cpp}` at `~\source\repos\cimgui`.
+- `IUnityGraphicsD3D11.h` at `~\source\repos\nativerenderingplugin\PluginSource\source\Unity\`.
 
 ### Outputs (must be created/changed)
 

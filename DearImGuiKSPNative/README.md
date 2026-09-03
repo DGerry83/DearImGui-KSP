@@ -4,7 +4,7 @@ The Core layer of DearImGui-KSP: owns the single ImGui context, the frame lifecy
 
 ## Sources
 
-Dear ImGui 1.92.9 + cimgui are **not vendored here**. They live in the sibling clone `C:\Users\Matt\source\repos\cimgui` (with its pinned `imgui` submodule) and are compiled directly into this DLL by the build scripts. Re-pin deliberately, never casually.
+Dear ImGui 1.92.9 + cimgui are **not vendored here**. They live in a sibling clone `cimgui` next to this repo's root (with its pinned `imgui` submodule) and are compiled directly into this DLL by the build scripts. Re-pin deliberately, never casually.
 
 ## Build
 

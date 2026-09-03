@@ -2,15 +2,15 @@
 
 A shared KSP mod library providing a modern, high-performance UI framework as a drop-in replacement for Unity IMGUI. Other mods hard-depend on it and get a clean C# ImGui-style API; players get snappy, non-IMGUI mod UIs with no measurable framerate cost.
 
-**Status: implementation in progress.** Milestones M1 (build/deploy) and M2 (D3D11 render-injection PoC, AC1 passed in-game) are done; M3 (consumer API) is underway. The confirmed design spec lives at
-[`notes/active/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md`](notes/active/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md);
-the implementation plan at
-[`notes/active/2026-07-29_NewProject_DearImGuiKSP/IMPLEMENTATION_PLAN.md`](notes/active/2026-07-29_NewProject_DearImGuiKSP/IMPLEMENTATION_PLAN.md).
+**Status: feature-complete and verified in-game** (2026-09-03). All milestones M1–M6 pass their acceptance criteria in a heavily modded environment (Deferred, TUFX, Scatterer, Parallax, Cinematic Shaders, Cinematic Recorder, IMGUI mods). OpenGL support is deferred (D3D11 only for now). The confirmed design spec lives at
+[`notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md`](notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md);
+the implementation record and final audit at
+[`notes/finished/2026-07-29_DearImGuiKSP_PlanImplementation/FINAL_AUDIT.md`](notes/finished/2026-07-29_DearImGuiKSP_PlanImplementation/FINAL_AUDIT.md).
 Agent onboarding: see [AGENTS.md](AGENTS.md).
 
 ## How it works
 
-- `DearImGuiKSPNative.dll` (C++ Core) — Dear ImGui 1.92.9 + cimgui compiled directly in, D3D11/OpenGL backends, rendered on Unity's render thread via the low-level native plugin API.
+- `DearImGuiKSPNative.dll` (C++ Core) — Dear ImGui 1.92.9 + cimgui compiled directly in, D3D11 backend, rendered on Unity's render thread via the low-level native plugin API.
 - `DearImGuiKSP.dll` (C#) — KSP plugin owning the frame loop, input locking, lifecycle state machine, settings, and the public consumer API.
 - `DearImGuiKSPDemo.dll` — example/benchmark mod, shipped as a **separate install** so dependency-only users get no demo UI.
 
@@ -19,7 +19,7 @@ Agent onboarding: see [AGENTS.md](AGENTS.md).
 Prerequisites:
 
 - Visual Studio 2026 (C++ desktop workload), .NET SDK 10+
-- A sibling clone of cimgui with its imgui submodule: `C:\Users\Matt\source\repos\cimgui`
+- A sibling clone of cimgui with its imgui submodule, checked out next to this repo's root (the build scripts reference `..\..\cimgui`)
 - A `DearImGui-KSP.props.user` next to the solution pinning your KSP install (gitignored):
   ```xml
   <Project><PropertyGroup>
@@ -38,7 +38,7 @@ dotnet build DearImGui-KSP.slnx -c Release      # managed DLLs; deploys GameData
 
 ## Install (players)
 
-Extract the release zip into the KSP root so `GameData\DearImGuiKSP\` sits alongside the game. Requires KSP 1.12.x, Windows x64, D3D11 or OpenGL.
+Extract the release zip into the KSP root so `GameData\DearImGuiKSP\` sits alongside the game. Requires KSP 1.12.x, Windows x64, D3D11.
 
 ## Layout
 

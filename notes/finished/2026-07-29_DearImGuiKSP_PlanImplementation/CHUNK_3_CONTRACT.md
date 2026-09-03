@@ -7,7 +7,7 @@
 
 ### Scope
 
-- Compile Dear ImGui 1.92.9 + cimgui directly into `DearImGuiKSPNative.dll` from the sibling clone at `C:\Users\Matt\source\repos\cimgui` (imgui submodule pin — do not update it).
+- Compile Dear ImGui 1.92.9 + cimgui directly into `DearImGuiKSPNative.dll` from the sibling clone at `~\source\repos\cimgui` (imgui submodule pin — do not update it).
 - Add a **context host** to the native Core: a new source file owning the single ImGui context lifecycle with a pure C ABI for the rest of the DLL.
 - Font atlas: build the CPU-side atlas from ImGui's embedded default font (ProggyClean — `io.Fonts->AddFontDefault()`), expose the RGBA pixels for backends to upload in C4/C5. **No GPU work in this chunk.**
 - A minimal native smoke-test harness (console exe, no Unity) proving the context host creates a context, runs headless frames, and shuts down cleanly.
@@ -16,7 +16,7 @@
 ### Inputs (must exist before starting)
 
 - C2 done: Unity headers in `DearImGuiKSPNative/include/`, export surface pattern established.
-- cimgui clone at `C:\Users\Matt\source\repos\cimgui` with imgui 1.92.9 submodule checked out.
+- cimgui clone at `~\source\repos\cimgui` with imgui 1.92.9 submodule checked out.
 
 ### Outputs (must be created/changed)
 
@@ -41,7 +41,7 @@
 - Pure C ABI on the context host; backends must consume, never own, the context.
 - No `imgui_impl_*` backend files yet (C4/C5). No GPU/device code. No managed changes.
 - C++17, MSVC `cl.exe` batch builds only; warnings must stay at 0 (imgui compiles clean at `/W3`).
-- Do not modify files under `C:\Users\Matt\source\repos\cimgui` — treat as read-only.
+- Do not modify files under `~\source\repos\cimgui` — treat as read-only.
 - Keep object files out of the source tree (`/Fo:build\`).
 
 ### Verification

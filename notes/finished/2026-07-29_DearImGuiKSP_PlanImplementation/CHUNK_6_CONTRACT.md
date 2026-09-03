@@ -13,7 +13,7 @@
 ### Inputs (must exist before starting)
 
 - C3/C4 done: cimgui 1.92.9 compiled into `DearImGuiKSPNative.dll`; the managed bridge `LoadLibrary`s the DLL during `NativeBridge.Initialize()`.
-- Ground truth for signatures: `C:\Users\Matt\source\repos\cimgui\cimgui.h` (read it — do not guess signatures) and `C:\Users\Matt\source\repos\cimgui\imgui\imgui.h` for flag enums.
+- Ground truth for signatures: `~\source\repos\cimgui\cimgui.h` (read it — do not guess signatures) and `~\source\repos\cimgui\imgui\imgui.h` for flag enums.
 
 ### Outputs (must be created/changed)
 
