@@ -108,11 +108,14 @@ namespace DearImGuiKSPDemo
 
         private void DrawImGuiContent()
         {
-            DearImGuiKSP.DearImGuiKSP.Text(string.Format("FPS: {0:0.0}", 1f / _fpsEma));
+            DearImGuiKSP.DearImGuiKSP.Text(string.Format(
+                "FPS: {0:0.0}  ({1:0.0} ms frame)", 1f / _fpsEma, _fpsEma * 1000f));
             DearImGuiKSP.DearImGuiKSP.Text(string.Format(
                 "ImGui declaration: {0} ms (60-frame avg)", FormatMs(_imGuiAvgMs)));
+            // IMGUI's dominant cost is Unity-internal rendering AFTER OnGUI returns,
+            // so script timing undercounts it; the frame-time line is the honest metric.
             DearImGuiKSP.DearImGuiKSP.Text(string.Format(
-                "IMGUI declaration (all passes): {0} ms", FormatMs(_imguiAvgMs)));
+                "IMGUI OnGUI script time: {0} ms (see note in IMGUI window)", FormatMs(_imguiAvgMs)));
 
             // MVP has no checkbox — button-toggle is the pattern; the label shows the mode.
             if (DearImGuiKSP.DearImGuiKSP.Button(_virtualized
@@ -178,9 +181,12 @@ namespace DearImGuiKSPDemo
                 _imguiScrollPos = Vector2.zero; // reset scroll when switching modes
             }
 
-            GUILayout.Label(string.Format("FPS: {0:0.0}", 1f / _fpsEma));
             GUILayout.Label(string.Format(
-                "IMGUI declaration (all passes): {0} ms (60-frame avg)", FormatMs(_imguiAvgMs)));
+                "FPS: {0:0.0}  ({1:0.0} ms frame)", 1f / _fpsEma, _fpsEma * 1000f));
+            GUILayout.Label(string.Format(
+                "IMGUI OnGUI script time: {0} ms (60-frame avg)", FormatMs(_imguiAvgMs)));
+            GUILayout.Label("Note: IMGUI's real cost is Unity-internal rendering after");
+            GUILayout.Label("OnGUI returns — watch the frame-time line, not script time.");
             GUILayout.Space(4f);
 
             if (_imguiVirtualized)
