@@ -1,5 +1,8 @@
 using DearImGuiKSP.Application;
 using DearImGuiKSP.Application.Interfaces;
+using UnityEngine;
+using ILogger = DearImGuiKSP.Application.Interfaces.ILogger;
+using Object = UnityEngine.Object;
 
 namespace DearImGuiKSP.Infrastructure
 {
@@ -19,6 +22,7 @@ namespace DearImGuiKSP.Infrastructure
         private static SettingsModel _settings;
         private static InputLockGateway _lockGateway;
         private static PointerBlockerGateway _pointerBlockerGateway;
+        private static ImguiEventEaterGateway _imguiEventEater;
         private static InputCaptureTracker _captureTracker;
         private static FaultBarrier _faultBarrier;
         private static LifecycleStateMachine _stateMachine;
@@ -61,13 +65,29 @@ namespace DearImGuiKSP.Infrastructure
         /// <summary>The input lock gateway singleton (C9).</summary>
         internal static InputLockGateway LockGateway => _lockGateway ?? (_lockGateway = new InputLockGateway());
 
-        /// <summary>The pointer blocker gateway singleton (ISSUES #001; G1 rework: logger + verboseLogging lambda).</summary>
+        /// <summary>The pointer blocker gateway singleton (ISSUES #001; G1 rework: logger).</summary>
         internal static PointerBlockerGateway PointerBlocker =>
-            _pointerBlockerGateway ?? (_pointerBlockerGateway = new PointerBlockerGateway(Logger, () => Settings.VerboseLogging));
+            _pointerBlockerGateway ?? (_pointerBlockerGateway = new PointerBlockerGateway(Logger));
+
+        /// <summary>
+        /// The IMGUI event eater singleton (ISSUES #003). Created eagerly by
+        /// <see cref="WireLifecycle"/> (after successful init, before frames run)
+        /// on a DontDestroyOnLoad GameObject; always active, eats nothing unless
+        /// the tracker raises a shield.
+        /// </summary>
+        internal static ImguiEventEaterGateway ImguiEventEater =>
+            _imguiEventEater ?? (_imguiEventEater = CreateImguiEventEater());
+
+        private static ImguiEventEaterGateway CreateImguiEventEater()
+        {
+            var go = new GameObject("DearImGuiKSP.ImguiEventEater");
+            Object.DontDestroyOnLoad(go);
+            return go.AddComponent<ImguiEventEaterGateway>();
+        }
 
         /// <summary>The input capture tracker singleton (C9), driven by the orchestrator.</summary>
         internal static InputCaptureTracker CaptureTracker =>
-            _captureTracker ?? (_captureTracker = new InputCaptureTracker(LockGateway, PointerBlocker, Registry));
+            _captureTracker ?? (_captureTracker = new InputCaptureTracker(LockGateway, PointerBlocker, ImguiEventEater, Registry));
 
         /// <summary>The consumer fault barrier singleton (C10), driven by the orchestrator.</summary>
         internal static FaultBarrier Barrier => _faultBarrier ?? (_faultBarrier = new FaultBarrier(Logger));
@@ -116,6 +136,10 @@ namespace DearImGuiKSP.Infrastructure
         /// </summary>
         internal static void WireLifecycle()
         {
+            // ISSUES #003: the eater must exist before frames run and regardless of
+            // first capture — force creation now (it is inert unless shielded).
+            _ = ImguiEventEater;
+
             // Entering suspension (or failure) while capturing must not leave locks held.
             Hooks.UiVisibilityChanged += visible =>
             {

@@ -156,7 +156,7 @@ Explicitly rejected: Event Bus (consumer communication is one-to-one registratio
 ### 5.3 Core Algorithms
 
 - **Frame loop** (per frame, in order): sample input → determine capture state (hover/active widget) → apply or release input locks → invoke consumer callbacks in registration order → ImGui NewFrame/Render → hand draw data to the native render thread.
-- **Input locking**: locks exist **only while capturing**. Hover over a DearImGui-KSP window locks camera/click-through controls (`CAMERACONTROLS` and click-through-relevant flags); an active text field locks `KEYBOARDINPUT`. Locks are per-consumer via `InputLockManager` with per-consumer lock IDs, and are released the moment capture ends.
+- **Input locking**: locks exist **only while capturing**. Hover over a DearImGui-KSP window locks camera/click-through controls (`CAMERACONTROLS|GUI|MAIN_MENU`); an active text field locks `KEYBOARDINPUT`. Locks are per-consumer via `InputLockManager` with per-consumer lock IDs, and are released the moment capture ends. While capturing, the library additionally suppresses both Unity UI stacks: an invisible uGUI raycast blocker (top-sorted overlay canvas) absorbs clicks over ImGui windows, and an early-ordered OnGUI component grabs `GUIUtility.hotControl`/`keyboardControl` so IMGUI windows beneath receive no input; both mechanisms are inert when not capturing (D22, D23).
 - **Z-ordering**: registration order only for MVP.
 - **Consumer fault isolation**: a throwing consumer callback is caught, logged, and skipped for that frame. After **5 consecutive throwing frames** that consumer is auto-disabled; other consumers are unaffected.
 
@@ -290,7 +290,7 @@ None identified in the game dump — zero existing native-plugin render integrat
 
 ### 10.4 Environment Guidance
 
-- Coexists with IMGUI mods by design (an ImGui overlay drawn after everything does not intersect the game's IMGUI frame).
+- Coexists with IMGUI mods by design (an ImGui overlay drawn after everything does not intersect the game's IMGUI frame). While an ImGui window captures the mouse or keyboard, IMGUI windows beneath it receive no input (D23); when not capturing, IMGUI is entirely unaffected. Known edge case: an IMGUI drag started outside an ImGui window keeps its `hotControl` until the mouse is released.
 - Load order is handled by KSP's topological sort over `KSPAssemblyDependency` declarations; consumers must declare the dependency to guarantee they load after the library.
 - No in-game missing-dependency warning exists in KSP itself, so consumer READMEs should state the dependency plainly.
 
@@ -340,3 +340,4 @@ None identified in the game dump — zero existing native-plugin render integrat
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-07-29 | Agent + User | Initial specification (Q1–Q47 answered across 7 phases; decisions D1–D18) |
+| 2026-09-03 | Agent + User | Post-MVP amendments: uGUI pointer blocker + IMGUI input suppression (D22, D23); opt-out viewport clamp setting (D21) |

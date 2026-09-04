@@ -6,7 +6,7 @@
 
 - **Target**: KSP 1.12.x, Unity 2019.4.18f1, Mono x64, Windows-first, D3D11 (OpenGL deferred post-MVP, D20).
 - **Structure**: `DearImGuiKSPNative.dll` (C++: Dear ImGui + cimgui + render backends) + `DearImGuiKSP.dll` (C#: KSP plugin, frame loop, input locks, public API).
-- **Current status**: implementation plan complete (2026-09-03) — all milestones M1–M6 verified in-game, all gates PASS, session verdict CONTINUE. See `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`. Post-MVP follow-ups landed 2026-09-03 (`notes\finished\2026-09-03_Bug_ClickThrough_WindowAnchor\`): ISSUES #001 (uGUI click bleed-through) and #002 (resolution-change window clamp, handshake v4) resolved; xUnit Application test suite live; IMGUI click-through documented as KNOWNLIMIT #003. Next: styling/theming work (spec §3.4), release packaging (D15, user-deferred), OpenGL (backlog).
+- **Current status**: implementation plan complete (2026-09-03) — all milestones M1–M6 verified in-game, all gates PASS, session verdict CONTINUE. See `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`. Post-MVP follow-ups landed 2026-09-03 (`notes\finished\2026-09-03_Bug_ClickThrough_WindowAnchor\`, `notes\finished\2026-09-03_Bug_IMGUI_ClickThrough\`): ISSUES #001–#003 resolved (uGUI + IMGUI click bleed-through, resolution-change window clamp, handshake v4); xUnit Application test suite live (59 tests). Next: styling/theming work (spec §3.4), release packaging (D15, user-deferred), OpenGL (backlog).
 
 ## Working on this repo — read these first
 
@@ -44,7 +44,7 @@ Authoritative design record, in `notes\finished\2026-07-29_DesignSpec_DearImGuiK
 | File | Contents |
 |------|----------|
 | `DESIGN_SPEC.md` | **The spec.** Confirmed by the user 2026-07-29. Build from this. |
-| `DECISION_LOG.md` | D1–D22: every design decision, alternatives, rationale. Check before reversing anything. |
+| `DECISION_LOG.md` | D1–D23: every design decision, alternatives, rationale. Check before reversing anything. |
 | `QUESTION_LOG.md` | Q1–Q47: the user's answers that the spec is built from. |
 | `RESEARCH_NOTES.md` | KSP API findings, precedents, compatibility concerns, open gaps. |
 

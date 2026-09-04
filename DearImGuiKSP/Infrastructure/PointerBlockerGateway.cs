@@ -17,8 +17,7 @@ namespace DearImGuiKSP.Infrastructure
     /// prefab-serialized, so on every activation the blocker adopts the highest
     /// sorting layer in the scene plus one above the top sortingOrder on it
     /// (G1 rework, 2026-09-03). Diagnostics: creation and transitions are
-    /// Debug-logged, and while verboseLogging is on the Image carries a faint
-    /// red tint so the blocker is visible for in-game verification.
+    /// Debug-logged (verbose-gated).
     /// Created lazily on the first SetBlocked(true), on the main thread, and
     /// lives for the session (DontDestroyOnLoad).
     /// </summary>
@@ -26,20 +25,14 @@ namespace DearImGuiKSP.Infrastructure
     {
         private const string GameObjectName = "DearImGuiKSP.PointerBlocker";
 
-        private static readonly Color VerboseTint = new Color(1f, 0.4f, 0.4f, 0.15f);
-        private static readonly Color InvisibleTint = new Color(1f, 1f, 1f, 0f);
-
         private readonly ILogger _log;
-        private readonly System.Func<bool> _verboseLogging;
 
         private GameObject _blocker;
         private Canvas _canvas;
-        private Image _image;
 
-        internal PointerBlockerGateway(ILogger log, System.Func<bool> verboseLogging)
+        internal PointerBlockerGateway(ILogger log)
         {
             _log = log;
-            _verboseLogging = verboseLogging;
         }
 
         /// <inheritdoc/>
@@ -51,7 +44,6 @@ namespace DearImGuiKSP.Infrastructure
                 // First capture of the session: build it in the desired state.
                 _blocker = CreateBlocker();
                 _canvas = _blocker.GetComponent<Canvas>();
-                _image = _blocker.GetComponent<Image>();
                 justCreated = true;
             }
 
@@ -80,10 +72,6 @@ namespace DearImGuiKSP.Infrastructure
                 _blocker.SetActive(blocked);
                 _log?.Debug("Pointer blocker " + (blocked ? "activated" : "deactivated") + ".");
             }
-
-            // Tint decision re-evaluated on every call: verboseLogging can be
-            // toggled at runtime, and the blocker must default to invisible.
-            _image.color = _verboseLogging() ? VerboseTint : InvisibleTint;
         }
 
         private static GameObject CreateBlocker()
@@ -100,6 +88,9 @@ namespace DearImGuiKSP.Infrastructure
 
             Image image = go.AddComponent<Image>();
             image.raycastTarget = true;
+            // An Image defaults to opaque white — the blocker must stay invisible.
+            // Raycast hits do not depend on alpha, so transparent still blocks.
+            image.color = new Color(1f, 1f, 1f, 0f);
 
             RectTransform rect = image.rectTransform;
             rect.anchorMin = Vector2.zero;

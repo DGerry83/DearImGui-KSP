@@ -41,7 +41,8 @@ namespace Application.Tests
         {
             var registry = new ConsumerRegistry();
             var tracker = new InputCaptureTracker(
-                new FakeInputLockGateway(), new FakePointerBlockerGateway(), registry);
+                new FakeInputLockGateway(), new FakePointerBlockerGateway(),
+                new FakeImguiEventEaterGateway(), registry);
             var machine = new LifecycleStateMachine(new FakeLogger());
             machine.MarkInitializing();
             machine.MarkRunning();

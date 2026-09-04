@@ -1,6 +1,6 @@
 # Investigation Log: ISSUES #003 — IMGUI (OnGUI) click bleed-through
 ## Date: 2026-09-03
-## Status: Phase 0 complete — root cause confirmed, precedent mined; awaiting user approval of the fix approach
+## Status: Phase 1 complete — contract + frozen gates written, spec amendment applied; awaiting user approval for Phase 2
 ## Type: Bug (reopened KNOWNLIMIT #003 → user wants it fixed)
 
 Session folder: `notes/active/2026-09-03_Bug_IMGUI_ClickThrough/`
@@ -39,3 +39,6 @@ The design spec never addresses mod-IMGUI *input*:
 
 ### Next step
 User approval of Candidate A + the spec amendment → Phase 1 (contract, gates incl. D16 IMGUI regression checks).
+
+### Mechanism v2 (2026-09-03, after G1 FAIL on v1)
+v1 (`Event.Use()` in a `[DefaultExecutionOrder(-32000)]` OnGUI) FAILED in-game: ordering across runtime-loaded mod assemblies is not reliable enough. v2 grabs `GUIUtility.hotControl` (mouse) / `GUIUtility.keyboardControl` (keyboard) during Layout/Repaint passes while shielded — IMGUI's own capture primitives, order-independent (see ARCHITECTURE_CONTRACT.md Addendum).

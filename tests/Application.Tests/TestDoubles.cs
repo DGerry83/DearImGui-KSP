@@ -51,4 +51,14 @@ namespace Application.Tests
 
         public int CallCount => Calls.Count;
     }
+
+    internal sealed class FakeImguiEventEaterGateway : IImguiEventEaterGateway
+    {
+        public readonly List<bool> MouseCalls = new List<bool>();
+        public readonly List<bool> KeyboardCalls = new List<bool>();
+
+        public void SetMouseShielded(bool shielded) { MouseCalls.Add(shielded); }
+
+        public void SetKeyboardShielded(bool shielded) { KeyboardCalls.Add(shielded); }
+    }
 }
