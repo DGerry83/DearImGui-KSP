@@ -15,6 +15,10 @@ namespace DearImGuiKSP.Interop
         // ImGui calls are single-threaded (frame loop), so sharing one buffer is safe.
         private static byte[] _inputTextBuffer;
 
+        // Reused across InputTextWithHiddenLabel calls; holds "##" + label + NUL.
+        // Same single-threaded rationale as _inputTextBuffer.
+        private static byte[] _hiddenLabelBuffer;
+
         /// <summary>
         /// Begins an ImGui window. Wraps cimgui <c>igBegin</c> with p_open = NULL
         /// (no close button in MVP).
@@ -77,6 +81,29 @@ namespace DearImGuiKSP.Interop
         /// <returns>True when the user edited the text this frame; <paramref name="value"/> is updated in place.</returns>
         internal static bool InputText(string label, ref string value, int capacity = 256)
         {
+            return InputTextCore(ToUtf8(label), ref value, capacity);
+        }
+
+        /// <summary>
+        /// Draws a single-line text input with no visible label: the widget runs
+        /// under a "##"-prefixed hidden ID ("##" + <paramref name="label"/>), so
+        /// ImGui renders no label text inside the field — the caller draws the
+        /// label itself (ksp theme colors typed text by pushing Col_Text around
+        /// this call). The label still anchors the widget's identity, so it must
+        /// stay unique among the window's inputs. Same buffer semantics as
+        /// <see cref="InputText(string, ref string, int)"/>; the label is encoded
+        /// into a reused buffer (zero per-frame allocation).
+        /// </summary>
+        /// <returns>True when the user edited the text this frame; <paramref name="value"/> is updated in place.</returns>
+        internal static bool InputTextWithHiddenLabel(string label, ref string value, int capacity = 256)
+        {
+            return InputTextCore(HiddenLabelUtf8(label), ref value, capacity);
+        }
+
+        // Shared body of the InputText wrappers: stages the value into the
+        // reused _inputTextBuffer and round-trips edits back.
+        private static bool InputTextCore(byte[] labelUtf8, ref string value, int capacity)
+        {
             if (capacity < 2)
             {
                 capacity = 2;
@@ -94,12 +121,31 @@ namespace DearImGuiKSP.Interop
             }
             _inputTextBuffer[copyLength] = 0;
 
-            bool edited = ImGuiNative.InputText(ToUtf8(label), _inputTextBuffer, ImGuiInputTextFlags.None);
+            bool edited = ImGuiNative.InputText(labelUtf8, _inputTextBuffer, ImGuiInputTextFlags.None);
             if (edited)
             {
                 value = FromUtf8(_inputTextBuffer);
             }
             return edited;
+        }
+
+        // "##" + label + NUL in the reused _hiddenLabelBuffer, grown on demand.
+        // The "##" prefix (not suffix) is what hides the label: ImGui renders
+        // nothing before the marker, so no label text appears inside the field.
+        private static byte[] HiddenLabelUtf8(string label)
+        {
+            string s = label ?? string.Empty;
+            int byteCount = Encoding.UTF8.GetByteCount(s);
+            int needed = byteCount + 3; // "##" + NUL terminator
+            if (_hiddenLabelBuffer == null || _hiddenLabelBuffer.Length < needed)
+            {
+                _hiddenLabelBuffer = new byte[needed];
+            }
+            Encoding.UTF8.GetBytes(s, 0, s.Length, _hiddenLabelBuffer, 2);
+            _hiddenLabelBuffer[0] = (byte)'#';
+            _hiddenLabelBuffer[1] = (byte)'#';
+            _hiddenLabelBuffer[byteCount + 2] = 0;
+            return _hiddenLabelBuffer;
         }
 
         /// <summary>
@@ -149,6 +195,16 @@ namespace DearImGuiKSP.Interop
         internal static void SetCursorY(float y)
         {
             ImGuiNative.SetCursorY(y);
+        }
+
+        /// <summary>
+        /// Keeps the next widget on the current line instead of advancing to the
+        /// next one. Wraps cimgui <c>igSameLine</c> with default offset and
+        /// spacing (0, 0). Used to place a label beside a hidden-label input.
+        /// </summary>
+        internal static void SameLine()
+        {
+            ImGuiNative.SameLine();
         }
 
         /// <summary>

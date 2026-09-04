@@ -29,6 +29,8 @@
 | C24 | Pending | - | - | - | M7 |
 | C25 | Pending | - | - | - | M8 |
 
+| M3-TUNE | Done | `Theming/{KspPalette,ThemePresets}`, `Api/{ImGuiGradients,DearImGuiKSP.TextColored.cs (NEW)}`, `Application/DearImGuiKSP.cs` (InputText), `Interop/{ImGuiNative,ImGuiInternal}` (SameLine + hidden-label input), `DemoConsumer.cs`, `ThemePresetsTests.cs` | Build 0/0; tests 75/75; native untouched (gradient flip is descriptor data) | G3: PASS (patch scope) | User M3-gate tuning applied; spec §6.1 revised 2026-09-04; radio-label highlight deferred (boundary ruling); ISSUES #004 filed (UI flicker) |
+
 ### Blockers
 - None
 

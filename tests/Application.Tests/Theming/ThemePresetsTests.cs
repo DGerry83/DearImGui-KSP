@@ -6,10 +6,11 @@ using Color32 = UnityEngine.Color32;
 namespace Application.Tests
 {
     /// <summary>
-    /// Theme value-table tests (C8): the "ksp" preset carries the design spec
-    /// §6.1 anchors, differs from stock dark at those anchors, and every table
-    /// entry indexes a real ImGuiCol/ImGuiStyleVar slot; "dark" is a zero-
-    /// -override marker.
+    /// Theme value-table tests (C8, M3 tuning pass): the "ksp" preset carries the
+    /// design spec §6.1 anchors (window gradient lighter-on-top, frame backfill
+    /// chain, primary/secondary button gradients), differs from stock dark at
+    /// those anchors, and every table entry indexes a real ImGuiCol/ImGuiStyleVar
+    /// slot; "dark" is a zero--override marker.
     /// </summary>
     public class ThemePresetsTests
     {
@@ -38,14 +39,31 @@ namespace Application.Tests
         }
 
         [Fact]
+        public void Ksp_FrameBgChain_MatchesTuningPassAnchors()
+        {
+            ThemePreset ksp = ThemePresets.Ksp();
+
+            // M3 tuning pass: frame backfill is the darkest window grey
+            // rgb(58,58,63); hover/active lighten it ~15%/~30% toward white
+            // (the same lightening approach as ButtonHover).
+            Assert.Equal(new Color32(58, 58, 63, 255), FindColor(ksp, ImGuiCol.FrameBg));
+            Assert.Equal(new Color32(88, 88, 92, 255), FindColor(ksp, ImGuiCol.FrameBgHovered));
+            Assert.Equal(new Color32(117, 117, 121, 255), FindColor(ksp, ImGuiCol.FrameBgActive));
+        }
+
+        [Fact]
         public void Ksp_GradientParams_MatchSpecAnchors()
         {
             ThemePreset ksp = ThemePresets.Ksp();
 
             Assert.Equal(new Color32(102, 114, 135, 255), ksp.ButtonGradientTop);
             Assert.Equal(new Color32(57, 72, 90, 255), ksp.ButtonGradientBottom);
-            Assert.Equal(new Color32(58, 58, 63, 255), ksp.WindowBgGradientTop);
-            Assert.Equal(new Color32(94, 97, 106, 255), ksp.WindowBgGradientBottom);
+            Assert.Equal(new Color32(135, 143, 158, 255), ksp.ButtonSecondaryGradientTop);
+            Assert.Equal(new Color32(69, 77, 92, 255), ksp.ButtonSecondaryGradientBottom);
+            // M3 tuning pass: the window gradient is lighter on top, darkest at
+            // the bottom (the C8 launch values were the other way around).
+            Assert.Equal(new Color32(94, 97, 106, 255), ksp.WindowBgGradientTop);
+            Assert.Equal(new Color32(58, 58, 63, 255), ksp.WindowBgGradientBottom);
         }
 
         [Fact]

@@ -175,14 +175,14 @@ Palette source: `VisualReferenceMaterial/KSP_Theme_Palette_Notes.md` (RGB). All 
 
 | Element | Spec |
 |---------|------|
-| Window background | Two-stop vertical gradient, top rgb(58,58,63) → bottom rgb(94,97,106); rounding 6 px; 1 px border rgb(30,32,38) |
+| Window background | Two-stop vertical gradient, top rgb(94,97,106) → bottom rgb(58,58,63) (light-on-top; flipped after the 2026-09-04 in-game pass); rounding 6 px; 1 px border rgb(30,32,38) |
 | Title bar | Flat rgb(57,72,90); active title text off-white rgb(236,236,236) |
-| Buttons | Two-stop vertical gradient, top rgb(102,114,135) → bottom rgb(57,72,90) (D28 ShadeVerts technique); rounding 4 px; hover lightened ~15%; active shifted toward KSP green; text off-white |
-| Frame backgrounds (inputs, sliders, combo) | Flat rgb(57,72,90) darkened ~20%; rounding 4 px |
+| Buttons | Primary: two-stop vertical gradient, top rgb(102,114,135) → bottom rgb(57,72,90) (D28 ShadeVerts technique). Secondary: grey gradient, top rgb(135,143,158) → bottom rgb(69,77,92). Rounding 4 px; hover lightened ~15%; active shifted toward KSP green (mix 0.55, brightened after the 2026-09-04 pass); text off-white |
+| Frame backgrounds (inputs, sliders, combo) | Flat rgb(58,58,63); hover ~15% lighter, active ~30% lighter; rounding 4 px |
 | Slider grab / scrollbar grab | rgb(102,114,135), hover → KSP light grey rgb(188,188,188); rounding 4 px |
 | Radio buttons | Circular (stock `igRadioButton` geometry), active fill KSP light green rgb(181,252,0); glow deferred |
 | Checkboxes / toggles | Animated imgui_toggle switches, on-state KSP light green, off-state frame grey; classic square checkbox remains available |
-| Text | Default off-white rgb(236,236,236); secondary light grey rgb(188,188,188); on-dark-fill text rgb(58,58,63) where the palette demands it |
+| Text | Default off-white rgb(236,236,236); secondary light grey rgb(188,188,188); on-dark-fill text rgb(58,58,63) where the palette demands it. Typed text inside inputs: light orange rgb(255,198,0) (ksp theme default; dark theme keeps stock behavior). Header/emphasis coloring (e.g. green titles) is a **consumer choice** — the library exposes the palette (`KspPalette`, public) and `TextColored`, and auto-colors nothing |
 | Accents | Positive/confirm: light green rgb(181,252,0); strong positive text variant dark green rgb(51,230,51); warning: light orange rgb(255,198,0); critical/destructive: dark orange rgb(255,150,0) |
 | Headers / selectables | Background rgb(57,72,90); hover rgb(102,114,135); rounding 4 px |
 | Font | IBM Plex Sans Regular (body) / Medium (titles, headers); `fontScale` as today |
@@ -300,3 +300,4 @@ Sequenced by dependency, not by user priority; the detailed plan, gates, and chu
 |------|--------|--------|
 | 2026-09-03 | Agent + User | Initial wave spec (Q1–Q11 answered; decisions D24–D34) |
 | 2026-09-03 | User | Spec confirmed. Note on §6 (visual design system): the palette/gradient/rounding values are starting points — the user will verify the look in-game and §6.1 may be revised after that visual pass; hard to judge from the spec alone. |
+| 2026-09-04 | User + Agent | §6.1 revised after the M3 in-game visual pass: window-bg gradient flipped (light on top), frame backfill rgb(58,58,63), typed input text light orange, secondary grey button gradient added, brighter green button-active mix (0.55). Boundary ruling: header text color and selected-radio label color are consumer choices, not theme defaults (palette + `TextColored` exposed; radio-label highlight deferred). |

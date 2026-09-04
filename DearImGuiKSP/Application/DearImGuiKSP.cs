@@ -180,13 +180,32 @@ namespace DearImGuiKSP
         /// True when the user edited the text this frame; <paramref name="value"/>
         /// is updated in place. False when unavailable.
         /// </returns>
+        /// <remarks>
+        /// Under the "ksp" theme the label is drawn separately in the theme's
+        /// off-white and only the typed text renders in the KSP light orange —
+        /// ImGui colors an InputText's label with the same Col_Text as its
+        /// contents, so the widget runs with a hidden-label ID and Col_Text
+        /// pushed to orange for that call. Under the "dark" theme the stock
+        /// single-call path is kept byte-identical.
+        /// </remarks>
         public static bool InputText(string label, ref string value, int capacity = 256)
         {
             if (!IsAvailable)
             {
                 return false;
             }
-            return ImGuiInternal.InputText(label, ref value, capacity);
+            if (ThemeEngine == null ||
+                string.Equals(ThemeEngine.CurrentThemeName, LibraryConfig.DarkThemeName, StringComparison.Ordinal))
+            {
+                return ImGuiInternal.InputText(label, ref value, capacity);
+            }
+
+            Text(label);
+            ImGuiInternal.SameLine();
+            PushStyleColor(ImGuiCol.Text, KspPalette.OrangeLight);
+            bool edited = ImGuiInternal.InputTextWithHiddenLabel(label, ref value, capacity);
+            PopStyleColor();
+            return edited;
         }
 
         /// <summary>

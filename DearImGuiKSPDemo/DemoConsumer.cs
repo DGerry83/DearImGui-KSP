@@ -26,11 +26,9 @@ namespace DearImGuiKSPDemo
         private float _sliderValue = 0.5f;
         private string _inputText = "edit me";
 
-        // C9 theme showcase (M3 gate): gradient stops mirror the ksp preset's
-        // button gradient (spec §6.1 "Buttons"). The library palette is
-        // internal, so the demo — public API only — carries its own copies.
-        private static readonly Color32 ThemeButtonTop = new Color32(102, 114, 135, 255);
-        private static readonly Color32 ThemeButtonBottom = new Color32(57, 72, 90, 255);
+        // M3 tuning-pass showcase: the styled gradient buttons pull their stops
+        // from the active theme preset (KspPalette is public, but the demo no
+        // longer needs its own copies — the style overload reads the preset).
         private bool _themeToggle = true;
         private int _radioChoice;
 
@@ -147,17 +145,20 @@ namespace DearImGuiKSPDemo
                         }
                     }
 
-                    // C9 theme showcase (M3 gate): gradient buttons, an
-                    // animated toggle, and circular radios. The window
-                    // background gradient is applied natively by the theme.
-                    DearImGuiKSP.DearImGuiKSP.Text("Theme");
+                    // M3 tuning-pass theme showcase: a consumer-choice colored
+                    // header (the theme never auto-colors text), the two themed
+                    // gradient button styles, an animated toggle, and circular
+                    // radios. The window background gradient is applied
+                    // natively by the theme.
+                    DearImGuiKSP.DearImGuiKSP.TextColored(
+                        DearImGuiKSP.Application.KspPalette.GreenLight, "Theme showcase");
                     if (DearImGuiKSP.ImGuiGradients.GradientButton(
-                        "Gradient button", ThemeButtonTop, ThemeButtonBottom, new Vector2(180f, 28f)))
+                        "Primary gradient", new Vector2(180f, 28f), DearImGuiKSP.GradientButtonStyle.Primary))
                     {
                         _clickCount++;
                     }
                     if (DearImGuiKSP.ImGuiGradients.GradientButton(
-                        "Fit-to-label gradient", ThemeButtonTop, ThemeButtonBottom, Vector2.zero))
+                        "Secondary gradient", new Vector2(180f, 28f), DearImGuiKSP.GradientButtonStyle.Secondary))
                     {
                         _clickCount++;
                     }

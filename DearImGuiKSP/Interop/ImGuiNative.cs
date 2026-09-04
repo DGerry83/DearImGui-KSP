@@ -142,6 +142,11 @@ namespace DearImGuiKSP.Interop
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         private static extern void igDummy(ImVec2 size);
 
+        // CIMGUI_API void igSameLine(float offset_from_start_x,float spacing); (cimgui.h:4190)
+        // Both 0: next widget on the same line, default item spacing.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igSameLine(float offset_from_start_x, float spacing);
+
         // CIMGUI_API void igPushStyleColor_U32(ImGuiCol idx,ImU32 col); (cimgui.h:4158)
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         private static extern void igPushStyleColor_U32(int idx, uint col);
@@ -359,6 +364,11 @@ namespace DearImGuiKSP.Interop
         internal static void Dummy(ImVec2 size)
         {
             igDummy(size);
+        }
+
+        internal static void SameLine()
+        {
+            igSameLine(0f, 0f);
         }
 
         internal static void PushStyleColor(int idx, uint col)

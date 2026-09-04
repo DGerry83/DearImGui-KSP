@@ -22,7 +22,9 @@ namespace DearImGuiKSP.Application
             Color32 windowBgGradientTop,
             Color32 windowBgGradientBottom,
             Color32 buttonGradientTop,
-            Color32 buttonGradientBottom)
+            Color32 buttonGradientBottom,
+            Color32 buttonSecondaryGradientTop,
+            Color32 buttonSecondaryGradientBottom)
         {
             Name = name;
             Colors = colors;
@@ -32,6 +34,8 @@ namespace DearImGuiKSP.Application
             WindowBgGradientBottom = windowBgGradientBottom;
             ButtonGradientTop = buttonGradientTop;
             ButtonGradientBottom = buttonGradientBottom;
+            ButtonSecondaryGradientTop = buttonSecondaryGradientTop;
+            ButtonSecondaryGradientBottom = buttonSecondaryGradientBottom;
         }
 
         /// <summary>Preset name as it appears in settings.cfg ("ksp" or "dark").</summary>
@@ -57,6 +61,12 @@ namespace DearImGuiKSP.Application
 
         /// <summary>Button gradient bottom stop (C9; spec §6.1 "Buttons").</summary>
         internal Color32 ButtonGradientBottom { get; }
+
+        /// <summary>Secondary (plain grey) button gradient top stop (C9; spec §6.1 "Buttons", M3 tuning pass).</summary>
+        internal Color32 ButtonSecondaryGradientTop { get; }
+
+        /// <summary>Secondary (plain grey) button gradient bottom stop (C9; spec §6.1 "Buttons", M3 tuning pass).</summary>
+        internal Color32 ButtonSecondaryGradientBottom { get; }
     }
 
     /// <summary>
@@ -81,8 +91,8 @@ namespace DearImGuiKSP.Application
                 (ImGuiCol.PopupBg, KspPalette.WindowBgBottom),
                 (ImGuiCol.Border, KspPalette.BorderDark),
                 (ImGuiCol.FrameBg, KspPalette.FrameBg),
-                (ImGuiCol.FrameBgHovered, KspPalette.TitleBar),
-                (ImGuiCol.FrameBgActive, KspPalette.ButtonGradientTop),
+                (ImGuiCol.FrameBgHovered, KspPalette.FrameBgHovered),
+                (ImGuiCol.FrameBgActive, KspPalette.FrameBgActive),
                 (ImGuiCol.TitleBg, KspPalette.TitleBar),
                 (ImGuiCol.TitleBgActive, KspPalette.TitleBar),
                 (ImGuiCol.TitleBgCollapsed, KspPalette.TitleBar),
@@ -132,7 +142,9 @@ namespace DearImGuiKSP.Application
                 KspPalette.WindowBgTop,
                 KspPalette.WindowBgBottom,
                 KspPalette.ButtonGradientTop,
-                KspPalette.ButtonGradientBottom);
+                KspPalette.ButtonGradientBottom,
+                KspPalette.ButtonSecondaryGradientTop,
+                KspPalette.ButtonSecondaryGradientBottom);
         }
 
         /// <summary>
@@ -153,7 +165,9 @@ namespace DearImGuiKSP.Application
                 KspPalette.WindowBgTop,
                 KspPalette.WindowBgBottom,
                 KspPalette.ButtonGradientTop,
-                KspPalette.ButtonGradientBottom);
+                KspPalette.ButtonGradientBottom,
+                KspPalette.ButtonSecondaryGradientTop,
+                KspPalette.ButtonSecondaryGradientBottom);
         }
 
         /// <summary>

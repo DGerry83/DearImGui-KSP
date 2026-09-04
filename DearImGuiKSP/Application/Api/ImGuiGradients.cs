@@ -6,6 +6,21 @@ using Vector2 = UnityEngine.Vector2;
 namespace DearImGuiKSP
 {
     /// <summary>
+    /// Selects the gradient stops for <see cref="ImGuiGradients.GradientButton(string, Vector2, GradientButtonStyle)"/>.
+    /// Both styles render identically in every theme: a gradient button is an
+    /// explicit consumer call, so the stops come from the KSP palette even when
+    /// the active theme is "dark" (which has no gradient parameters of its own).
+    /// </summary>
+    public enum GradientButtonStyle
+    {
+        /// <summary>The signature blue-grey gradient: 102,114,135 to 57,72,90 (spec §6.1 "Buttons").</summary>
+        Primary = 0,
+
+        /// <summary>The plain grey gradient added in the M3 tuning pass: 135,143,158 to 69,77,92.</summary>
+        Secondary = 1,
+    }
+
+    /// <summary>
     /// Two-stop vertical gradient drawing helpers (spec §6.1, technique D28):
     /// fill a rect with the mid color via <c>ImDrawList_AddRectFilled</c>, then
     /// rewrite exactly the verts that fill appended with
@@ -23,8 +38,10 @@ namespace DearImGuiKSP
         private const float HoverLightenAmount = 0.15f;
 
         // Active: both stops shifted toward the KSP light green
-        // (spec §6.1 "Buttons": active shifted toward KSP green).
-        private const float ActiveGreenMix = 0.30f;
+        // (spec §6.1 "Buttons": active shifted toward KSP green). Tunable;
+        // raised 0.30 -> 0.55 in the M3 tuning pass per user feedback ("could
+        // be brighter").
+        private const float ActiveGreenMix = 0.55f;
 
         // Rounding of the gradient button rect; matches the ksp preset's
         // FrameRounding (4 px, spec §6.1 "Frame backgrounds").
@@ -159,6 +176,50 @@ namespace DearImGuiKSP
                 label);
 
             return pressed;
+        }
+
+        /// <summary>
+        /// Draws a gradient button whose stops come from the active theme
+        /// preset (M3 tuning pass): <see cref="GradientButtonStyle.Primary"/>
+        /// uses the signature blue-grey gradient, <see cref="GradientButtonStyle.Secondary"/>
+        /// the plain grey one. Identical interaction and hover/active feedback
+        /// to the explicit-color overload, which this delegates to. Only valid
+        /// inside a registered callback.
+        /// </summary>
+        /// <param name="label">Button text; also its ImGui identity.</param>
+        /// <param name="size">
+        /// Button size in pixels; a component &lt;= 0 fits that dimension to the
+        /// label plus a fixed padding.
+        /// </param>
+        /// <param name="style">Which themed gradient stop pair to draw.</param>
+        /// <returns>True on the frame the button is clicked; false when unavailable.</returns>
+        /// <remarks>
+        /// Gradient buttons are an explicit consumer call rather than a theme
+        /// default, so they render with the KSP palette stops in every theme —
+        /// under "dark" (which carries no gradient parameters) both styles fall
+        /// back to the same KSP constants the presets hold.
+        /// </remarks>
+        public static bool GradientButton(string label, Vector2 size, GradientButtonStyle style)
+        {
+            if (!DearImGuiKSP.IsAvailable)
+            {
+                return false;
+            }
+
+            // Stops from the active preset; the preset always carries them
+            // (the dark preset holds the ksp values to stay non-degenerate),
+            // so the palette fallback only covers an unwired ThemeEngine.
+            Application.ThemePreset preset = DearImGuiKSP.ThemeEngine?.ActivePreset;
+            Color32 top = KspPalette.ButtonGradientTop;
+            Color32 bottom = KspPalette.ButtonGradientBottom;
+            if (preset != null)
+            {
+                bool secondary = style == GradientButtonStyle.Secondary;
+                top = secondary ? preset.ButtonSecondaryGradientTop : preset.ButtonGradientTop;
+                bottom = secondary ? preset.ButtonSecondaryGradientBottom : preset.ButtonGradientBottom;
+            }
+
+            return GradientButton(label, top, bottom, size);
         }
 
         // Per-channel lerp of two sRGB byte colors; pure struct math.
