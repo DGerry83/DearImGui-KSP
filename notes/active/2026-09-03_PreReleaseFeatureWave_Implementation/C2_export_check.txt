@@ -1,0 +1,17 @@
+MATCH  igPushStyleColor_Vec4
+MATCH  igPushStyleColor_U32
+MATCH  igPopStyleColor
+MATCH  igPushStyleVar_Float
+MATCH  igPushStyleVar_Vec2
+MATCH  igPopStyleVar
+MATCH  igGetColorU32_Vec4
+MATCH  igGetWindowDrawList
+MATCH  ImDrawList_AddRectFilled
+MATCH  ImDrawList_AddRectFilledMultiColor
+MATCH  igShadeVertsLinearColorGradientKeepAlpha
+MATCH  ImDrawList_AddCircle
+MATCH  ImDrawList_AddCircleFilled
+MATCH  ImDrawList_AddLine
+MATCH  igRadioButton_Bool
+MATCH  igRadioButton_IntPtr
+matched 16 of 16 targets; total exports in DLL: 1607

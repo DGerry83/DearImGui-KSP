@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 
 namespace DearImGuiKSP.Interop
@@ -113,6 +114,17 @@ namespace DearImGuiKSP.Interop
         }
 
         /// <summary>
+        /// Begins a bordered scrolling child region of the given size. Wraps cimgui
+        /// <c>igBeginChild_Str</c> with child_flags = ImGuiChildFlags_Borders and
+        /// window_flags = 0. Null <paramref name="id"/> renders as an empty string.
+        /// </summary>
+        /// <returns>False when the region is clipped — caller must still call <see cref="EndScrollRegion"/>.</returns>
+        internal static bool BeginScrollRegion(string id, ImVec2 size)
+        {
+            return ImGuiNative.BeginScrollRegion(ToUtf8(id), size);
+        }
+
+        /// <summary>
         /// Ends the current child region. Wraps cimgui <c>igEndChild</c>. Always required
         /// after <see cref="BeginScrollRegion"/>, regardless of its return value.
         /// </summary>
@@ -149,6 +161,196 @@ namespace DearImGuiKSP.Interop
         internal static void Dummy(float width, float height)
         {
             ImGuiNative.Dummy(width, height);
+        }
+
+        /// <summary>
+        /// Submits an invisible item of the given size, advancing the cursor and growing
+        /// the window's content bounds. Wraps cimgui <c>igDummy</c>. Required after using
+        /// <see cref="SetCursorY"/> to extend a region's scrollable range — ImGui asserts
+        /// (imgui.cpp ErrorCheckUsingSetCursorPosToExtendParentBoundaries) when a cursor
+        /// move extends parent boundaries without a following item.
+        /// </summary>
+        internal static void Dummy(ImVec2 size)
+        {
+            ImGuiNative.Dummy(size);
+        }
+
+        /// <summary>
+        /// Pushes a packed <c>ImU32</c> (ABGR, as produced by <see cref="GetColorU32"/>) onto
+        /// the style-color stack. Wraps cimgui <c>igPushStyleColor_U32</c>.
+        /// <paramref name="idx"/> is a <c>DearImGuiKSP.ImGuiCol</c> value passed as int.
+        /// </summary>
+        internal static void PushStyleColor(int idx, uint packedColor)
+        {
+            ImGuiNative.PushStyleColor(idx, packedColor);
+        }
+
+        /// <summary>
+        /// Pushes an RGBA float vector onto the style-color stack. Wraps cimgui
+        /// <c>igPushStyleColor_Vec4</c>. <paramref name="idx"/> is a
+        /// <c>DearImGuiKSP.ImGuiCol</c> value passed as int.
+        /// </summary>
+        internal static void PushStyleColor(int idx, ImVec4 color)
+        {
+            ImGuiNative.PushStyleColor(idx, color);
+        }
+
+        /// <summary>
+        /// Pops <paramref name="count"/> entries from the style-color stack. Wraps cimgui
+        /// <c>igPopStyleColor</c>; every Push must be paired with exactly one Pop before
+        /// the end of the frame.
+        /// </summary>
+        internal static void PopStyleColor(int count = 1)
+        {
+            ImGuiNative.PopStyleColor(count);
+        }
+
+        /// <summary>
+        /// Pushes a float style variable (e.g. <c>DearImGuiKSP.ImGuiStyleVar.WindowRounding</c>)
+        /// onto the style stack. Wraps cimgui <c>igPushStyleVar_Float</c>.
+        /// <paramref name="idx"/> is a <c>DearImGuiKSP.ImGuiStyleVar</c> value passed as int.
+        /// </summary>
+        internal static void PushStyleVar(int idx, float val)
+        {
+            ImGuiNative.PushStyleVar(idx, val);
+        }
+
+        /// <summary>
+        /// Pushes an <see cref="ImVec2"/> style variable (e.g.
+        /// <c>DearImGuiKSP.ImGuiStyleVar.WindowPadding</c>) onto the style stack.
+        /// Wraps cimgui <c>igPushStyleVar_Vec2</c>. <paramref name="idx"/> is a
+        /// <c>DearImGuiKSP.ImGuiStyleVar</c> value passed as int.
+        /// </summary>
+        internal static void PushStyleVar(int idx, ImVec2 val)
+        {
+            ImGuiNative.PushStyleVar(idx, val);
+        }
+
+        /// <summary>
+        /// Pops <paramref name="count"/> entries from the style-variable stack. Wraps cimgui
+        /// <c>igPopStyleVar</c>; every Push must be paired with exactly one Pop before
+        /// the end of the frame.
+        /// </summary>
+        internal static void PopStyleVar(int count = 1)
+        {
+            ImGuiNative.PopStyleVar(count);
+        }
+
+        /// <summary>
+        /// Packs an RGBA float vector into the packed <c>ImU32</c> color format used by the
+        /// draw-list API and <see cref="PushStyleColor(int, uint)"/>. Wraps cimgui
+        /// <c>igGetColorU32_Vec4</c>.
+        /// </summary>
+        internal static uint GetColorU32(ImVec4 color)
+        {
+            return ImGuiNative.GetColorU32(color);
+        }
+
+        /// <summary>
+        /// Returns the draw list of the current window, for custom geometry. Wraps cimgui
+        /// <c>igGetWindowDrawList</c>. Valid only between <see cref="BeginWindow"/> and
+        /// <see cref="EndWindow"/>; the handle must not be retained across frames.
+        /// </summary>
+        internal static ImDrawListHandle GetWindowDrawList()
+        {
+            return new ImDrawListHandle(ImGuiNative.GetWindowDrawList());
+        }
+
+        /// <summary>
+        /// Adds a filled rectangle to a draw list. Wraps cimgui
+        /// <c>ImDrawList_AddRectFilled</c> with <c>ImDrawFlags_None</c>.
+        /// </summary>
+        internal static void DrawListAddRectFilled(ImDrawListHandle drawList, ImVec2 pMin, ImVec2 pMax, uint col, float rounding = 0f)
+        {
+            ImGuiNative.DrawListAddRectFilled(drawList.NativePointer, pMin, pMax, col, rounding, flags: 0);
+        }
+
+        /// <summary>
+        /// Adds a filled rectangle with a per-corner gradient to a draw list. Wraps cimgui
+        /// <c>ImDrawList_AddRectFilledMultiColor</c>.
+        /// </summary>
+        internal static void DrawListAddRectFilledMultiColor(ImDrawListHandle drawList, ImVec2 pMin, ImVec2 pMax, uint upperLeft, uint upperRight, uint bottomRight, uint bottomLeft)
+        {
+            ImGuiNative.DrawListAddRectFilledMultiColor(drawList.NativePointer, pMin, pMax, upperLeft, upperRight, bottomRight, bottomLeft);
+        }
+
+        /// <summary>
+        /// Rewrites the vertex colors of draw-list entries added since the recorded index
+        /// range as a linear gradient, preserving alpha. Wraps cimgui
+        /// <c>igShadeVertsLinearColorGradientKeepAlpha</c> (cimgui.h:5595). Pair with
+        /// <c>ImDrawList_PrimReserve</c>-style recording via the draw-list vertex count
+        /// before/after adding geometry.
+        /// </summary>
+        internal static void ShadeVertsLinearColorGradientKeepAlpha(ImDrawListHandle drawList, int vertStartIdx, int vertEndIdx, ImVec2 gradientP0, ImVec2 gradientP1, uint col0, uint col1)
+        {
+            ImGuiNative.ShadeVertsLinearColorGradientKeepAlpha(drawList.NativePointer, vertStartIdx, vertEndIdx, gradientP0, gradientP1, col0, col1);
+        }
+
+        /// <summary>
+        /// Adds a circle outline to a draw list. Wraps cimgui <c>ImDrawList_AddCircle</c>;
+        /// <paramref name="numSegments"/> = 0 lets ImGui auto-calculate from the radius.
+        /// </summary>
+        internal static void DrawListAddCircle(ImDrawListHandle drawList, ImVec2 center, float radius, uint col, int numSegments = 0, float thickness = 1f)
+        {
+            ImGuiNative.DrawListAddCircle(drawList.NativePointer, center, radius, col, numSegments, thickness);
+        }
+
+        /// <summary>
+        /// Adds a filled circle to a draw list. Wraps cimgui <c>ImDrawList_AddCircleFilled</c>;
+        /// <paramref name="numSegments"/> = 0 lets ImGui auto-calculate from the radius.
+        /// </summary>
+        internal static void DrawListAddCircleFilled(ImDrawListHandle drawList, ImVec2 center, float radius, uint col, int numSegments = 0)
+        {
+            ImGuiNative.DrawListAddCircleFilled(drawList.NativePointer, center, radius, col, numSegments);
+        }
+
+        /// <summary>
+        /// Adds a line to a draw list. Wraps cimgui <c>ImDrawList_AddLine</c>.
+        /// </summary>
+        internal static void DrawListAddLine(ImDrawListHandle drawList, ImVec2 p1, ImVec2 p2, uint col, float thickness = 1f)
+        {
+            ImGuiNative.DrawListAddLine(drawList.NativePointer, p1, p2, col, thickness);
+        }
+
+        /// <summary>
+        /// Draws a radio button whose state is an explicit boolean. Wraps cimgui
+        /// <c>igRadioButton_Bool</c>. Null label renders as an empty string.
+        /// </summary>
+        /// <returns>True on the frame the button is clicked.</returns>
+        internal static bool RadioButton(string label, bool active)
+        {
+            return ImGuiNative.RadioButton(ToUtf8(label), active);
+        }
+
+        /// <summary>
+        /// Draws a radio button bound to an integer value; the button is selected when
+        /// <paramref name="v"/> equals <paramref name="vButton"/>, and clicking sets it.
+        /// Wraps cimgui <c>igRadioButton_IntPtr</c>. Null label renders as an empty string.
+        /// </summary>
+        /// <returns>True on the frame the button is clicked; <paramref name="v"/> is updated in place.</returns>
+        internal static bool RadioButton(string label, ref int v, int vButton)
+        {
+            return ImGuiNative.RadioButton(ToUtf8(label), ref v, vButton);
+        }
+
+        /// <summary>
+        /// Opaque handle to a native <c>ImDrawList</c>, obtained from
+        /// <see cref="GetWindowDrawList"/>. Keeps raw pointers out of the safe surface (Q46);
+        /// do not retain across frames.
+        /// </summary>
+        internal readonly struct ImDrawListHandle
+        {
+            private readonly IntPtr _nativePointer;
+
+            internal ImDrawListHandle(IntPtr nativePointer)
+            {
+                _nativePointer = nativePointer;
+            }
+
+            internal IntPtr NativePointer
+            {
+                get { return _nativePointer; }
+            }
         }
 
         // Null-terminated UTF-8. Null becomes "\0" (empty string).

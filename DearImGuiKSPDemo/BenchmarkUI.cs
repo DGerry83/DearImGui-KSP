@@ -125,23 +125,25 @@ namespace DearImGuiKSPDemo
                 _virtualized = !_virtualized;
             }
 
-            // Fixed-height scrolling child region; EndScrollRegion is required even
-            // when BeginScrollRegion returns false (region clipped).
-            if (DearImGuiKSP.DearImGuiKSP.BeginScrollRegion("benchmarkList", ListViewHeight))
+            // Fixed-height scrolling child region via the C3 scope API; Dispose ends
+            // the region even when it is clipped (Visible false).
+            using (var list = DearImGuiKSP.ImGuiEx.ScrollRegion("benchmarkList", ListViewHeight))
             {
-                if (_virtualized)
+                if (list.Visible)
                 {
-                    DrawImGuiVirtualizedList();
-                }
-                else
-                {
-                    for (int i = 0; i < _items.Count; i++)
+                    if (_virtualized)
                     {
-                        DearImGuiKSP.DearImGuiKSP.Text(_items[i]);
+                        DrawImGuiVirtualizedList();
+                    }
+                    else
+                    {
+                        for (int i = 0; i < _items.Count; i++)
+                        {
+                            DearImGuiKSP.DearImGuiKSP.Text(_items[i]);
+                        }
                     }
                 }
             }
-            DearImGuiKSP.DearImGuiKSP.EndScrollRegion();
         }
 
         // Manual virtualization on the public API: reserve the full scroll range with

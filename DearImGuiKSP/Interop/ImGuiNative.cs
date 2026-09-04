@@ -56,6 +56,26 @@ namespace DearImGuiKSP.Interop
     }
 
     /// <summary>
+    /// Blittable mirror of cimgui's <c>ImVec4_c</c> (<c>struct { float x, y, z, w; }</c>, cimgui.h:264-268).
+    /// 16 bytes, passed by value to <c>igPushStyleColor_Vec4</c>/<c>igGetColorU32_Vec4</c> — safe on Win64 Cdecl.
+    /// </summary>
+    internal struct ImVec4
+    {
+        public float X;
+        public float Y;
+        public float Z;
+        public float W;
+
+        public ImVec4(float x, float y, float z, float w)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+            W = w;
+        }
+    }
+
+    /// <summary>
     /// Raw cimgui P/Invoke declarations (private). Implicit <c>[DllImport("DearImGuiKSPNative")]</c>
     /// is the locked mechanism (chunk C6 contract): Windows resolves against the module that
     /// NativeBridge already LoadLibrary'd, with SetDllDirectory(PluginData) covering the search
@@ -122,6 +142,72 @@ namespace DearImGuiKSP.Interop
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         private static extern void igDummy(ImVec2 size);
 
+        // CIMGUI_API void igPushStyleColor_U32(ImGuiCol idx,ImU32 col); (cimgui.h:4158)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igPushStyleColor_U32(int idx, uint col);
+
+        // CIMGUI_API void igPushStyleColor_Vec4(ImGuiCol idx,const ImVec4_c col); (cimgui.h:4159)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igPushStyleColor_Vec4(int idx, ImVec4 col);
+
+        // CIMGUI_API void igPopStyleColor(int count); (cimgui.h:4160)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igPopStyleColor(int count);
+
+        // CIMGUI_API void igPushStyleVar_Float(ImGuiStyleVar idx,float val); (cimgui.h:4161)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igPushStyleVar_Float(int idx, float val);
+
+        // CIMGUI_API void igPushStyleVar_Vec2(ImGuiStyleVar idx,const ImVec2_c val); (cimgui.h:4162)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igPushStyleVar_Vec2(int idx, ImVec2 val);
+
+        // CIMGUI_API void igPopStyleVar(int count); (cimgui.h:4165)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igPopStyleVar(int count);
+
+        // CIMGUI_API ImU32 igGetColorU32_Vec4(const ImVec4_c col); (cimgui.h:4176)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern uint igGetColorU32_Vec4(ImVec4 col);
+
+        // CIMGUI_API ImDrawList* igGetWindowDrawList(void); (cimgui.h:4119)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr igGetWindowDrawList();
+
+        // CIMGUI_API void ImDrawList_AddRectFilled(ImDrawList* self,const ImVec2_c p_min,const ImVec2_c p_max,ImU32 col,float rounding,ImDrawFlags flags); (cimgui.h:4678)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ImDrawList_AddRectFilled(IntPtr self, ImVec2 p_min, ImVec2 p_max, uint col, float rounding, int flags);
+
+        // CIMGUI_API void ImDrawList_AddRectFilledMultiColor(ImDrawList* self,const ImVec2_c p_min,const ImVec2_c p_max,ImU32 col_upr_left,ImU32 col_upr_right,ImU32 col_bot_right,ImU32 col_bot_left); (cimgui.h:4679)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ImDrawList_AddRectFilledMultiColor(IntPtr self, ImVec2 p_min, ImVec2 p_max, uint col_upr_left, uint col_upr_right, uint col_bot_right, uint col_bot_left);
+
+        // CIMGUI_API void igShadeVertsLinearColorGradientKeepAlpha(ImDrawList* draw_list,int vert_start_idx,int vert_end_idx,ImVec2_c gradient_p0,ImVec2_c gradient_p1,ImU32 col0,ImU32 col1); (cimgui.h:5595)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igShadeVertsLinearColorGradientKeepAlpha(IntPtr draw_list, int vert_start_idx, int vert_end_idx, ImVec2 gradient_p0, ImVec2 gradient_p1, uint col0, uint col1);
+
+        // CIMGUI_API void ImDrawList_AddCircle(ImDrawList* self,const ImVec2_c center,float radius,ImU32 col,int num_segments,float thickness); (cimgui.h:4684)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ImDrawList_AddCircle(IntPtr self, ImVec2 center, float radius, uint col, int num_segments, float thickness);
+
+        // CIMGUI_API void ImDrawList_AddCircleFilled(ImDrawList* self,const ImVec2_c center,float radius,ImU32 col,int num_segments); (cimgui.h:4685)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ImDrawList_AddCircleFilled(IntPtr self, ImVec2 center, float radius, uint col, int num_segments);
+
+        // CIMGUI_API void ImDrawList_AddLine(ImDrawList* self,const ImVec2_c p1,const ImVec2_c p2,ImU32 col,float thickness); (cimgui.h:4674)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ImDrawList_AddLine(IntPtr self, ImVec2 p1, ImVec2 p2, uint col, float thickness);
+
+        // CIMGUI_API bool igRadioButton_Bool(const char* label,bool active); (cimgui.h:4251)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igRadioButton_Bool([In] byte[] label, [MarshalAs(UnmanagedType.I1)] bool active);
+
+        // CIMGUI_API bool igRadioButton_IntPtr(const char* label,int* v,int v_button); (cimgui.h:4252)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igRadioButton_IntPtr([In] byte[] label, ref int v, int v_button);
+
         // ---- Internal surface for ImGuiInternal (keeps the raw P/Invokes private) ----
 
         internal static bool Begin(byte[] nameUtf8, ImGuiWindowFlags flags)
@@ -154,9 +240,18 @@ namespace DearImGuiKSP.Interop
             return igInputText(labelUtf8, buffer, (UIntPtr)buffer.Length, (int)flags, IntPtr.Zero, IntPtr.Zero);
         }
 
+        // Style-color/style-variable identifiers are the public DearImGuiKSP.ImGuiCol /
+        // DearImGuiKSP.ImGuiStyleVar enums (Application/Api/ImGuiStyleEnums.cs); these
+        // wrappers take the raw int (C1: single source of truth, no duplicated table).
+
         internal static bool BeginScrollRegion(byte[] idUtf8, float height)
         {
             return igBeginChild_Str(idUtf8, new ImVec2(0f, height), (int)ImGuiChildFlags.Borders, (int)ImGuiWindowFlags.None);
+        }
+
+        internal static bool BeginScrollRegion(byte[] idUtf8, ImVec2 size)
+        {
+            return igBeginChild_Str(idUtf8, size, (int)ImGuiChildFlags.Borders, (int)ImGuiWindowFlags.None);
         }
 
         internal static void EndScrollRegion()
@@ -177,6 +272,91 @@ namespace DearImGuiKSP.Interop
         internal static void Dummy(float width, float height)
         {
             igDummy(new ImVec2(width, height));
+        }
+
+        internal static void Dummy(ImVec2 size)
+        {
+            igDummy(size);
+        }
+
+        internal static void PushStyleColor(int idx, uint col)
+        {
+            igPushStyleColor_U32(idx, col);
+        }
+
+        internal static void PushStyleColor(int idx, ImVec4 col)
+        {
+            igPushStyleColor_Vec4(idx, col);
+        }
+
+        internal static void PopStyleColor(int count)
+        {
+            igPopStyleColor(count);
+        }
+
+        internal static void PushStyleVar(int idx, float val)
+        {
+            igPushStyleVar_Float(idx, val);
+        }
+
+        internal static void PushStyleVar(int idx, ImVec2 val)
+        {
+            igPushStyleVar_Vec2(idx, val);
+        }
+
+        internal static void PopStyleVar(int count)
+        {
+            igPopStyleVar(count);
+        }
+
+        internal static uint GetColorU32(ImVec4 col)
+        {
+            return igGetColorU32_Vec4(col);
+        }
+
+        internal static IntPtr GetWindowDrawList()
+        {
+            return igGetWindowDrawList();
+        }
+
+        internal static void DrawListAddRectFilled(IntPtr drawList, ImVec2 pMin, ImVec2 pMax, uint col, float rounding, int flags)
+        {
+            ImDrawList_AddRectFilled(drawList, pMin, pMax, col, rounding, flags);
+        }
+
+        internal static void DrawListAddRectFilledMultiColor(IntPtr drawList, ImVec2 pMin, ImVec2 pMax, uint upperLeft, uint upperRight, uint bottomRight, uint bottomLeft)
+        {
+            ImDrawList_AddRectFilledMultiColor(drawList, pMin, pMax, upperLeft, upperRight, bottomRight, bottomLeft);
+        }
+
+        internal static void ShadeVertsLinearColorGradientKeepAlpha(IntPtr drawList, int vertStartIdx, int vertEndIdx, ImVec2 gradientP0, ImVec2 gradientP1, uint col0, uint col1)
+        {
+            igShadeVertsLinearColorGradientKeepAlpha(drawList, vertStartIdx, vertEndIdx, gradientP0, gradientP1, col0, col1);
+        }
+
+        internal static void DrawListAddCircle(IntPtr drawList, ImVec2 center, float radius, uint col, int numSegments, float thickness)
+        {
+            ImDrawList_AddCircle(drawList, center, radius, col, numSegments, thickness);
+        }
+
+        internal static void DrawListAddCircleFilled(IntPtr drawList, ImVec2 center, float radius, uint col, int numSegments)
+        {
+            ImDrawList_AddCircleFilled(drawList, center, radius, col, numSegments);
+        }
+
+        internal static void DrawListAddLine(IntPtr drawList, ImVec2 p1, ImVec2 p2, uint col, float thickness)
+        {
+            ImDrawList_AddLine(drawList, p1, p2, col, thickness);
+        }
+
+        internal static bool RadioButton(byte[] labelUtf8, bool active)
+        {
+            return igRadioButton_Bool(labelUtf8, active);
+        }
+
+        internal static bool RadioButton(byte[] labelUtf8, ref int v, int vButton)
+        {
+            return igRadioButton_IntPtr(labelUtf8, ref v, vButton);
         }
     }
 }

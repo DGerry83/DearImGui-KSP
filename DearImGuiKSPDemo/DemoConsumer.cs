@@ -9,6 +9,8 @@ namespace DearImGuiKSPDemo
     /// Hosts the example window (AC3): text, a button with click feedback, a slider, and an
     /// input field, all declared per frame through the public C# API, plus the AC5 benchmark
     /// window (naive vs virtualized 1000-item list) with its IMGUI reference window (D10).
+    /// All Begin/End pairs are declared through ImGuiEx scopes (C3), including one
+    /// "Throw inside scope (test)" fault-barrier test hook.
     /// Toggled via an ApplicationLauncher toolbar button (green placeholder icon).
     /// </summary>
     [KSPAddon(KSPAddon.Startup.EveryScene, false)]
@@ -93,55 +95,69 @@ namespace DearImGuiKSPDemo
         }
 
         // Per-frame UI declaration — the only place widget calls are valid.
+        // All Begin/End pairs run through ImGuiEx scopes (C3): Dispose closes the
+        // stack on every exit path, including exceptions (the fault barrier test hook).
         private void OnFrame()
         {
             if (!_windowVisible)
             {
                 return;
             }
-            if (!DearImGuiKSP.DearImGuiKSP.BeginWindow("DearImGui-KSP Demo"))
+            using (var window = DearImGuiKSP.ImGuiEx.Window("DearImGui-KSP Demo"))
             {
-                DearImGuiKSP.DearImGuiKSP.EndWindow();
-                DrawBenchmarkWindow();
-                return;
+                if (window.Visible)
+                {
+                    DearImGuiKSP.DearImGuiKSP.Text("Hello from the demo consumer!");
+                    DearImGuiKSP.DearImGuiKSP.Text("Button clicked " + _clickCount + " time(s).");
+
+                    if (DearImGuiKSP.DearImGuiKSP.Button("Click me"))
+                    {
+                        _clickCount++;
+                    }
+
+                    DearImGuiKSP.DearImGuiKSP.SliderFloat("Slider", ref _sliderValue, 0f, 1f);
+                    DearImGuiKSP.DearImGuiKSP.InputText("Input", ref _inputText);
+
+                    // MVP has no checkbox — button-toggle is the pattern.
+                    if (DearImGuiKSP.DearImGuiKSP.Button(_benchmarkVisible
+                        ? "Hide benchmark window"
+                        : "Show benchmark window"))
+                    {
+                        _benchmarkVisible = !_benchmarkVisible;
+                    }
+
+                    // C3 test hook (M1 gate): throwing inside a using scope must leave
+                    // the style stack symmetric — the scope's Dispose pops the pushed
+                    // color during unwind, then the fault barrier logs the exception.
+                    if (DearImGuiKSP.DearImGuiKSP.Button("Throw inside scope (test)"))
+                    {
+                        using (DearImGuiKSP.ImGuiEx.StyleColor(
+                            DearImGuiKSP.ImGuiCol.Text, Color.red))
+                        {
+                            throw new System.InvalidOperationException(
+                                "[DearImGuiKSPDemo] Intentional throw inside a scope (test hook).");
+                        }
+                    }
+                }
             }
-
-            DearImGuiKSP.DearImGuiKSP.Text("Hello from the demo consumer!");
-            DearImGuiKSP.DearImGuiKSP.Text("Button clicked " + _clickCount + " time(s).");
-
-            if (DearImGuiKSP.DearImGuiKSP.Button("Click me"))
-            {
-                _clickCount++;
-            }
-
-            DearImGuiKSP.DearImGuiKSP.SliderFloat("Slider", ref _sliderValue, 0f, 1f);
-            DearImGuiKSP.DearImGuiKSP.InputText("Input", ref _inputText);
-
-            // MVP has no checkbox — button-toggle is the pattern.
-            if (DearImGuiKSP.DearImGuiKSP.Button(_benchmarkVisible
-                ? "Hide benchmark window"
-                : "Show benchmark window"))
-            {
-                _benchmarkVisible = !_benchmarkVisible;
-            }
-
-            DearImGuiKSP.DearImGuiKSP.EndWindow();
             DrawBenchmarkWindow();
         }
 
         // Second window in the same registered callback — still one consumer ID,
-        // one registration. Skipped entirely (no BeginWindow) while hidden.
+        // one registration. Skipped entirely (no window scope opened) while hidden.
         private void DrawBenchmarkWindow()
         {
             if (!_benchmarkVisible || _benchmark == null)
             {
                 return;
             }
-            if (DearImGuiKSP.DearImGuiKSP.BeginWindow("DearImGui-KSP Benchmark"))
+            using (var window = DearImGuiKSP.ImGuiEx.Window("DearImGui-KSP Benchmark"))
             {
-                _benchmark.DrawImGui();
+                if (window.Visible)
+                {
+                    _benchmark.DrawImGui();
+                }
             }
-            DearImGuiKSP.DearImGuiKSP.EndWindow();
         }
 
         // Unity IMGUI callback — hosts the IMGUI reference window so the AC5

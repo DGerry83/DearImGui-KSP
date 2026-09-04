@@ -2,6 +2,9 @@ using System;
 using DearImGuiKSP.Application;
 using DearImGuiKSP.Application.Interfaces;
 using DearImGuiKSP.Interop;
+using Color = UnityEngine.Color;
+using Color32 = UnityEngine.Color32;
+using Vector2 = UnityEngine.Vector2;
 
 namespace DearImGuiKSP
 {
@@ -254,6 +257,153 @@ namespace DearImGuiKSP
                 return;
             }
             ImGuiInternal.Dummy(width, height);
+        }
+
+        /// <summary>
+        /// Submits an invisible item of the given size, advancing the cursor and growing
+        /// the window's content bounds. Only valid inside a registered callback.
+        /// Convenience overload of <see cref="Dummy(float, float)"/>; see that member
+        /// for the virtualization pattern this supports.
+        /// </summary>
+        public static void Dummy(Vector2 size)
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.Dummy(new ImVec2(size.x, size.y));
+        }
+
+        /// <summary>
+        /// Begins a bordered scrolling child region of the given size (width 0 stretches
+        /// to the available width). Only valid inside a registered callback.
+        /// Convenience overload of <see cref="BeginScrollRegion(string, float)"/>; see
+        /// that member for the manual-virtualization pattern this supports.
+        /// </summary>
+        /// <param name="id">Region identifier; also its ImGui identity.</param>
+        /// <param name="size">Region size in pixels; x = 0 stretches to available width.</param>
+        /// <returns>
+        /// False when the region is clipped — <see cref="EndScrollRegion"/> is
+        /// still required. Also false when called while unavailable.
+        /// </returns>
+        public static bool BeginScrollRegion(string id, Vector2 size)
+        {
+            if (!IsAvailable)
+            {
+                return false;
+            }
+            return ImGuiInternal.BeginScrollRegion(id, new ImVec2(size.x, size.y));
+        }
+
+        /// <summary>
+        /// Pushes an RGBA color onto the style-color stack, affecting all widgets drawn
+        /// after this call until <see cref="PopStyleColor"/> (typically the end of the
+        /// frame). Only valid inside a registered callback. Every Push must be paired
+        /// with exactly one Pop before the end of the frame — use
+        /// <c>ImGuiEx.StyleColor</c> (C3) for exception-safe pairing.
+        /// </summary>
+        /// <param name="col">The style slot to override (see <see cref="DearImGuiKSP.ImGuiCol"/>).</param>
+        /// <param name="value">The color; components are linear RGBA in 0–1 range.</param>
+        public static void PushStyleColor(ImGuiCol col, Color value)
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.PushStyleColor((int)col, ToImVec4(value));
+        }
+
+        /// <summary>
+        /// Pushes an RGBA color onto the style-color stack, affecting all widgets drawn
+        /// after this call until <see cref="PopStyleColor"/> (typically the end of the
+        /// frame). Only valid inside a registered callback. Byte components are
+        /// normalized to 0–1 floats; every Push must be paired with exactly one Pop
+        /// before the end of the frame.
+        /// </summary>
+        /// <param name="col">The style slot to override (see <see cref="DearImGuiKSP.ImGuiCol"/>).</param>
+        /// <param name="value">The color; components are sRGB bytes in 0–255 range.</param>
+        public static void PushStyleColor(ImGuiCol col, Color32 value)
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.PushStyleColor((int)col, ToImVec4(value));
+        }
+
+        /// <summary>
+        /// Pops <paramref name="count"/> entries from the style-color stack. Only valid
+        /// inside a registered callback. Every <see cref="PushStyleColor(ImGuiCol, Color)"/>
+        /// must be paired with exactly one Pop before the end of the frame.
+        /// </summary>
+        /// <param name="count">Number of entries to pop; must not exceed the pushed depth.</param>
+        public static void PopStyleColor(int count = 1)
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.PopStyleColor(count);
+        }
+
+        /// <summary>
+        /// Pushes a float style variable (e.g. rounding, border size, spacing) onto the
+        /// style stack. Only valid inside a registered callback. Every Push must be
+        /// paired with exactly one Pop before the end of the frame.
+        /// </summary>
+        /// <param name="var">The style slot to override (see <see cref="DearImGuiKSP.ImGuiStyleVar"/>).</param>
+        /// <param name="value">The new value for the slot.</param>
+        public static void PushStyleVar(ImGuiStyleVar var, float value)
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.PushStyleVar((int)var, value);
+        }
+
+        /// <summary>
+        /// Pushes a 2D style variable (e.g. padding, alignment) onto the style stack.
+        /// Only valid inside a registered callback. Every Push must be paired with
+        /// exactly one Pop before the end of the frame.
+        /// </summary>
+        /// <param name="var">The style slot to override (see <see cref="DearImGuiKSP.ImGuiStyleVar"/>).</param>
+        /// <param name="value">The new value for the slot.</param>
+        public static void PushStyleVar(ImGuiStyleVar var, Vector2 value)
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.PushStyleVar((int)var, new ImVec2(value.x, value.y));
+        }
+
+        /// <summary>
+        /// Pops <paramref name="count"/> entries from the style-variable stack. Only valid
+        /// inside a registered callback. Every <see cref="PushStyleVar(ImGuiStyleVar, float)"/>
+        /// must be paired with exactly one Pop before the end of the frame.
+        /// </summary>
+        /// <param name="count">Number of entries to pop; must not exceed the pushed depth.</param>
+        public static void PopStyleVar(int count = 1)
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.PopStyleVar(count);
+        }
+
+        // Pure struct math, no heap allocation (hot-path checklist Check 2).
+        private static ImVec4 ToImVec4(Color color)
+        {
+            return new ImVec4(color.r, color.g, color.b, color.a);
+        }
+
+        // Pure struct math: byte components normalized to 0–1 floats, no heap allocation.
+        private static ImVec4 ToImVec4(Color32 color)
+        {
+            const float scale = 1f / 255f;
+            return new ImVec4(color.r * scale, color.g * scale, color.b * scale, color.a * scale);
         }
     }
 }
