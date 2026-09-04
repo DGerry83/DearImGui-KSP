@@ -5,10 +5,10 @@ using Vector2 = UnityEngine.Vector2;
 namespace DearImGuiKSP
 {
     /// <summary>
-    /// Public plot API over vendored ImPlot (spec §4.3; chunk C13, M4). Declares a
-    /// plot and its line series each frame inside a registered callback, the same
-    /// immediate-mode discipline as the rest of the facade. All calls no-op when
-    /// <see cref="DearImGuiKSP.IsAvailable"/> is false.
+    /// Public plot API over vendored ImPlot (spec §4.3; chunk C13, M4; subplot and
+    /// hover extensions chunk C19, M6). Declares a plot and its line series each frame
+    /// inside a registered callback, the same immediate-mode discipline as the rest of
+    /// the facade. All calls no-op when <see cref="DearImGuiKSP.IsAvailable"/> is false.
     /// </summary>
     /// <remarks>
     /// Allocation story (§5.9 hot-path discipline): <see cref="PlotLine(string, ReadOnlySpan{float})"/>
@@ -50,6 +50,73 @@ namespace DearImGuiKSP
             }
             bool visible = ImPlotNative.BeginPlot(title, new ImVec2(size.x, size.y), ImPlotFlags.None);
             return new PlotScope(visible);
+        }
+
+        /// <summary>
+        /// Begins a subplot grid and returns a scope that ends it. Each cell of the
+        /// grid is a normal plot begun with <see cref="Begin(string, Vector2)"/>; the
+        /// size passed there is ignored inside a subplot context (implot.h:818-821),
+        /// so <see cref="Vector2"/> zero is the conventional argument.
+        /// </summary>
+        /// <param name="title">Grid title; also its ImPlot identity (double-hash to hide).</param>
+        /// <param name="rows">Number of grid rows (1 or more).</param>
+        /// <param name="cols">Number of grid columns (1 or more).</param>
+        /// <param name="size">Total grid size in pixels.</param>
+        /// <returns>
+        /// A scope whose <see cref="SubplotScope.Visible"/> mirrors the ImPlot
+        /// BeginSubplots result — when false, skip the grid's content for this frame.
+        /// Dispose ends the grid only when BeginSubplots returned true (ImPlot's
+        /// pairing rule, implot.h:831-833: "Only call EndSubplots() if BeginSubplots()
+        /// returns true!"), and runs on every exit path, including when the body
+        /// throws. Inert (Visible false, no native state) when the library is
+        /// unavailable.
+        /// </returns>
+        /// <remarks>
+        /// Must be disposed within the same frame/callback (immediate-mode rule).
+        /// Cells are laid out row-major; all flags stay at defaults (evenly sized
+        /// cells, per-cell legends).
+        /// </remarks>
+        public static SubplotScope BeginSubplots(string title, int rows, int cols, Vector2 size)
+        {
+            if (!DearImGuiKSP.IsAvailable)
+            {
+                return default(SubplotScope);
+            }
+            bool visible = ImPlotNative.BeginSubplots(title, rows, cols, new ImVec2(size.x, size.y), ImPlotSubplotFlags.None);
+            return new SubplotScope(visible);
+        }
+
+        /// <summary>
+        /// True while the mouse hovers the current plot's plotting area. Only valid
+        /// between a successful <see cref="Begin(string, Vector2)"/> and its scope's
+        /// Dispose; returns false otherwise (including when the library is
+        /// unavailable).
+        /// </summary>
+        public static bool IsPlotHovered()
+        {
+            if (!DearImGuiKSP.IsAvailable)
+            {
+                return false;
+            }
+            return ImPlotNative.IsPlotHovered();
+        }
+
+        /// <summary>
+        /// The mouse cursor's position in the current plot's coordinate system
+        /// (x = x-axis value, y = y-axis value). Only valid between a successful
+        /// <see cref="Begin(string, Vector2)"/> and its scope's Dispose; the axes are
+        /// the plot's current axes. Combine with <see cref="IsPlotHovered"/> so the
+        /// value is only consumed while the cursor is inside the plotting area.
+        /// Returns zero when the library is unavailable.
+        /// </summary>
+        public static Vector2 GetPlotMousePos()
+        {
+            if (!DearImGuiKSP.IsAvailable)
+            {
+                return Vector2.zero;
+            }
+            ImPlotPoint pos = ImPlotNative.GetPlotMousePos();
+            return new Vector2((float)pos.X, (float)pos.Y);
         }
 
         /// <summary>
@@ -156,6 +223,52 @@ namespace DearImGuiKSP
                 if (_begun && DearImGuiKSP.IsAvailable)
                 {
                     ImPlotNative.EndPlot();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Scope guard pairing one <see cref="BeginSubplots(string, int, int, Vector2)"/>
+        /// with at most one ImPlot EndSubplots. Obtain it from
+        /// <see cref="BeginSubplots(string, int, int, Vector2)"/>; do not construct it
+        /// directly (a default instance has no matching Begin — dispose only what a
+        /// factory returned).
+        /// </summary>
+        public readonly struct SubplotScope : IDisposable
+        {
+            private readonly bool _visible;
+            private readonly bool _begun;
+
+            internal SubplotScope(bool visible)
+            {
+                _visible = visible;
+                _begun = visible;
+            }
+
+            /// <summary>
+            /// The BeginSubplots result captured when this scope was created: false when
+            /// the grid is collapsed/clipped (or the library is unavailable) — skip the
+            /// grid's content for this frame. Dispose ends the grid only when
+            /// BeginSubplots returned true.
+            /// </summary>
+            public bool Visible
+            {
+                get { return _visible; }
+            }
+
+            /// <summary>
+            /// Ends the subplot grid. Called once by <c>using</c> on every exit path,
+            /// including when the body throws; calls ImPlot EndSubplots only when the
+            /// matching BeginSubplots returned true (ImPlot's pairing rule, implot.h:
+            /// 831-833 — EndSubplots without a successful BeginSubplots asserts).
+            /// No-ops when the library became unavailable or for a default
+            /// (factory-untouched) instance.
+            /// </summary>
+            public void Dispose()
+            {
+                if (_begun && DearImGuiKSP.IsAvailable)
+                {
+                    ImPlotNative.EndSubplots();
                 }
             }
         }

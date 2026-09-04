@@ -4,14 +4,15 @@ using UnityEngine;
 namespace DearImGuiKSPDemo.Telemetry
 {
     /// <summary>
-    /// M6 telemetry showcase entry (spec §5.5; C18): a SEPARATE KSPAddon from
-    /// DemoConsumer, with its own ApplicationLauncher toolbar button (blue
-    /// placeholder icon), its own consumer registration id, and one window
-    /// ("DearImGui-KSP Telemetry") hosting a tab bar with three placeholder tabs
-    /// (Graphs / Stages / Orbit — replaced by the C19/C20/C21 panels). Sampling runs
+    /// M6 telemetry showcase entry (spec §5.5; C18, Graphs tab C19): a SEPARATE
+    /// KSPAddon from DemoConsumer, with its own ApplicationLauncher toolbar button
+    /// (blue placeholder icon), its own consumer registration id, and one window
+    /// ("DearImGui-KSP Telemetry") hosting a tab bar with the Graphs panel (C19) and
+    /// two placeholder tabs (Stages / Orbit — replaced by C20/C21). Sampling runs
     /// before the visibility check so history stays warm while the window is closed.
     /// All ImGui calls go through the library's public API only; every label/title is
-    /// a constant, so the per-frame path allocates no managed memory.
+    /// a constant, so the per-frame path allocates no managed memory (the Graphs
+    /// hover readout is the documented user-driven exception, see GraphPanel).
     /// </summary>
     [KSPAddon(KSPAddon.Startup.Flight, false)]
     public sealed class TelemetryAddon : MonoBehaviour
@@ -23,14 +24,19 @@ namespace DearImGuiKSPDemo.Telemetry
         private const string StagesTab = "Stages";
         private const string OrbitTab = "Orbit";
         private const string NoVesselText = "No active vessel.";
-        private const string GraphsPlaceholder = "Graphs panel placeholder (C19).";
         private const string StagesPlaceholder = "Stages panel placeholder (C20).";
         private const string OrbitPlaceholder = "Orbit panel placeholder (C21).";
 
         private readonly TelemetrySampler _sampler = new TelemetrySampler();
+        private readonly GraphPanel _graphPanel;
 
         private ApplicationLauncherButton _toolbarButton;
         private bool _windowVisible;
+
+        public TelemetryAddon()
+        {
+            _graphPanel = new GraphPanel(_sampler);
+        }
 
         private void Start()
         {
@@ -100,7 +106,8 @@ namespace DearImGuiKSPDemo.Telemetry
 
         // Per-frame path. Sampling runs first and unconditionally: history stays warm
         // while the window is closed (spec §5.5). All tab labels and placeholder
-        // strings are constants — no string building, no per-frame allocation.
+        // strings are constants — no string building, no per-frame allocation (the
+        // Graphs hover readout is hover-only; see GraphPanel).
         private void OnFrame()
         {
             _sampler.Sample();
@@ -127,7 +134,14 @@ namespace DearImGuiKSPDemo.Telemetry
                     {
                         if (tab.Visible)
                         {
-                            DrawPlaceholder(GraphsPlaceholder);
+                            if (FlightGlobals.ActiveVessel == null)
+                            {
+                                DearImGuiKSP.DearImGuiKSP.Text(NoVesselText);
+                            }
+                            else
+                            {
+                                _graphPanel.DrawImGui();
+                            }
                         }
                     }
                     using (var tab = DearImGuiKSP.ImGuiEx.TabItem(StagesTab))

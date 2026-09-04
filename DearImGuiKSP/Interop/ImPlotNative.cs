@@ -27,6 +27,65 @@ namespace DearImGuiKSP.Interop
     }
 
     /// <summary>
+    /// Subplot flags for <see cref="ImPlotNative.BeginSubplots"/>; values match
+    /// <c>ImPlotSubplotFlags_</c> in the vendored implot <c>implot.h</c> (typedef int,
+    /// implot.h:88, enum at implot.h:199-212). Only the values the wrapper needs;
+    /// extend the subset when more are required.
+    /// </summary>
+    [Flags]
+    internal enum ImPlotSubplotFlags
+    {
+        /// <summary>Default (implot.h:200, ImPlotSubplotFlags_None = 0).</summary>
+        None = 0,
+
+        /// <summary>Hides the subplot title (implot.h:201, NoTitle = 1 &lt;&lt; 0; also hidden by "##" prefixes).</summary>
+        NoTitle = 1 << 0,
+
+        /// <summary>Hides the legend (implot.h:202, NoLegend = 1 &lt;&lt; 1; only applicable with ShareItems).</summary>
+        NoLegend = 1 << 1,
+
+        /// <summary>The user cannot open context (right-click) menus (implot.h:203, NoMenus = 1 &lt;&lt; 2).</summary>
+        NoMenus = 1 << 2,
+
+        /// <summary>Resize splitters between subplot cells are not provided (implot.h:204, NoResize = 1 &lt;&lt; 3).</summary>
+        NoResize = 1 << 3,
+
+        /// <summary>Subplot edges are not aligned vertically/horizontally (implot.h:205, NoAlign = 1 &lt;&lt; 4).</summary>
+        NoAlign = 1 << 4,
+
+        /// <summary>Items across all subplots share one legend (implot.h:206, ShareItems = 1 &lt;&lt; 5).</summary>
+        ShareItems = 1 << 5,
+
+        /// <summary>Link the y-axis limits of all plots in each row (implot.h:207, LinkRows = 1 &lt;&lt; 6).</summary>
+        LinkRows = 1 << 6,
+
+        /// <summary>Link the x-axis limits of all plots in each column (implot.h:208, LinkCols = 1 &lt;&lt; 7).</summary>
+        LinkCols = 1 << 7,
+
+        /// <summary>Link the x-axis limits in every plot (implot.h:209, LinkAllX = 1 &lt;&lt; 8).</summary>
+        LinkAllX = 1 << 8,
+
+        /// <summary>Link the y-axis limits in every plot (implot.h:210, LinkAllY = 1 &lt;&lt; 9).</summary>
+        LinkAllY = 1 << 9,
+
+        /// <summary>Subplots are added in column-major order (implot.h:211, ColMajor = 1 &lt;&lt; 10).</summary>
+        ColMajor = 1 << 10,
+    }
+
+    /// <summary>
+    /// Blittable mirror of cimplot's <c>ImPlotPoint_c</c> (<c>struct</c>,
+    /// vendor/cimplot/cimplot.h:837-840), the by-value return of
+    /// <c>ImPlot_GetPlotMousePos</c> (cimplot.h:1345). Two sequential doubles
+    /// (Pack 8), 16 bytes, returned by value, Cdecl — the I-07 struct-by-value ABI
+    /// discipline applied to a return instead of a parameter.
+    /// </summary>
+    internal struct ImPlotPoint
+    {
+        public double X;    // cimplot.h:838
+        public double Y;    // cimplot.h:839
+    }
+
+    /// <summary>
     /// Blittable mirror of cimplot's <c>ImPlotSpec_c</c> (<c>struct</c>,
     /// vendor/cimplot/cimplot.h:856-875), the item-style tail parameter of the
     /// v1.0 <c>ImPlot_PlotLine_*</c> family. Field-for-field identical in
@@ -116,6 +175,34 @@ namespace DearImGuiKSP.Interop
         private static unsafe extern void ImPlot_PlotLine_doublePtrInt(
             [In] byte[] label_id, double* values, int count, double xscale, double xstart, ImPlotSpec spec);
 
+        // CIMGUI_API bool ImPlot_BeginSubplots(const char* title_id,int rows,int cols,const ImVec2_c size,ImPlotSubplotFlags flags,float* row_ratios,float* col_ratios);
+        // (vendor/cimplot/cimplot.h:1017) — the v1.0 signature carries the two ratio
+        // tail pointers; the C++ defaults are nullptr (vendor/implot/implot.h:828-829),
+        // so the safe wrapper passes IntPtr.Zero for both.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool ImPlot_BeginSubplots(
+            [In] byte[] title_id, int rows, int cols, ImVec2 size, int flags, IntPtr row_ratios, IntPtr col_ratios);
+
+        // CIMGUI_API void ImPlot_EndSubplots(void);
+        // (vendor/cimplot/cimplot.h:1018)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ImPlot_EndSubplots();
+
+        // CIMGUI_API ImPlotPoint_c ImPlot_GetPlotMousePos(ImAxis x_axis,ImAxis y_axis);
+        // (vendor/cimplot/cimplot.h:1345) — returns ImPlotPoint_c BY VALUE (16 bytes,
+        // two doubles, cimplot.h:837-840); ImAxis is typedef int (cimplot.h:35), and
+        // -1 is IMPLOT_AUTO "use the current axes" (vendor/implot/implot.h:72).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern ImPlotPoint ImPlot_GetPlotMousePos(int x_axis, int y_axis);
+
+        // CIMGUI_API bool ImPlot_IsPlotHovered(void);
+        // (vendor/cimplot/cimplot.h:1347) — the no-argument variant, true when the
+        // mouse is within the current plot's plotting area (vendor/implot/implot.h:1128).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool ImPlot_IsPlotHovered();
+
         /// <summary>
         /// Begins a plot. The label is encoded to a null-terminated UTF-8 buffer per
         /// call (same ToUtf8 convention as <c>ImGuiInternal</c>/<c>ExtensionShimsNative</c>);
@@ -154,6 +241,44 @@ namespace DearImGuiKSP.Interop
         internal static unsafe void PlotLine(string label, double* values, int count, double xscale, double xstart)
         {
             ImPlot_PlotLine_doublePtrInt(ToUtf8(label), values, count, xscale, xstart, DefaultSpec);
+        }
+
+        /// <summary>
+        /// Begins a subplot grid. The label is encoded to a null-terminated UTF-8 buffer
+        /// per call (same ToUtf8 convention as <see cref="BeginPlot"/>); titles are
+        /// short-lived and the buffer is not retained. The row/column ratio pointers of
+        /// the v1.0 signature (cimplot.h:1017) are passed null, i.e. evenly sized cells
+        /// (the C++ defaults, implot.h:828-829).
+        /// </summary>
+        /// <returns>The ImPlot BeginSubplots result (false = grid collapsed/clipped).</returns>
+        internal static bool BeginSubplots(string title, int rows, int cols, ImVec2 size, ImPlotSubplotFlags flags)
+        {
+            return ImPlot_BeginSubplots(ToUtf8(title), rows, cols, size, (int)flags, IntPtr.Zero, IntPtr.Zero);
+        }
+
+        /// <summary>Ends the current subplot grid. Call exactly once per BeginSubplots that returned true.</summary>
+        internal static void EndSubplots()
+        {
+            ImPlot_EndSubplots();
+        }
+
+        /// <summary>
+        /// The current plot's mouse position in plot coordinates. Both axes are passed
+        /// as -1 (IMPLOT_AUTO, implot.h:72), i.e. the current axes. Only meaningful
+        /// between a successful BeginPlot and its EndPlot.
+        /// </summary>
+        internal static ImPlotPoint GetPlotMousePos()
+        {
+            return ImPlot_GetPlotMousePos(-1, -1);
+        }
+
+        /// <summary>
+        /// True while the mouse hovers the current plot's plotting area. Only meaningful
+        /// between a successful BeginPlot and its EndPlot.
+        /// </summary>
+        internal static bool IsPlotHovered()
+        {
+            return ImPlot_IsPlotHovered();
         }
 
         // Null-terminated UTF-8. Null becomes "\0" (empty string).
