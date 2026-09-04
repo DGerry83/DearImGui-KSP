@@ -13,6 +13,7 @@
 #include "imgui.h"
 #include "imgui_internal.h" // ImGuiContext::Windows / ImGuiWindow (gradient read-back)
 #include "cimgui.h"         // igBegin/igEnd (window submission)
+#include "implot.h"
 
 static int Fail(const char* step, int code)
 {
@@ -25,6 +26,12 @@ int main()
     int rc = DearImGuiKSPNative_ContextInit();
     if (rc != 0)
         return Fail("ContextInit", rc);
+
+    // C12: the ImPlot context must exist after init (created in lockstep with
+    // the ImGui context).
+    if (ImPlot::GetCurrentContext() == nullptr)
+        return Fail("ImPlot context after init", 18);
+    std::printf("ImPlot context: non-null after init\n");
 
     // 60 headless frames at 1920x1080, 60 fps.
     for (int i = 0; i < 60; ++i)
@@ -183,6 +190,12 @@ int main()
     std::printf("Gradient disabled: draw list byte-exact vs. stock reference (%d verts)\n", refVtxCount);
 
     DearImGuiKSPNative_ContextShutdown();
+
+    // C12: the ImPlot context must be gone after shutdown (destroyed before
+    // the ImGui context).
+    if (ImPlot::GetCurrentContext() != nullptr)
+        return Fail("ImPlot context after shutdown", 19);
+    std::printf("ImPlot context: null after shutdown\n");
 
     std::printf("HARNESS PASS\n");
     return 0;

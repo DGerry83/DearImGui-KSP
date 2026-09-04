@@ -9,9 +9,14 @@
 
 #include "imgui.h"
 #include "imgui_internal.h" // ImGuiContext::Windows / ImGuiWindow (ISSUES #002 clamp)
+#include "implot.h"
 
 // The one ImGui context for the DLL.
 static ImGuiContext* s_Context = nullptr;
+
+// The one ImPlot context for the DLL — created/destroyed in lockstep with
+// s_Context (create after ImGui::CreateContext, destroy before its destruction).
+static ImPlotContext* s_PlotContext = nullptr;
 
 // Set by the first BeginFrame: NewFrame builds the atlas lazily (1.92.9
 // texture protocol), after which AddFontFromFileTTF would assert on the
@@ -52,6 +57,17 @@ DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_ContextInit(void)
 
     ImGui::StyleColorsDark();
 
+    // ImPlot registers with the current ImGui context, so this goes after
+    // CreateContext. The (malloc-only) failure path returns the same code as
+    // the ImGui-create failure above — the managed rc contract is frozen.
+    s_PlotContext = ImPlot::CreateContext();
+    if (s_PlotContext == nullptr)
+    {
+        ImGui::DestroyContext(s_Context);
+        s_Context = nullptr;
+        return 1;
+    }
+
     // Embedded default font (ProggyClean) registered; the atlas itself is NOT
     // built here — see the BackendFlags comment above (spec §4.1).
     if (io.Fonts->AddFontDefault() == nullptr)
@@ -67,6 +83,13 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_ContextShutdown(void)
 {
     if (s_Context != nullptr)
     {
+        // ImPlot's destructor touches the ImGui context — it must go first
+        // (reverse order would be a use-after-free).
+        if (s_PlotContext != nullptr)
+        {
+            ImPlot::DestroyContext(s_PlotContext);
+            s_PlotContext = nullptr;
+        }
         ImGui::DestroyContext(s_Context); // also frees the atlas CPU data
         s_Context = nullptr;
     }
