@@ -10,6 +10,7 @@ namespace DearImGuiKSP.Application
         internal float UiScale = LibraryConfig.DefaultUiScale;
         internal float FontScale = LibraryConfig.DefaultFontScale;
         internal string Theme = LibraryConfig.DefaultTheme;
+        internal string Font = LibraryConfig.DefaultFont;
         internal bool VerboseLogging = LibraryConfig.DefaultVerboseLogging;
         internal bool Enabled = LibraryConfig.DefaultEnabled;
         internal bool ClampWindowsToViewport = LibraryConfig.DefaultClampWindowsToViewport;

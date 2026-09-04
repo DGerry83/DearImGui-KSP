@@ -28,6 +28,9 @@ namespace DearImGuiKSP
         internal const float DefaultUiScale = 1.0f;
         internal const float DefaultFontScale = 1.0f;
         internal const string DefaultTheme = "dark";
+        internal const string DefaultFont = "IBMPlexSans";
+        internal const string EmbeddedFontName = "ProggyClean";
+        internal const string FontsDir = "GameData/DearImGuiKSP/Fonts";
         internal const bool DefaultVerboseLogging = false;
         internal const bool DefaultEnabled = true;
         internal const bool DefaultClampWindowsToViewport = true;

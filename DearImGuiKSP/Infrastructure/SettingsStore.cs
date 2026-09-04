@@ -17,6 +17,7 @@ namespace DearImGuiKSP.Infrastructure
         private const string UiScaleKey = "uiScale";
         private const string FontScaleKey = "fontScale";
         private const string ThemeKey = "theme";
+        private const string FontKey = "font";
         private const string VerboseLoggingKey = "verboseLogging";
         private const string EnabledKey = "enabled";
         private const string ClampWindowsToViewportKey = "clampWindowsToViewport";
@@ -79,6 +80,7 @@ namespace DearImGuiKSP.Infrastructure
             settings.UiScale = ReadFloat(node, UiScaleKey, defaults.UiScale);
             settings.FontScale = ReadFloat(node, FontScaleKey, defaults.FontScale);
             settings.Theme = ReadString(node, ThemeKey, defaults.Theme);
+            settings.Font = ReadString(node, FontKey, defaults.Font);
             settings.VerboseLogging = ReadBool(node, VerboseLoggingKey, defaults.VerboseLogging);
             settings.Enabled = ReadBool(node, EnabledKey, defaults.Enabled);
             settings.ClampWindowsToViewport = ReadBool(node, ClampWindowsToViewportKey, defaults.ClampWindowsToViewport);
@@ -118,6 +120,7 @@ namespace DearImGuiKSP.Infrastructure
                 node.AddValue(UiScaleKey, settings.UiScale);
                 node.AddValue(FontScaleKey, settings.FontScale);
                 node.AddValue(ThemeKey, settings.Theme);
+                node.AddValue(FontKey, settings.Font);
                 node.AddValue(VerboseLoggingKey, settings.VerboseLogging);
                 node.AddValue(EnabledKey, settings.Enabled);
                 node.AddValue(ClampWindowsToViewportKey, settings.ClampWindowsToViewport);

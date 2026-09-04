@@ -142,5 +142,54 @@ namespace Application.Tests
             Assert.Single(store.Saves);
             Assert.False(store.Saves[0].ClampWindowsToViewport);
         }
+
+        [Fact]
+        public void Font_DefaultsToDefaultFont_FromLibraryConfig()
+        {
+            SettingsModel model = CreateModel(out FakeSettingsStore _);
+
+            Assert.Equal(LibraryConfig.DefaultFont, model.Font);
+        }
+
+        [Fact]
+        public void Font_SetEmptyOrWhitespace_NormalizesToDefault()
+        {
+            SettingsModel model = CreateModel(out FakeSettingsStore _);
+
+            model.Font = "";
+            Assert.Equal(LibraryConfig.DefaultFont, model.Font);
+
+            model.Font = "   ";
+            Assert.Equal(LibraryConfig.DefaultFont, model.Font);
+
+            model.Font = null;
+            Assert.Equal(LibraryConfig.DefaultFont, model.Font);
+        }
+
+        [Fact]
+        public void Font_SetNewValue_FiresChangedOnce_AndPersistsOnce()
+        {
+            SettingsModel model = CreateModel(out FakeSettingsStore store);
+            int changeCount = 0;
+            model.Changed += () => changeCount++;
+
+            model.Font = "MyCustomFont";
+
+            Assert.Equal("MyCustomFont", model.Font);
+            Assert.Equal(1, changeCount);
+            Assert.Single(store.Saves);
+            Assert.Equal("MyCustomFont", store.Saves[0].Font);
+        }
+
+        [Fact]
+        public void Font_RoundTripsThroughStore()
+        {
+            var store = new FakeSettingsStore();
+            store.Loaded.Font = "  PersistedFont  ";
+
+            var model = new SettingsModel(store);
+
+            Assert.Equal("PersistedFont", model.Font);
+        }
     }
 }

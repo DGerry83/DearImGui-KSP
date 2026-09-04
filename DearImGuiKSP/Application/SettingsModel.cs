@@ -14,6 +14,7 @@ namespace DearImGuiKSP.Application
         private float _uiScale;
         private float _fontScale;
         private string _theme;
+        private string _font;
         private bool _verboseLogging;
         private bool _enabled;
         private bool _clampWindowsToViewport;
@@ -26,6 +27,7 @@ namespace DearImGuiKSP.Application
             _uiScale = ClampScale(loaded.UiScale);
             _fontScale = ClampScale(loaded.FontScale);
             _theme = NormalizeTheme(loaded.Theme);
+            _font = NormalizeFont(loaded.Font);
             _verboseLogging = loaded.VerboseLogging;
             _enabled = loaded.Enabled;
             _clampWindowsToViewport = loaded.ClampWindowsToViewport;
@@ -64,6 +66,18 @@ namespace DearImGuiKSP.Application
             set
             {
                 if (Set(ref _theme, NormalizeTheme(value)))
+                {
+                    Persist();
+                }
+            }
+        }
+
+        internal string Font
+        {
+            get => _font;
+            set
+            {
+                if (Set(ref _font, NormalizeFont(value)))
                 {
                     Persist();
                 }
@@ -125,6 +139,7 @@ namespace DearImGuiKSP.Application
                 UiScale = _uiScale,
                 FontScale = _fontScale,
                 Theme = _theme,
+                Font = _font,
                 VerboseLogging = _verboseLogging,
                 Enabled = _enabled,
                 ClampWindowsToViewport = _clampWindowsToViewport,
@@ -138,5 +153,11 @@ namespace DearImGuiKSP.Application
             string.Equals(value, LibraryConfig.DefaultTheme, StringComparison.OrdinalIgnoreCase)
                 ? LibraryConfig.DefaultTheme
                 : LibraryConfig.DefaultTheme;
+
+        private static string NormalizeFont(string value)
+        {
+            string trimmed = value?.Trim();
+            return string.IsNullOrEmpty(trimmed) ? LibraryConfig.DefaultFont : trimmed;
+        }
     }
 }
