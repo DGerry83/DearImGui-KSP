@@ -1,11 +1,10 @@
-# Handoff: Pre-Release Feature Wave Implementation — M5 gate pending
+# Handoff: Pre-Release Feature Wave Implementation — Resume at M6
 ## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-04 (paused for user M5 in-game gate)
+## Written: 2026-09-04 (M5 gate VERIFIED by user; paused before M6)
 
 ## Where we are
 
-M1–M4 **VERIFIED**; M5 chunks C14–C17 all **Done and committed** — waiting on the
-user's in-game M5 gate. M6–M8 remain.
+M1–M5 all **VERIFIED** (in-game, user-confirmed). M6–M8 remain.
 Full state lives in this folder — read `PROGRESS_LOG.md` first (chunk table,
 milestone table, decisions), then `CHUNK_MAP.md` (remaining chunks/dependencies)
 and `INTEGRATION_CONTRACT.md` (locked inter-chunk contracts, per-chunk acceptance).
@@ -25,22 +24,16 @@ and `INTEGRATION_CONTRACT.md` (locked inter-chunk contracts, per-chunk acceptanc
 | `602000e`, `8b823b9` | C14 contract + tween engine (tests 90/90) |
 | `24bacdf`, `c117866` | C15 contract + knobs/wheels vendored, shimmed, wrapped |
 | `55beb69`, `9a1ed51` | C16 contract + imspinner/cimspinner + Spinner wrapper (I-08 accepted) |
-| `a96d64c` + C17 commit | C17 contract + ThemeDemo showcase (I-C17-01 accepted) |
+| `a96d64c` + `c722490` | C17 contract + ThemeDemo showcase (I-C17-01 accepted) |
+| `dad7666` | M5-FIX: spinner empty-ID assert (ISSUES #005 resolved); M5 gate VERIFIED |
 
 ### Verified state
 - `dotnet build DearImGui-KSP.slnx` 0/0; `dotnet test` **90/90**; native harness
   **HARNESS PASS**; all 3 native builds 0 errors (1 tolerated C4190 from generated
   cimspinner code).
-- In-game (M1–M4 evidence): Plex Sans 18px default, ksp theme default, font
-  fallback + v4/v5 mismatch popup paths, demo two-plot window, benchmark
-  no-regression, fault-barrier scope-exception test.
-- **M5 gate checklist for the user** (demo window, main window "Widget showcase"
-  section): spinner row animating (4 types, one green-tinted); Tick knob is
-  tween-driven / WiperOnly knob draggable; horizontal + vertical wheels draggable;
-  "Play tween" animates the knob 0↔100 and the section header orange↔green over
-  2 s, ping-pongs on re-click; "Cancel tween" freezes mid-flight; F2 suspension
-  pauses tween motion (resume continues). Note: spinner row is stacked vertically
-  (no public SameLine — accepted, I-C17-01).
+- In-game (all user-confirmed): Plex Sans 18px, ksp theme, font fallback + v4/v5
+  popup paths, two-plot window, benchmark no-regression, fault-barrier test,
+  spinner/knob/wheel widgets + tween play/cancel/F2-pause (M5).
 
 ## What's next — M6 (telemetry showcase), chunks C18–C21
 
@@ -80,10 +73,15 @@ decision point).
 - **ISSUES #004** (UNCONFIRMED, P2): occasional 1–2 frame UI flicker/disappear,
   incl. on rapid button clicks. Filed only; not investigated. Per-frame window
   filtering is a suspect.
-- **I-01…I-07** all accepted in `IMPEDIMENTS.md` — notably I-06 (cimplot generator
-  must run gcc-canonical; `implot_demo.cpp` is link-required) and I-07 (cimplot
-  v1.0 ABI takes `ImPlotSpec_c` struct, AUTO sentinels load-bearing; span pinning
-  needs `DangerousGetPinnableReference` on Unity 2019.4 mscorlib).
+- **ISSUES #006** (KNOWNLIMIT, P3): spinner aesthetics — RainbowMix hue comes from
+  the tint's HSV (white tint → grey arc, no rainbow); Atom's electron dots are
+  hardcoded RGB upstream. Deferred pre-release by user at M5 gate; resolution
+  candidates in the issue file.
+- **I-01…I-08** all accepted in `IMPEDIMENTS.md` — notably I-06 (cimplot generator
+  gcc-canonical; `implot_demo.cpp` link-required), I-07 (cimplot v1.0 ABI takes
+  `ImPlotSpec_c` struct; span pinning needs `DangerousGetPinnableReference` on
+  Unity 2019.4 mscorlib), I-08 (cimspinner generator is Ruby `genCimSpinner.rb`,
+  byte-identical proven; curated 15 = upstream config-enabled subset).
 - cimplot/cimspinner regeneration provenance: scratch clones live under
   `%TEMP%\c11_scratch` (may be gone); generator commits are in `vendor/PIN_RECORD.md`.
 - Native DLLs for mismatch testing stashed at `DearImGuiKSPNative/build/native_v4.dll`
@@ -95,10 +93,10 @@ decision point).
 
 ## First action on resume
 
-If the user has confirmed the M5 gate: mark M5 VERIFIED in PROGRESS_LOG.md, then
-write `CHUNK_C18_CONTRACT.md` (telemetry foundation — plan
+Write `CHUNK_C18_CONTRACT.md` (telemetry foundation: RingBuffer + TelemetrySampler
++ TelemetryAddon skeleton with placeholder tabs — plan
 `notes/active/2026-09-03_NewProject_PreReleaseFeatureWave/IMPLEMENTATION_PLAN.md`
-§2 "Entity: TelemetrySample/RingBuffer", §3 "Component: TelemetrySampler", spec §5.5)
-and dispatch its coder sub-agent, per the per-chunk loop above.
-If the M5 gate found defects: file per `ISSUES/README.md` (Next ID: #005), fix
-forward in a patch chunk, re-verify.
+§2 "Entity: TelemetrySample/RingBuffer", §3 "Component: TelemetrySampler",
+spec §5.5; locked contracts in INTEGRATION_CONTRACT.md: RingBuffer, Sampler
+channels, Telemetry tab slots) and dispatch its coder sub-agent, per the
+per-chunk loop above.

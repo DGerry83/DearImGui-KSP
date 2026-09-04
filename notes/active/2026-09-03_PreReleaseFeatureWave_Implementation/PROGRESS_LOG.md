@@ -43,7 +43,7 @@
 | M2 Fonts (C4–C7) | **VERIFIED 2026-09-04** | In-game, user-confirmed: Plex Sans renders (size tuned to 18 px base); fallback path (bogus font → log line + ProggyClean) PASS; v4/v5 mismatch popup PASS (G6 in-game evidence complete). I-03 found/fixed along the way. |
 | M3 Theme (C8–C10) | **VERIFIED 2026-09-04** (residual spot-check pending) | In-game, user-approved after tuning (M3-TUNE: gradient flip, frame backfill rgb(58,58,63), input text light orange, secondary grey button gradient, brighter active green; header text = consumer choice via TextColored). Two gate defects fixed inline (M3-FIX): list text tinted by gradient pass (glyph verts merged into draw cmd 0 — now filtered by white-pixel UV), radio rim added. Spot-check of those two on next launch; ISSUES #004 (flicker) filed separately. |
 | M4 ImPlot (C11–C13) | **VERIFIED 2026-09-04** | In-game, user-confirmed full pass: two-plot demo window renders live data; benchmark list text readable (M3-FIX confirmed); radio rims visible; benchmark shows no managed-cost regression (zero-alloc plot path). Harness: ImPlot context lifecycle checks PASS. |
-| M5 Widgets+tween (C14–C17) | Not started | |
+| M5 Widgets+tween (C14–C17) | **VERIFIED 2026-09-04** | In-game, user-confirmed: spinner row animating smoothly (aesthetics deferred — ISSUES #006), knobs/wheels draggable, tween plays/cancels visibly, no perf regression. One gate defect found+fixed (ISSUES #005, M5-FIX `dad7666`: spinner empty-ID assert). Build 0/0, tests 90/90, harness PASS. |
 | M6 Showcase (C18–C21) | Not started | |
 | M7 Docs (C22–C24) | Not started | |
 | M8 Packaging (C25) | Not started | |
