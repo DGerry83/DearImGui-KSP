@@ -13,6 +13,11 @@
 // The one ImGui context for the DLL.
 static ImGuiContext* s_Context = nullptr;
 
+// Set by the first BeginFrame: NewFrame builds the atlas lazily (1.92.9
+// texture protocol), after which AddFontFromFileTTF would assert on the
+// locked atlas — font loads are legal only before this flips (spec §4.2).
+static bool s_FramesBegun = false;
+
 // Lower clamp for frame delta so NewFrame never sees a zero/negative dt.
 static const float kMinDeltaSeconds = 1.0f / 240.0f;
 
@@ -62,6 +67,7 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_ContextShutdown(void)
         ImGui::DestroyContext(s_Context); // also frees the atlas CPU data
         s_Context = nullptr;
     }
+    s_FramesBegun = false;
 }
 
 DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_BeginFrame(float width, float height, float deltaSeconds)
@@ -73,6 +79,7 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_BeginFrame(float width, float he
     io.DisplaySize = ImVec2(width, height);
     io.DeltaTime   = deltaSeconds > kMinDeltaSeconds ? deltaSeconds : kMinDeltaSeconds;
 
+    s_FramesBegun = true;
     ImGui::NewFrame();
 }
 
@@ -193,4 +200,20 @@ void ContextHost_ClampWindowsToViewport(float width, float height)
         window->Pos.x = ImClamp(window->Pos.x, 0.0f, maxX);
         window->Pos.y = ImClamp(window->Pos.y, 0.0f, maxY);
     }
+}
+
+int ContextHost_LoadFontFromFile(const char* utf8Path, float sizePixels)
+{
+    if (s_Context == nullptr)
+        return 1; // no context
+    if (s_FramesBegun)
+        return 2; // atlas already built/locked by NewFrame — too late to add fonts
+
+    // AddFontFromFileTTF leaves the atlas untouched when the file cannot be
+    // read (imgui_draw.cpp:3251-3253 returns NULL before any state change),
+    // so on failure the embedded default remains exactly as it was.
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.Fonts->AddFontFromFileTTF(utf8Path, sizePixels) == nullptr)
+        return 3;
+    return 0;
 }

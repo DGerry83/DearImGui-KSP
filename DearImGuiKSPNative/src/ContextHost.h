@@ -47,3 +47,14 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_FeedFrameInput(float mouseX, flo
 // exported C ABI itself — the exported wrapper
 // DearImGuiKSPNative_ClampWindowsToViewport lives in DearImGuiKSPNative.cpp.
 void ContextHost_ClampWindowsToViewport(float width, float height);
+
+// Loads a font file into the context atlas (spec §4.2). Legal only before
+// the first NewFrame — afterwards the atlas is built and locked. Returns
+// 0 on success, 1 if there is no context, 2 if frames have already begun,
+// 3 if AddFontFromFileTTF failed (the atlas is left exactly as it was).
+// May be called multiple times before the first frame (Plex Sans Regular,
+// then Medium); each call appends one font. The atlas itself is NOT built
+// here — NewFrame builds it lazily (BackendFlags, imgui 1.92.9). Not part
+// of the exported C ABI itself — the exported wrapper
+// DearImGuiKSPNative_LoadFontFromFile lives in DearImGuiKSPNative.cpp.
+int ContextHost_LoadFontFromFile(const char* utf8Path, float sizePixels);
