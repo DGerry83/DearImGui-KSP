@@ -213,7 +213,14 @@ int ContextHost_LoadFontFromFile(const char* utf8Path, float sizePixels)
     // read (imgui_draw.cpp:3251-3253 returns NULL before any state change),
     // so on failure the embedded default remains exactly as it was.
     ImGuiIO& io = ImGui::GetIO();
-    if (io.Fonts->AddFontFromFileTTF(utf8Path, sizePixels) == nullptr)
+    ImFont* font = io.Fonts->AddFontFromFileTTF(utf8Path, sizePixels);
+    if (font == nullptr)
         return 3;
+    // ImGui renders with io.FontDefault, or Fonts[0] when it is null — and
+    // Fonts[0] is the embedded ProggyClean added in ContextInit. The first
+    // successfully loaded custom font (Regular weight) must claim FontDefault
+    // or it never renders; later loads (Medium) stay atlas-only.
+    if (io.FontDefault == nullptr)
+        io.FontDefault = font;
     return 0;
 }

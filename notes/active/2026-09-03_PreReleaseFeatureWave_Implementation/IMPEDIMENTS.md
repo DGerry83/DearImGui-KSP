@@ -41,3 +41,21 @@
   `internal` — consumers in other assemblies still cannot construct scopes directly,
   only the factory methods can.
 - **Held back:** nothing. Behavior matches every other contract clause.
+
+## I-03 (M2 gate): Loaded custom font never became the render default — ProggyClean still displayed
+
+- **Found by:** M2 in-game gate, user report 2026-09-04 (happy path failed: UI still ProggyClean).
+- **Root cause:** `ContextHost_LoadFontFromFile` (C4) appended the TTF to the atlas but
+  never set `io.FontDefault`; ImGui renders with `Fonts[0]` (the embedded ProggyClean
+  added in `ContextInit`) when `FontDefault` is null. The load succeeded — the in-game
+  log showed v5 handshake with no fallback line, and the C4 direct-call test had verified
+  return 0 — but success was invisible because the new font was never selected.
+  Secondary gap: `LoadStartupFont` (C5) logged nothing on the success path, which made
+  this indistinguishable from a resolver failure without instrumenting.
+- **Resolution taken (Lead, patch to C4/C5 scope):** native — capture the `ImFont*` and
+  set `io.FontDefault` when it is still null (first custom font = Regular wins; Medium
+  stays atlas-only), `ContextHost.cpp:215-226`. Managed — `LoadStartupFont` gained
+  verbose-gated `Debug` lines for the resolution result, per-call load results, and
+  caught-exception detail (`DearImGuiKSPAddon.cs`). Rebuilt native (harness PASS) and
+  managed (0 errors); both mirrored to the game.
+- **Verification standing:** M2 gate remains OPEN pending user re-launch.

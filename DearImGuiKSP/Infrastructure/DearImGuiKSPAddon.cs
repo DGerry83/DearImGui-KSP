@@ -72,12 +72,17 @@ namespace DearImGuiKSP.Infrastructure
             try
             {
                 FontResolution resolution = FontResolver.Resolve(font, Composition.Settings.FontScale);
+                Composition.Logger.Debug("Font '" + font + "' resolved: embedded=" + resolution.UseEmbeddedDefault
+                    + ", primary=" + (resolution.PrimaryPath ?? "<none>")
+                    + ", secondary=" + (resolution.SecondaryPath ?? "<none>")
+                    + ", size=" + resolution.SizePixels);
 
                 if (!resolution.UseEmbeddedDefault)
                 {
                     bool primaryOk = Composition.Bridge.LoadFontFromFile(resolution.PrimaryPath, resolution.SizePixels);
                     bool secondaryOk = resolution.SecondaryPath == null
                         || Composition.Bridge.LoadFontFromFile(resolution.SecondaryPath, resolution.SizePixels);
+                    Composition.Logger.Debug("Font load results: primary=" + primaryOk + ", secondary=" + secondaryOk);
                     if (primaryOk && secondaryOk)
                     {
                         return;
@@ -90,9 +95,10 @@ namespace DearImGuiKSP.Infrastructure
                     return;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Resolution or marshalling must not take the session down.
+                Composition.Logger.Debug("Font loading threw: " + ex.GetType().Name + ": " + ex.Message);
             }
 
             Composition.Logger.Info("Font '" + font + "' not found or unreadable; using embedded default font.");
