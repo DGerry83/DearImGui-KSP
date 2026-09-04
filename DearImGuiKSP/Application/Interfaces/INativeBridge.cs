@@ -4,9 +4,9 @@ namespace DearImGuiKSP.Application.Interfaces
     /// Isolates the native DLL: explicit LoadLibrary bootstrap, version handshake,
     /// device-kind gate, and the per-frame Begin/End UiFrame pair (spec §4.1;
     /// CinematicRecorder-documented GameData load-path gotcha). Method set locked in
-    /// chunk C4 and amended in C7 (the per-frame pump was split into
-    /// BeginUiFrame/EndUiFrame — the interface is internal, no external consumers
-    /// existed yet). Implemented by Infrastructure.NativeBridge.
+    /// chunk C4 and amended in C5 (startup font load) and C7 (the per-frame pump was
+    /// split into BeginUiFrame/EndUiFrame — the interface is internal, no external
+    /// consumers existed yet). Implemented by Infrastructure.NativeBridge.
     /// Contains no Unity types — Application stays Unity-free.
     /// </summary>
     internal interface INativeBridge
@@ -18,6 +18,17 @@ namespace DearImGuiKSP.Application.Interfaces
         /// a distinct nonzero code (see Infrastructure.NativeBridge constants).
         /// </summary>
         int Initialize();
+
+        /// <summary>
+        /// Loads one TTF font file into the native atlas at the given pixel size.
+        /// MUST be called after <see cref="Initialize"/> succeeded and before the
+        /// first <see cref="BeginUiFrame"/>: the atlas is baked on the first frame
+        /// and cannot be rebuilt afterwards (spec §5.2). Returns true when the
+        /// native load succeeded; false means the atlas still holds the embedded
+        /// default — the caller logs the fallback and continues (log-only, never
+        /// a failure-mode trigger). False when not initialized.
+        /// </summary>
+        bool LoadFontFromFile(string utf8Path, float sizePixels);
 
         /// <summary>
         /// Per-frame mouse/keyboard capture snapshot (spec §5.3). Filled from the

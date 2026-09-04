@@ -22,6 +22,7 @@ namespace Application.Tests
             private readonly InputCaptureState _captureState = new InputCaptureState();
 
             public int Initialize() { return 0; }
+            public bool LoadFontFromFile(string utf8Path, float sizePixels) { return true; }
             public InputCaptureState GetIoSnapshot() { return _captureState; }
             public void BeginUiFrame(float width, float height, float deltaSeconds) { }
             public void EndUiFrame() { }

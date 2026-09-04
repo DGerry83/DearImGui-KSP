@@ -33,7 +33,7 @@ namespace DearImGuiKSP.Infrastructure
 
         // Managed/native handshake constant (spec §5.4, D17); must match
         // DearImGuiKSPNative_GetVersion(). Bump both DLLs in lockstep.
-        private const int ExpectedNativeVersion = 4;
+        private const int ExpectedNativeVersion = 5;
 
         private readonly ILogger _logger;
         private readonly InputCaptureState _captureState = new InputCaptureState();
@@ -45,10 +45,12 @@ namespace DearImGuiKSP.Infrastructure
         // native pointer, and we never want it collected underneath the backend.
         private Texture2D _deviceTexture;
 
-        // Native function delegates (C3-locked C ABI + C4 device handoff). Held in
-        // fields so the GC never collects a delegate the native side may call back.
+        // Native function delegates (C3-locked C ABI + C4 device handoff + C5 font
+        // load). Held in fields so the GC never collects a delegate the native side
+        // may call back.
         private GetVersionDelegate _getVersion;
         private SetD3D11DeviceTextureDelegate _setD3D11DeviceTexture;
+        private LoadFontFromFileDelegate _loadFontFromFile;
         private ContextInitDelegate _contextInit;
         private ContextShutdownDelegate _contextShutdown;
         private BeginFrameDelegate _beginFrame;
@@ -187,6 +189,24 @@ namespace DearImGuiKSP.Infrastructure
                 default:
                     return FailureKind.NativeComponent;
             }
+        }
+
+        /// <inheritdoc/>
+        public bool LoadFontFromFile(string utf8Path, float sizePixels)
+        {
+            if (!_initialized || _loadFontFromFile == null || string.IsNullOrEmpty(utf8Path))
+            {
+                return false;
+            }
+
+            // Same UTF-8 convention as FeedFrameInput: null-terminated byte[] the
+            // native side reads as a const char* (C5; native DearImGuiKSPNative_LoadFontFromFile).
+            byte[] bytes = Encoding.UTF8.GetBytes(utf8Path);
+            byte[] utf8PathBytes = new byte[bytes.Length + 1];
+            Buffer.BlockCopy(bytes, 0, utf8PathBytes, 0, bytes.Length);
+            utf8PathBytes[bytes.Length] = 0;
+
+            return _loadFontFromFile(utf8PathBytes, sizePixels) == 0;
         }
 
         /// <inheritdoc/>
@@ -335,6 +355,7 @@ namespace DearImGuiKSP.Infrastructure
         private bool BindExports()
         {
             _setD3D11DeviceTexture = Bind<SetD3D11DeviceTextureDelegate>("DearImGuiKSPNative_SetD3D11DeviceTexture");
+            _loadFontFromFile = Bind<LoadFontFromFileDelegate>("DearImGuiKSPNative_LoadFontFromFile");
             _contextInit = Bind<ContextInitDelegate>("DearImGuiKSPNative_ContextInit");
             _contextShutdown = Bind<ContextShutdownDelegate>("DearImGuiKSPNative_ContextShutdown");
             _beginFrame = Bind<BeginFrameDelegate>("DearImGuiKSPNative_BeginFrame");
@@ -344,6 +365,7 @@ namespace DearImGuiKSP.Infrastructure
             _feedFrameInput = Bind<FeedFrameInputDelegate>("DearImGuiKSPNative_FeedFrameInput");
             _clampWindowsToViewport = Bind<ClampWindowsToViewportDelegate>("DearImGuiKSPNative_ClampWindowsToViewport");
             return _setD3D11DeviceTexture != null
+                && _loadFontFromFile != null
                 && _contextInit != null
                 && _contextShutdown != null
                 && _beginFrame != null
@@ -380,6 +402,9 @@ namespace DearImGuiKSP.Infrastructure
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate int SetD3D11DeviceTextureDelegate(IntPtr d3d11TexturePtr);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int LoadFontFromFileDelegate([In] byte[] utf8Path, float sizePixels);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate int ContextInitDelegate();
