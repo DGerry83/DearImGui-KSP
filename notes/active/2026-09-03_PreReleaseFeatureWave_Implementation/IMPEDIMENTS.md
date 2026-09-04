@@ -117,3 +117,41 @@
   flags shim without adding a config-struct overload, which the contract forbids.
 - **Held back:** any knob-inset knob control. If a consumer asks for it, the route is a
   third shim overload taking inset params (still not a flag), decided at that time.
+
+## I-06 (C11): cimplot regeneration — cl preprocessing breaks cpp2ffi struct tracking; implot_demo.cpp is a link-required 5th vendored file
+
+- **Found by:** Chunk C11 (ImPlot vendor setup + cimplot regeneration), Phase 1/2.
+- **Issue 1 (generator environment):** cimplot's `generator.lua` accepts `cl` as preprocessor, but under
+  `cl /E /d1PP` imgui.h's `IM_MSVC_RUNTIME_CHECKS_OFF` expands to
+  `__pragma(runtime_checks("",off)) __pragma(check_stack(off)) __pragma(strict_gs_check(push,off))`,
+  and that line breaks the pinned cimgui cpp2ffi parser's struct context: every struct inside the
+  pragma region (`ImPlotPoint`, `ImPlotRange` at implot.h v1.0 lines 607-620) was silently dropped —
+  no ctors, no methods, no `_c` struct emission. Symptom in generated output: header used plain
+  `ImPlotPoint` instead of `ImPlotPoint_c` and the template's hardcoded `ImPlotPoint_c` typedef failed
+  to compile (`cimplot.h(922): error C2061: syntax error: identifier 'ImPlotPoint_c'`). Verified
+  root cause by bisection: gcc-style preprocessing (where the macro expands to nothing, per
+  `_MSC_VER` guard) parses correctly; upstream's own checked-in cimplot output also shows `_c`
+  types, i.e. upstream generates with gcc (`generator.sh`), not cl.
+- **Resolution taken:** ran the generator with its canonical gcc invocation
+  (`luajit generator.lua gcc "internal"`) using LuaJIT 2.1 (msys2 mingw64 pkg via 7-Zip manual
+  extract, scoop's 7zip dep was broken) + nuwen mingw gcc 15.2.0 — no patches to any generator
+  input or output; vendored cimplot.cpp/.h are byte-identical copies of the generator output.
+- **Issue 2 (contract file list insufficient):** the contract's implot file list (4 sources + LICENSE)
+  cannot link: generated cimplot.cpp exports `ImPlot_ShowDemoWindow`, which calls
+  `ImPlot::ShowDemoWindow` — declared unconditionally in implot.h but DEFINED only in
+  implot_demo.cpp (same v1.0 tag, MIT). Upstream cimplot's own CMakeLists compiles
+  `implot/implot_demo.cpp` for exactly this reason.
+- **Resolution taken:** vendored `implot_demo.cpp` (md5 8fee560d37ba5a76896e803e51de748a,
+  byte-identical to v1.0 tag) as a 6th file in `vendor/implot/` and added it to all three build
+  scripts. PIN_RECORD implot/ Notes column updated to match what actually landed.
+- **Held back:** nothing functional — all 3 native builds 0 errors/0 new warnings, harness PASS,
+  606 ImPlot_* exports in the DLL. If the Lead rules the demo TU must NOT ship, the only clean
+  alternative is dropping `ImPlot_ShowDemoWindow` from the ABI (an orchestrator-level ABI decision,
+  since the generated wrapper cannot be removed without hand-patching generated output, which the
+  contract forbids).
+- **Lead ruling 2026-09-04:** ACCEPTED as implemented. (1) gcc is upstream's canonical generator
+  path (`generator.sh`) — provenance is recorded, so the toolchain deviation carries no drift risk.
+  (2) `implot_demo.cpp` stays: it matches upstream cimplot's own build, keeps the ABI unpatched,
+  and `ImPlot_ShowDemoWindow` is useful while developing the M6 telemetry panels. (3) `/Ivendor`
+  include accepted — it is what lets the generated `#include "./implot/implot.h"` resolve without
+  duplicating sources.

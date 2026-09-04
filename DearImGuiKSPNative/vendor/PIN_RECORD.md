@@ -10,8 +10,8 @@ imgui/cimgui themselves are **not** vendored: they come from the sibling clone
 
 | Tree | Upstream repo | Tag / commit | Pinned date | License | Notes |
 |------|---------------|--------------|-------------|---------|-------|
-| `implot/` | epezent/implot | v1.0 tag (exact — do not track master) | _pending_ | MIT | implot.cpp, implot_items.cpp, implot.h, implot_internal.h |
-| `cimplot/` | cimgui/cimplot | _regenerated_ | _pending_ | MIT | Regenerated against the pinned cimgui clone; record generator commit here |
+| `implot/` | epezent/implot | v1.0 tag = 524f9fcd48d76c13fdf94c5ffbba8787a1ff7e39 | 2026-09-04 | MIT | implot.cpp, implot_items.cpp, implot.h, implot_internal.h + LICENSE (5 files, md5-verified byte-identical). PLUS implot_demo.cpp (md5 8fee560d37ba5a76896e803e51de748a, byte-identical) — REQUIRED: generated cimplot.cpp wraps `ImPlot::ShowDemoWindow`, which is only defined in implot_demo.cpp (upstream cimplot's own CMakeLists compiles it too). Contract's 4-file list is insufficient to link; deviation flagged to Lead in C11 report/I-06 |
+| `cimplot/` | cimgui/cimplot | generator @ 11f13e6cd0f80e83d6409e78592b392967fa7954 | 2026-09-04 | MIT | Regenerated 2026-09-04 against pinned cimgui clone @ b705b24 (imgui 1.92.9) + implot v1.0 sources; invocation `luajit generator.lua gcc "internal"` (canonical gcc path per generator.sh; cl preprocessing breaks cpp2ffi struct tracking — see I-06). Generated: cimplot.cpp/.h (790 CIMGUI_API decls, incl. implot_internal API) vendored byte-identical from generator output |
 | `imgui-knobs/` | altschuler/imgui-knobs | _pending_ | _pending_ | MIT | Hand shim in `src/shims/` |
 | `imgui-wheels/` | Engineer162/imgui-wheels | _pending_ | _pending_ | MIT | Immature repo (accepted knowingly, spec §11); hand shim in `src/shims/` |
 | `imspinner/` | dalerank/imspinner | _pending_ | _pending_ | MIT | Header-only; C ABI via cimspinner |
