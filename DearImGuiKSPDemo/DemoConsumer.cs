@@ -8,7 +8,8 @@ namespace DearImGuiKSPDemo
     /// so users installing the library as a dependency get no demo UI.
     /// Hosts the example window (AC3): text, a button with click feedback, a slider, and an
     /// input field, all declared per frame through the public C# API, plus the AC5 benchmark
-    /// window (naive vs virtualized 1000-item list) with its IMGUI reference window (D10).
+    /// window (naive vs virtualized 1000-item list) with its IMGUI reference window (D10),
+    /// and the C13/M4 ImPlot proof window (two live line plots fed by ring buffers).
     /// All Begin/End pairs are declared through ImGuiEx scopes (C3), including one
     /// "Throw inside scope (test)" fault-barrier test hook.
     /// Toggled via an ApplicationLauncher toolbar button (green placeholder icon).
@@ -21,7 +22,9 @@ namespace DearImGuiKSPDemo
         private ApplicationLauncherButton _toolbarButton;
         private bool _windowVisible = true;
         private bool _benchmarkVisible;
+        private bool _plotVisible;
         private BenchmarkUI _benchmark;
+        private PlotDemo _plotDemo;
         private int _clickCount;
         private float _sliderValue = 0.5f;
         private string _inputText = "edit me";
@@ -43,6 +46,7 @@ namespace DearImGuiKSPDemo
             Debug.Log("[DearImGuiKSPDemo] Registered with DearImGui-KSP.");
 
             _benchmark = new BenchmarkUI();
+            _plotDemo = new PlotDemo();
 
             GameEvents.onGUIApplicationLauncherReady.Add(OnLauncherReady);
             if (ApplicationLauncher.Ready)
@@ -131,6 +135,12 @@ namespace DearImGuiKSPDemo
                     {
                         _benchmarkVisible = !_benchmarkVisible;
                     }
+                    if (DearImGuiKSP.DearImGuiKSP.Button(_plotVisible
+                        ? "Hide plot window"
+                        : "Show plot window"))
+                    {
+                        _plotVisible = !_plotVisible;
+                    }
 
                     // C3 test hook (M1 gate): throwing inside a using scope must leave
                     // the style stack symmetric — the scope's Dispose pops the pushed
@@ -169,6 +179,24 @@ namespace DearImGuiKSPDemo
                 }
             }
             DrawBenchmarkWindow();
+            DrawPlotWindow();
+        }
+
+        // Third window in the same registered callback — one consumer ID, one
+        // registration. Skipped entirely (no window scope opened) while hidden.
+        private void DrawPlotWindow()
+        {
+            if (!_plotVisible || _plotDemo == null)
+            {
+                return;
+            }
+            using (var window = DearImGuiKSP.ImGuiEx.Window("DearImGui-KSP Plots"))
+            {
+                if (window.Visible)
+                {
+                    _plotDemo.DrawImGui();
+                }
+            }
         }
 
         // Second window in the same registered callback — still one consumer ID,

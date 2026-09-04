@@ -155,3 +155,43 @@
   and `ImPlot_ShowDemoWindow` is useful while developing the M6 telemetry panels. (3) `/Ivendor`
   include accepted — it is what lets the generated `#include "./implot/implot.h"` resolve without
   duplicating sources.
+
+## I-07 (C13): Vendored cimplot passes `ImPlotSpec_c`, not the raw `flags, offset, stride` tail the contract cites
+
+- **Found by:** Chunk C13 (ImPlot managed wrapper), Phase 0 signature verification.
+- **Contract text:** CHUNK_C13_CONTRACT.md — "Verify each signature against
+  `DearImGuiKSPNative/vendor/cimplot/cimplot.h` (param order, types, the
+  `double xscale, double x0, int flags, int offset, int stride` tail)".
+- **Actual vendored ABI (verified against cimplot.h):**
+  `ImPlot_PlotLine_FloatPtrInt(const char* label_id, const float* values, int count, double xscale, double xstart, const ImPlotSpec_c spec)`
+  (cimplot.h:1040; double variant :1041; `ImPlot_BeginPlot`/`ImPlot_EndPlot` at :1015-1016 match the
+  contract). The v1.0 spec-based API folds flags/offset/stride plus item styling into one struct.
+- **Resolution taken:** no native change (contract forbids). Marshaled a blittable sequential
+  mirror of `ImPlotSpec_c` (field-for-field, declaration order, 144 bytes on Win64 Pack-8;
+  layout hand-derived from cimplot.h:856-875) and pass a `static readonly` default by value —
+  zero per-frame allocation (blittable struct copy on the stack). The default mirrors C++
+  `ImPlot::ImPlotSpec()`'s field defaults exactly (implot.h:515-532): the AUTO sentinels are
+  load-bearing — a zeroed spec would draw a transparent 0-weight line and read every point
+  through Stride 0. Stride therefore rides `IMPLOT_AUTO = -1` (implot.h:72) rather than the
+  contract's literal "element size"; at consumption that resolves to `sizeof(T)`, which is
+  identical for the contiguous spans the API accepts. Everything is line-cited in
+  `Interop/ImPlotNative.cs`.
+- **Secondary finding (pin path):** `fixed (float* p = span)` does NOT compile against the
+  Unity 2019.4 mscorlib this repo builds against — its `ReadOnlySpan<T>`/`Span<T>` predate the
+  C# 7.3 `GetPinnableReference` pattern (verified by probe build: CS8385; `&span[0]` fails too,
+  CS0211 — no ref-returning indexer). Pinning goes through Mono's
+  `DangerousGetPinnableReference()` (present in the Unity mscorlib, verified via metadata dump):
+  `ref T first = ref span.DangerousGetPinnableReference(); fixed (T* p = &first)`. Still `fixed`,
+  still zero-alloc, still released at scope exit; the IsEmpty guard runs before the reference is
+  taken. Documented at both call sites.
+- **Held back:** the optional `PlotLine(label, values, xscale, x0)` overload — omitted per
+  YAGNI (adds no allocation, but nothing consumes it; C19 showcase can add it with its first
+  consumer). In-game two-plot rendering + benchmark no-regression remains the user-assisted M4
+  gate.
+- **Lead ruling 2026-09-04:** ACCEPTED as implemented. (1) The spec-struct ABI is the real
+  v1.0 surface; the blittable mirror + AUTO-sentinel default is the correct call — a zeroed
+  spec would have been a silent rendering bug. The C13 contract's param-tail text was written
+  from an assumed signature and stands corrected. (2) `DangerousGetPinnableReference` under
+  Unity 2019.4 mscorlib is the only viable pin path and keeps the zero-alloc invariant;
+  documented at the call sites. (3) YAGNI omission endorsed — C19 adds the overload if it
+  needs it.
