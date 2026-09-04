@@ -333,6 +333,116 @@ namespace DearImGuiKSP.Interop
             return ImGuiNative.RadioButton(ToUtf8(label), ref v, vButton);
         }
 
+        // ---- Custom-widget interaction + text measurement (chunk C9) ----
+
+        /// <summary>
+        /// Submits an invisible button of the given size and runs the full
+        /// ButtonBehavior logic over it (imgui_widgets.cpp:863) without
+        /// drawing anything. The gradient helpers read the resulting item rect
+        /// back via <see cref="GetItemRectMin"/>/<see cref="GetItemRectMax"/>
+        /// and draw over it. Wraps cimgui <c>igInvisibleButton</c> with
+        /// ImGuiButtonFlags_None. Null label renders as an empty string.
+        /// </summary>
+        /// <returns>True on the frame the button is clicked (pressed).</returns>
+        internal static bool InvisibleButton(string label, ImVec2 size)
+        {
+            return ImGuiNative.InvisibleButton(ToUtf8(label), size);
+        }
+
+        /// <summary>
+        /// True when the last item (e.g. an <see cref="InvisibleButton"/>) is
+        /// hovered by the mouse. Wraps cimgui <c>igIsItemHovered</c> with
+        /// ImGuiHoveredFlags_None.
+        /// </summary>
+        internal static bool IsItemHovered()
+        {
+            return ImGuiNative.IsItemHovered();
+        }
+
+        /// <summary>
+        /// True while the last item (e.g. an <see cref="InvisibleButton"/>) is
+        /// being held active (mouse held down after press). Wraps cimgui
+        /// <c>igIsItemActive</c>.
+        /// </summary>
+        internal static bool IsItemActive()
+        {
+            return ImGuiNative.IsItemActive();
+        }
+
+        /// <summary>
+        /// Top-left corner of the last item's rectangle, in screen coordinates.
+        /// Wraps cimgui <c>igGetItemRectMin</c>.
+        /// </summary>
+        internal static ImVec2 GetItemRectMin()
+        {
+            return ImGuiNative.GetItemRectMin();
+        }
+
+        /// <summary>
+        /// Bottom-right corner of the last item's rectangle, in screen coordinates.
+        /// Wraps cimgui <c>igGetItemRectMax</c>.
+        /// </summary>
+        internal static ImVec2 GetItemRectMax()
+        {
+            return ImGuiNative.GetItemRectMax();
+        }
+
+        /// <summary>
+        /// Measures the on-screen size of a text string in the current font.
+        /// Wraps cimgui <c>igCalcTextSize</c> with hide-after-"##" enabled
+        /// (ID suffixes are not rendered) and no wrapping. Null measures as
+        /// an empty string.
+        /// </summary>
+        internal static ImVec2 CalcTextSize(string text)
+        {
+            return ImGuiNative.CalcTextSize(ToUtf8(text));
+        }
+
+        /// <summary>
+        /// Adds a text string to a draw list at the given position, drawn with
+        /// the current font at its current size. Wraps cimgui
+        /// <c>ImDrawList_AddText_Vec2</c> with text_end = NULL. Null text
+        /// renders as an empty string.
+        /// </summary>
+        internal static void DrawListAddText(ImDrawListHandle drawList, ImVec2 pos, uint col, string text)
+        {
+            ImGuiNative.DrawListAddText(drawList.NativePointer, pos, col, ToUtf8(text));
+        }
+
+        /// <summary>
+        /// Packs a global style color slot into the packed <c>ImU32</c> format,
+        /// applying the style's alpha. Wraps cimgui <c>igGetColorU32_Col</c>.
+        /// <paramref name="idx"/> is a <c>DearImGuiKSP.ImGuiCol</c> value passed as int.
+        /// </summary>
+        internal static uint GetColorU32(int idx, float alphaMul = 1f)
+        {
+            return ImGuiNative.GetColorU32(idx, alphaMul);
+        }
+
+        /// <summary>
+        /// Sets the native two-stop vertical window-background gradient
+        /// descriptor (C9, spec §6.1). <paramref name="enabled"/> != 0 turns on
+        /// the per-frame EndFrame shading pass; 0 disables it so the pass is a
+        /// strict no-op (the "dark" preset's byte-exact stock rendering).
+        /// Wraps the native <c>DearImGuiKSPNative_SetWindowBgGradient</c> export.
+        /// Returns 0 on success, 1 when the native context does not exist.
+        /// </summary>
+        internal static int SetWindowBgGradient(int enabled, float r1, float g1, float b1, float a1, float r2, float g2, float b2, float a2)
+        {
+            return ImGuiNative.SetWindowBgGradient(enabled, r1, g1, b1, a1, r2, g2, b2, a2);
+        }
+
+        /// <summary>
+        /// Vertex count of a live draw list. cimgui exports no VtxBuffer
+        /// accessor, so this wraps the native
+        /// <c>DearImGuiKSPNative_GetDrawListVtxCount</c> pass-through (C9).
+        /// Returns -1 for a null handle.
+        /// </summary>
+        internal static int GetDrawListVtxCount(ImDrawListHandle drawList)
+        {
+            return ImGuiNative.GetDrawListVtxCount(drawList.NativePointer);
+        }
+
         /// <summary>
         /// Writes one slot of the global style color table (NOT the push/pop stack).
         /// Wraps the native <c>DearImGuiKSPNative_SetStyleColor</c> export (C8).

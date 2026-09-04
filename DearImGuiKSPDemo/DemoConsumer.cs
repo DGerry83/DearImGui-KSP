@@ -26,6 +26,14 @@ namespace DearImGuiKSPDemo
         private float _sliderValue = 0.5f;
         private string _inputText = "edit me";
 
+        // C9 theme showcase (M3 gate): gradient stops mirror the ksp preset's
+        // button gradient (spec §6.1 "Buttons"). The library palette is
+        // internal, so the demo — public API only — carries its own copies.
+        private static readonly Color32 ThemeButtonTop = new Color32(102, 114, 135, 255);
+        private static readonly Color32 ThemeButtonBottom = new Color32(57, 72, 90, 255);
+        private bool _themeToggle = true;
+        private int _radioChoice;
+
         private void Start()
         {
             if (!DearImGuiKSP.DearImGuiKSP.IsAvailable)
@@ -138,6 +146,25 @@ namespace DearImGuiKSPDemo
                                 "[DearImGuiKSPDemo] Intentional throw inside a scope (test hook).");
                         }
                     }
+
+                    // C9 theme showcase (M3 gate): gradient buttons, an
+                    // animated toggle, and circular radios. The window
+                    // background gradient is applied natively by the theme.
+                    DearImGuiKSP.DearImGuiKSP.Text("Theme");
+                    if (DearImGuiKSP.ImGuiGradients.GradientButton(
+                        "Gradient button", ThemeButtonTop, ThemeButtonBottom, new Vector2(180f, 28f)))
+                    {
+                        _clickCount++;
+                    }
+                    if (DearImGuiKSP.ImGuiGradients.GradientButton(
+                        "Fit-to-label gradient", ThemeButtonTop, ThemeButtonBottom, Vector2.zero))
+                    {
+                        _clickCount++;
+                    }
+                    DearImGuiKSP.DearImGuiKSP.Toggle(
+                        "Animated toggle", ref _themeToggle, DearImGuiKSP.ToggleFlags.Animated);
+                    DearImGuiKSP.DearImGuiKSP.RadioButton("Radio option 1", ref _radioChoice, 0);
+                    DearImGuiKSP.DearImGuiKSP.RadioButton("Radio option 2", ref _radioChoice, 1);
                 }
             }
             DrawBenchmarkWindow();

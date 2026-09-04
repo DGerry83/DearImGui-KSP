@@ -18,6 +18,7 @@
 
 #include "BackendD3D11.h"
 #include "ContextHost.h"
+#include "imgui.h" // ImDrawList (DearImGuiKSPNative_GetDrawListVtxCount wrapper)
 
 #define DEARIMGUIKSP_NATIVE_API extern "C" __declspec(dllexport)
 
@@ -67,6 +68,25 @@ DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_SetStyleVarVec2(int idx, float x,
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_StyleColorsDark(void)
 {
     return ContextHost_StyleColorsDark();
+}
+
+// Window-background gradient descriptor (chunk C9, spec §6.1). enabled != 0
+// turns on the per-frame EndFrame shading pass over every visible window's
+// background fill; the two RGBA float pairs (0–1) are the top/bottom stops.
+// enabled == 0 disables the pass, which is then a strict no-op so the "dark"
+// preset renders byte-exact stock. Returns 0 on success, 1 = no context.
+DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_SetWindowBgGradient(int enabled, float r1, float g1, float b1, float a1, float r2, float g2, float b2, float a2)
+{
+    return ContextHost_SetWindowBgGradient(enabled, r1, g1, b1, a1, r2, g2, b2, a2);
+}
+
+// ImDrawList vertex count (chunk C9): cimgui exports no VtxBuffer accessor, so
+// the managed gradient helpers record before/after counts through this
+// pass-through to shade exactly the verts a fill appended. Returns -1 for a
+// null draw list.
+DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetDrawListVtxCount(ImDrawList* drawList)
+{
+    return ContextHost_GetDrawListVtxCount(drawList);
 }
 
 // Hands the D3D11 backend a Unity-created ID3D11Texture2D

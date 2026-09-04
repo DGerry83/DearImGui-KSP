@@ -208,6 +208,52 @@ namespace DearImGuiKSP.Interop
         [return: MarshalAs(UnmanagedType.I1)]
         private static extern bool igRadioButton_IntPtr([In] byte[] label, ref int v, int v_button);
 
+        // ---- Custom-widget interaction + text measurement (chunk C9) ----
+        // All verified against the pinned cimgui.h (sibling clone, imgui 1.92.9).
+
+        // CIMGUI_API bool igInvisibleButton(const char* str_id,const ImVec2_c size,ImGuiButtonFlags flags); (cimgui.h:4246)
+        // ImGuiButtonFlags_None = 0 (cimgui.h:854). Runs the full ButtonBehavior
+        // logic (imgui_widgets.cpp:863) without drawing — the gradient helpers
+        // read the rect back and draw over it.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igInvisibleButton([In] byte[] str_id, ImVec2 size, int flags);
+
+        // CIMGUI_API bool igIsItemHovered(ImGuiHoveredFlags flags); (cimgui.h:4455)
+        // ImGuiHoveredFlags_None = 0.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igIsItemHovered(int flags);
+
+        // CIMGUI_API bool igIsItemActive(void); (cimgui.h:4456)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igIsItemActive();
+
+        // CIMGUI_API ImVec2_c igGetItemRectMin(void); (cimgui.h:4469)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern ImVec2 igGetItemRectMin();
+
+        // CIMGUI_API ImVec2_c igGetItemRectMax(void); (cimgui.h:4470)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern ImVec2 igGetItemRectMax();
+
+        // CIMGUI_API ImVec2_c igCalcTextSize(const char* text,const char* text_end,bool hide_text_after_double_hash,float wrap_width); (cimgui.h:4485)
+        // hide_text_after_double_hash = true so "##id" suffixes are excluded
+        // (matches what InvisibleButton measures for the label part).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern ImVec2 igCalcTextSize([In] byte[] text, IntPtr text_end, [MarshalAs(UnmanagedType.I1)] bool hide_text_after_double_hash, float wrap_width);
+
+        // CIMGUI_API void ImDrawList_AddText_Vec2(ImDrawList* self,const ImVec2_c pos,ImU32 col,const char* text_begin,const char* text_end); (cimgui.h:4690)
+        // Draws with the current font at its current size; the gradient button
+        // centers the label inside its rect using igCalcTextSize.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ImDrawList_AddText_Vec2(IntPtr self, ImVec2 pos, uint col, [In] byte[] text_begin, IntPtr text_end);
+
+        // CIMGUI_API ImU32 igGetColorU32_Col(ImGuiCol idx,float alpha_mul); (cimgui.h:4175)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern uint igGetColorU32_Col(int idx, float alpha_mul);
+
         // ---- Native theme exports (chunk C8) ----
         // Own DearImGuiKSPNative_* ABI (ContextHost.h), not cimgui: cimgui exports
         // no per-field style setters, so the DLL provides these pass-throughs over
@@ -228,6 +274,21 @@ namespace DearImGuiKSP.Interop
         // int DearImGuiKSPNative_StyleColorsDark(void); (ContextHost.h)
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         private static extern int DearImGuiKSPNative_StyleColorsDark();
+
+        // ---- Native window-bg gradient descriptor (chunk C9) ----
+
+        // int DearImGuiKSPNative_SetWindowBgGradient(int enabled, float r1, float g1, float b1, float a1, float r2, float g2, float b2, float a2); (ContextHost.h)
+        // enabled != 0 turns on the per-frame native EndFrame shading pass over
+        // every visible window's background fill; enabled == 0 disables it
+        // (strict no-op, byte-exact stock rendering).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int DearImGuiKSPNative_SetWindowBgGradient(int enabled, float r1, float g1, float b1, float a1, float r2, float g2, float b2, float a2);
+
+        // int DearImGuiKSPNative_GetDrawListVtxCount(ImDrawList* drawList); (ContextHost.h)
+        // cimgui exports no VtxBuffer accessor; the gradient helpers record
+        // before/after counts to shade exactly the verts a fill appended.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int DearImGuiKSPNative_GetDrawListVtxCount(IntPtr drawList);
 
         // ---- Internal surface for ImGuiInternal (keeps the raw P/Invokes private) ----
 
@@ -378,6 +439,61 @@ namespace DearImGuiKSP.Interop
         internal static bool RadioButton(byte[] labelUtf8, ref int v, int vButton)
         {
             return igRadioButton_IntPtr(labelUtf8, ref v, vButton);
+        }
+
+        // Custom-widget interaction + text measurement (C9).
+
+        internal static bool InvisibleButton(byte[] labelUtf8, ImVec2 size)
+        {
+            return igInvisibleButton(labelUtf8, size, flags: 0); // ImGuiButtonFlags_None
+        }
+
+        internal static bool IsItemHovered()
+        {
+            return igIsItemHovered(flags: 0); // ImGuiHoveredFlags_None
+        }
+
+        internal static bool IsItemActive()
+        {
+            return igIsItemActive();
+        }
+
+        internal static ImVec2 GetItemRectMin()
+        {
+            return igGetItemRectMin();
+        }
+
+        internal static ImVec2 GetItemRectMax()
+        {
+            return igGetItemRectMax();
+        }
+
+        internal static ImVec2 CalcTextSize(byte[] textUtf8)
+        {
+            return igCalcTextSize(textUtf8, IntPtr.Zero, hide_text_after_double_hash: true, wrap_width: -1.0f);
+        }
+
+        internal static void DrawListAddText(IntPtr drawList, ImVec2 pos, uint col, byte[] textUtf8)
+        {
+            ImDrawList_AddText_Vec2(drawList, pos, col, textUtf8, IntPtr.Zero);
+        }
+
+        internal static uint GetColorU32(int idx, float alphaMul)
+        {
+            return igGetColorU32_Col(idx, alphaMul);
+        }
+
+        // Window-bg gradient descriptor (C9). <paramref name="enabled"/> != 0
+        // turns on the native per-frame shading pass; 0 disables it (no-op).
+
+        internal static int SetWindowBgGradient(int enabled, float r1, float g1, float b1, float a1, float r2, float g2, float b2, float a2)
+        {
+            return DearImGuiKSPNative_SetWindowBgGradient(enabled, r1, g1, b1, a1, r2, g2, b2, a2);
+        }
+
+        internal static int GetDrawListVtxCount(IntPtr drawList)
+        {
+            return DearImGuiKSPNative_GetDrawListVtxCount(drawList);
         }
 
         // Theme style setters (C8). <paramref name="idx"/> is a DearImGuiKSP.ImGuiCol /

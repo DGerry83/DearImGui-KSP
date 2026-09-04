@@ -26,6 +26,9 @@ static const float kMinDeltaSeconds = 1.0f / 240.0f;
 static const float kDefaultDisplayWidth  = 1920.0f;
 static const float kDefaultDisplayHeight = 1080.0f;
 
+// Defined below; called between ImGui::EndFrame and ImGui::Render.
+static void ApplyWindowBgGradient();
+
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_ContextInit(void)
 {
     if (s_Context != nullptr)
@@ -87,6 +90,12 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_EndFrame(void)
 {
     if (s_Context == nullptr)
         return;
+    // Explicit EndFrame first: it finalizes every window's draw list, which
+    // the gradient pass below shades. Both EndFrame and Render are idempotent
+    // (imgui.cpp:6329-6336, imgui.cpp:6443-6451), so the previously observed
+    // Render()-only behavior is preserved for the disabled case.
+    ImGui::EndFrame();
+    ApplyWindowBgGradient();
     ImGui::Render();
 }
 
@@ -223,6 +232,95 @@ int ContextHost_LoadFontFromFile(const char* utf8Path, float sizePixels)
     if (io.FontDefault == nullptr)
         io.FontDefault = font;
     return 0;
+}
+
+// ---- Window-background gradient (chunk C9, spec §6.1) ----
+//
+// The theme's window background is a two-stop vertical gradient (top -> bottom).
+// cimgui offers no hook, so a descriptor set from the managed ThemeEngine is
+// consumed by a per-frame pass between ImGui::EndFrame (draw lists final) and
+// ImGui::Render (draw-data build). Disabled by default: the pass early-outs
+// and rendering stays byte-exact stock (the "dark" preset regression gate).
+
+static bool  s_WindowBgGradientEnabled = false;
+static ImU32 s_WindowBgGradientTop = 0;
+static ImU32 s_WindowBgGradientBottom = 0;
+
+int ContextHost_SetWindowBgGradient(int enabled, float r1, float g1, float b1, float a1, float r2, float g2, float b2, float a2)
+{
+    if (s_Context == nullptr)
+        return 1; // no context
+    s_WindowBgGradientEnabled = enabled != 0;
+    s_WindowBgGradientTop = ImGui::ColorConvertFloat4ToU32(ImVec4(r1, g1, b1, a1));
+    s_WindowBgGradientBottom = ImGui::ColorConvertFloat4ToU32(ImVec4(r2, g2, b2, a2));
+    return 0;
+}
+
+int ContextHost_GetDrawListVtxCount(ImDrawList* drawList)
+{
+    if (drawList == nullptr)
+        return -1;
+    return drawList->VtxBuffer.Size;
+}
+
+// Shades the window-background fill verts of every visible window. O(windows),
+// no allocation; STRICT no-op when the descriptor is disabled.
+static void ApplyWindowBgGradient()
+{
+    if (!s_WindowBgGradientEnabled)
+        return;
+
+    ImGuiContext& g = *s_Context;
+    const ImGuiStyle& style = g.Style;
+    for (int i = 0; i < g.Windows.Size; ++i)
+    {
+        ImGuiWindow* window = g.Windows[i];
+        // Same predicate as ImGui::Render's draw-list inclusion (IsWindowActiveAndVisible,
+        // imgui.cpp:5663-5666): Active is THIS frame's flag (WasActive is only
+        // refreshed at the next NewFrame, imgui.cpp:5979).
+        if (window == nullptr || !window->Active || window->Hidden || window->Collapsed)
+            continue; // not submitted/visible this frame, or title-bar only (no bg fill)
+        if (window->Flags & (ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_DockNodeHost))
+            continue; // ImGui emitted no bg fill for these (imgui.cpp:7622, 7658)
+        if (window->DockIsActive)
+            continue; // docked bgs are emitted into the host window's draw list
+
+        // Replicate GetWindowBgColorIdx (imgui.cpp:7226-7232): ImGui skips the
+        // bg fill entirely when the resulting alpha is 0 (imgui.cpp:7660), and
+        // the first command would then be some other geometry — don't shade it.
+        const ImVec4& bgColor = (window->Flags & ImGuiWindowFlags_ChildWindow)
+            ? style.Colors[ImGuiCol_ChildBg] : style.Colors[ImGuiCol_WindowBg];
+        if (bgColor.w * style.Alpha <= 0.0f)
+            continue;
+
+        // The bg fill is the first geometry in window->DrawList (Begin,
+        // imgui.cpp:7621-7680). It is an indexed draw, so the vertex range is
+        // the max referenced vertex + 1 of the first command (indices do not
+        // map 1:1 to vertices). The title-bar/border/scrollbar fills use the
+        // same white-texture draw and may merge into that first command;
+        // shading the merged range is accepted per the C9 contract — verts
+        // above the bg top clamp to the top stop (ShadeVerts saturates t,
+        // imgui_draw.cpp:2399).
+        ImDrawList* drawList = window->DrawList;
+        if (drawList->CmdBuffer.Size == 0)
+            continue;
+        const ImDrawCmd& cmd = drawList->CmdBuffer[0];
+        if (cmd.ElemCount == 0)
+            continue;
+        int vertEnd = 0;
+        const ImDrawIdx* idx = drawList->IdxBuffer.Data;
+        for (unsigned int n = 0; n < cmd.ElemCount; ++n)
+            if ((int)idx[n] + 1 > vertEnd)
+                vertEnd = (int)idx[n] + 1;
+        if (vertEnd <= 0)
+            continue;
+
+        const ImVec2 gradientP0 = window->Pos;
+        const ImVec2 gradientP1(window->Pos.x, window->Pos.y + window->Size.y);
+        ImGui::ShadeVertsLinearColorGradientKeepAlpha(
+            drawList, 0, vertEnd, gradientP0, gradientP1,
+            s_WindowBgGradientTop, s_WindowBgGradientBottom);
+    }
 }
 
 int ContextHost_SetStyleColor(int idx, float r, float g, float b, float a)

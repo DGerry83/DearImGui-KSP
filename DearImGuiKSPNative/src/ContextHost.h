@@ -9,6 +9,10 @@
 #define DEARIMGUIKSP_NATIVE_API extern "C" __declspec(dllexport)
 #endif
 
+// imgui.h types used by value/pointer in this interface; ContextHost.cpp and
+// the wrapper TU include imgui.h itself.
+struct ImDrawList;
+
 // Creates the ImGui context, applies the stock dark style, and builds the
 // embedded-default-font (ProggyClean) atlas. Returns 0 on success, nonzero on
 // failure. Idempotent: calling again while initialized returns 0.
@@ -74,6 +78,23 @@ int ContextHost_SetStyleVarVec2(int idx, float x, float y);
 // no context. Not exported directly — the wrapper
 // DearImGuiKSPNative_StyleColorsDark lives in DearImGuiKSPNative.cpp.
 int ContextHost_StyleColorsDark(void);
+
+// Sets the two-stop vertical window-background gradient descriptor (C9,
+// spec §6.1). enabled != 0 turns on the per-frame EndFrame shading pass; the
+// two RGBA float pairs (0–1) are the top/bottom stops. enabled == 0 disables
+// the pass, which is then a strict no-op (the "dark" preset depends on that
+// for byte-exact stock rendering). Returns 0 on success, 1 if there is no
+// context. Not part of the exported C ABI itself — the exported wrapper
+// DearImGuiKSPNative_SetWindowBgGradient lives in DearImGuiKSPNative.cpp.
+int ContextHost_SetWindowBgGradient(int enabled, float r1, float g1, float b1, float a1, float r2, float g2, float b2, float a2);
+
+// Vertex count of a live ImDrawList. cimgui exports no VtxBuffer accessor
+// (verified against cimgui.h: only GetClipRectMin/Max exist), so the DLL
+// provides this tiny pass-through for the C9 managed gradient helpers, which
+// record before/after counts to shade exactly the verts a fill appended.
+// Returns -1 for a null draw list. Not exported directly — the wrapper
+// DearImGuiKSPNative_GetDrawListVtxCount lives in DearImGuiKSPNative.cpp.
+int ContextHost_GetDrawListVtxCount(ImDrawList* drawList);
 
 // Loads a font file into the context atlas (spec §4.2). Legal only before
 // the first NewFrame — afterwards the atlas is built and locked. Returns

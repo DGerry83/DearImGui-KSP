@@ -100,6 +100,25 @@ namespace DearImGuiKSP.Application
                 ImGuiInternal.SetStyleVarVec2((int)vec2Vars[i].Var, v.x, v.y);
             }
 
+            // C9: two-stop vertical window-background gradient (spec §6.1).
+            // The ksp preset supplies its stops; "dark" disables the native
+            // EndFrame shading pass so it stays byte-exact stock. The return
+            // code is ignored like the style setters above: a missing context
+            // means nothing here can run anyway.
+            bool gradient = !string.Equals(preset.Name, LibraryConfig.DarkThemeName, StringComparison.Ordinal);
+            Color32 wbgTop = preset.WindowBgGradientTop;
+            Color32 wbgBottom = preset.WindowBgGradientBottom;
+            ImGuiInternal.SetWindowBgGradient(
+                gradient ? 1 : 0,
+                wbgTop.r * ByteToFloat,
+                wbgTop.g * ByteToFloat,
+                wbgTop.b * ByteToFloat,
+                wbgTop.a * ByteToFloat,
+                wbgBottom.r * ByteToFloat,
+                wbgBottom.g * ByteToFloat,
+                wbgBottom.b * ByteToFloat,
+                wbgBottom.a * ByteToFloat);
+
             _active = preset;
         }
 
