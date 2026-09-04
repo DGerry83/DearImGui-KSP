@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using DearImGuiKSP.Application.Animation;
 using DearImGuiKSP.Application.Interfaces;
 
 namespace DearImGuiKSP.Application
@@ -6,7 +7,8 @@ namespace DearImGuiKSP.Application
     /// <summary>
     /// Executes the per-frame sequence (locked in C7, spec §5.3; theme apply added in C8):
     /// sample capture state → apply/release input locks (C9) → deferred theme apply
-    /// when dirty (C8, one bool check at steady state) → native BeginUiFrame →
+    /// when dirty (C8, one bool check at steady state) → tween tick (C14: advances
+    /// live tweens with this frame's delta, before any consumer callback) → native BeginUiFrame →
     /// consumer callbacks in registration order through the FaultBarrier (C10) →
     /// native EndUiFrame. The render-event handoff is issued separately by the addon.
     /// Frames run only while the lifecycle state machine (C12) is Running —
@@ -28,6 +30,7 @@ namespace DearImGuiKSP.Application
         private readonly ILogger _log;
         private readonly SettingsModel _settings;
         private readonly ThemeEngine _themeEngine;
+        private readonly TweenEngine _tweenEngine;
 
         private readonly Stopwatch _frameWatch = new Stopwatch();
         private double _frameMsSum;
@@ -47,7 +50,8 @@ namespace DearImGuiKSP.Application
             LifecycleStateMachine lifecycle,
             ILogger log,
             SettingsModel settings,
-            ThemeEngine themeEngine)
+            ThemeEngine themeEngine,
+            TweenEngine tweenEngine)
         {
             _bridge = bridge;
             _registry = registry;
@@ -57,6 +61,7 @@ namespace DearImGuiKSP.Application
             _log = log;
             _settings = settings;
             _themeEngine = themeEngine;
+            _tweenEngine = tweenEngine;
         }
 
         /// <summary>
@@ -75,6 +80,12 @@ namespace DearImGuiKSP.Application
             // engine; the re-apply happens here at frame start — never inside a
             // consumer callback. Steady-state cost is the bool check.
             _themeEngine.ApplyIfDirty();
+
+            // Tween tick (C14): advance live tweens with this frame's delta before
+            // BeginUiFrame and any consumer callback, so setters see fresh values
+            // and consumers read them the same frame. An empty engine is one
+            // Count check; suspension pauses for free via the Running gate above.
+            _tweenEngine.Tick(deltaTime);
 
             // Viewport clamp (ISSUES #002, G3 rework): GameEvents.onScreenResolutionModified
             // may never fire, and at event time io.DisplaySize still holds the OLD size,

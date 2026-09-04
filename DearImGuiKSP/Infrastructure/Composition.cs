@@ -1,4 +1,5 @@
 using DearImGuiKSP.Application;
+using DearImGuiKSP.Application.Animation;
 using DearImGuiKSP.Application.Interfaces;
 using UnityEngine;
 using ILogger = DearImGuiKSP.Application.Interfaces.ILogger;
@@ -27,6 +28,7 @@ namespace DearImGuiKSP.Infrastructure
         private static FaultBarrier _faultBarrier;
         private static LifecycleStateMachine _stateMachine;
         private static ThemeEngine _themeEngine;
+        private static TweenEngine _tweenEngine;
         private static GameEventHooks _gameEventHooks;
         private static FailureNotifier _failureNotifier;
 
@@ -102,7 +104,7 @@ namespace DearImGuiKSP.Infrastructure
 
         /// <summary>The frame loop orchestrator singleton (C7; C9/C10/C12 wired, C14 timing), driven by DearImGuiKSPAddon.Update().</summary>
         internal static FrameLoopOrchestrator Orchestrator =>
-            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine, Logger, Settings, ThemeEngine));
+            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine, Logger, Settings, ThemeEngine, TweenEngine));
 
         /// <summary>
         /// The theme engine singleton (C8): subscribes to SettingsModel.Changed,
@@ -111,6 +113,14 @@ namespace DearImGuiKSP.Infrastructure
         /// </summary>
         internal static ThemeEngine ThemeEngine =>
             _themeEngine ?? (_themeEngine = new ThemeEngine(Settings, Logger));
+
+        /// <summary>
+        /// The tween engine singleton (C14): advanced once per frame by the
+        /// orchestrator; exposed to the public <c>Tween</c> facade via
+        /// <see cref="WireApplicationFacade"/>.
+        /// </summary>
+        internal static TweenEngine TweenEngine =>
+            _tweenEngine ?? (_tweenEngine = new TweenEngine());
 
         /// <summary>The failure notifier singleton (C13). Shows the one-per-session failure popup.</summary>
         internal static FailureNotifier Notifier =>
@@ -128,6 +138,7 @@ namespace DearImGuiKSP.Infrastructure
             DearImGuiKSP.Registry = Registry;
             DearImGuiKSP.Lifecycle = StateMachine;
             DearImGuiKSP.ThemeEngine = ThemeEngine;
+            Tween.Engine = TweenEngine;
 
             // -=/+= keeps the call idempotent: event subscription is not.
             StateMachine.EnteredFailed -= OnEnteredFailed;

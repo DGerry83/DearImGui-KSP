@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using DearImGuiKSP;
 using DearImGuiKSP.Application;
+using DearImGuiKSP.Application.Animation;
 using DearImGuiKSP.Application.Interfaces;
 using Xunit;
 
@@ -10,6 +12,9 @@ namespace Application.Tests
     /// the clamp is driven by the live (width, height) fed to RunFrame, fires
     /// only on size change (never on the first observed frame), only when the
     /// clampWindowsToViewport setting is on, and passes the NEW size through.
+    /// Also covers the C14 tween tick: it runs inside RunFrame before consumer
+    /// callbacks, so a tween does not advance across frames where the lifecycle
+    /// is not Running (suspension is a pause, spec §5.4).
     /// </summary>
     public class FrameLoopOrchestratorTests
     {
@@ -52,7 +57,7 @@ namespace Application.Tests
             var themeEngine = new ThemeEngine(settings, new FakeLogger());
             return new FrameLoopOrchestrator(
                 bridge, registry, tracker, new FaultBarrier(new FakeLogger()), machine,
-                new FakeLogger(), settings, themeEngine);
+                new FakeLogger(), settings, themeEngine, new TweenEngine());
         }
 
         private static SettingsModel CreateSettings(bool clampWindowsToViewport)
@@ -116,6 +121,43 @@ namespace Application.Tests
             }
 
             Assert.Empty(bridge.ClampCalls);
+        }
+
+        [Fact]
+        public void Tween_DoesNotAdvance_WhileLifecycleNotRunning()
+        {
+            var bridge = new FakeNativeBridge();
+            SettingsModel settings = CreateSettings(true);
+            var tweenEngine = new TweenEngine();
+            var registry = new ConsumerRegistry();
+            var tracker = new InputCaptureTracker(
+                new FakeInputLockGateway(), new FakePointerBlockerGateway(),
+                new FakeImguiEventEaterGateway(), registry);
+            var machine = new LifecycleStateMachine(new FakeLogger());
+            machine.MarkInitializing();
+            machine.MarkRunning();
+            var themeEngine = new ThemeEngine(settings, new FakeLogger());
+            var orchestrator = new FrameLoopOrchestrator(
+                bridge, registry, tracker, new FaultBarrier(new FakeLogger()), machine,
+                new FakeLogger(), settings, themeEngine, tweenEngine);
+
+            float value = -1f;
+            TweenHandle handle = tweenEngine.StartFloat(v => value = v, 0f, 10f, 1f, Ease.Linear);
+            orchestrator.RunFrame(1920f, 1080f, 0.5f);
+            Assert.True(handle.IsPlaying);
+            Assert.Equal(5f, value);
+
+            // Suspension: RunFrame returns early, so the tween sees no ticks.
+            machine.SetLoading(true);
+            orchestrator.RunFrame(1920f, 1080f, 0.5f);
+            Assert.Equal(5f, value);
+
+            // Resume: the same frame loop path advances it again, and the tween
+            // completes with the exact target on this tick.
+            machine.SetLoading(false);
+            orchestrator.RunFrame(1920f, 1080f, 0.5f);
+            Assert.Equal(10f, value);
+            Assert.False(handle.IsPlaying);
         }
     }
 }
