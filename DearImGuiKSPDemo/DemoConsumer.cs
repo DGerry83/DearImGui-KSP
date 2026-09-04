@@ -9,7 +9,9 @@ namespace DearImGuiKSPDemo
     /// Hosts the example window (AC3): text, a button with click feedback, a slider, and an
     /// input field, all declared per frame through the public C# API, plus the AC5 benchmark
     /// window (naive vs virtualized 1000-item list) with its IMGUI reference window (D10),
-    /// and the C13/M4 ImPlot proof window (two live line plots fed by ring buffers).
+    /// and the C13/M4 ImPlot proof window (two live line plots fed by ring buffers),
+    /// plus the M5 widget showcase section (C17: spinners, knobs, wheels, and a
+    /// cancellable tween demo, drawn by ThemeDemo inside the main window).
     /// All Begin/End pairs are declared through ImGuiEx scopes (C3), including one
     /// "Throw inside scope (test)" fault-barrier test hook.
     /// Toggled via an ApplicationLauncher toolbar button (green placeholder icon).
@@ -25,6 +27,7 @@ namespace DearImGuiKSPDemo
         private bool _plotVisible;
         private BenchmarkUI _benchmark;
         private PlotDemo _plotDemo;
+        private ThemeDemo _themeDemo;
         private int _clickCount;
         private float _sliderValue = 0.5f;
         private string _inputText = "edit me";
@@ -47,6 +50,7 @@ namespace DearImGuiKSPDemo
 
             _benchmark = new BenchmarkUI();
             _plotDemo = new PlotDemo();
+            _themeDemo = new ThemeDemo();
 
             GameEvents.onGUIApplicationLauncherReady.Add(OnLauncherReady);
             if (ApplicationLauncher.Ready)
@@ -176,6 +180,10 @@ namespace DearImGuiKSPDemo
                         "Animated toggle", ref _themeToggle, DearImGuiKSP.ToggleFlags.Animated);
                     DearImGuiKSP.DearImGuiKSP.RadioButton("Radio option 1", ref _radioChoice, 0);
                     DearImGuiKSP.DearImGuiKSP.RadioButton("Radio option 2", ref _radioChoice, 1);
+
+                    // M5 widget showcase (C17): spinner row, knobs, wheels, and
+                    // the tween demo — additive to the M3 section above.
+                    _themeDemo.DrawImGui();
                 }
             }
             DrawBenchmarkWindow();

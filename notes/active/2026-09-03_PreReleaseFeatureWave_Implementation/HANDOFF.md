@@ -1,10 +1,11 @@
-# Handoff: Pre-Release Feature Wave Implementation — Resume at M5
+# Handoff: Pre-Release Feature Wave Implementation — M5 gate pending
 ## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-04 (paused by user after M4 verification)
+## Written: 2026-09-04 (paused for user M5 in-game gate)
 
 ## Where we are
 
-Milestones M1–M4 **VERIFIED** (in-game, user-confirmed). M5–M8 remain.
+M1–M4 **VERIFIED**; M5 chunks C14–C17 all **Done and committed** — waiting on the
+user's in-game M5 gate. M6–M8 remain.
 Full state lives in this folder — read `PROGRESS_LOG.md` first (chunk table,
 milestone table, decisions), then `CHUNK_MAP.md` (remaining chunks/dependencies)
 and `INTEGRATION_CONTRACT.md` (locked inter-chunk contracts, per-chunk acceptance).
@@ -21,38 +22,35 @@ and `INTEGRATION_CONTRACT.md` (locked inter-chunk contracts, per-chunk acceptanc
 | `7a7588c` | C12: ImPlot context lifecycle (harness checks 18/19) |
 | `eb4879f` | C13: managed ImPlot wrapper + demo two-plot window (I-07 accepted) |
 | `4b9ad41` | M4 gate VERIFIED |
+| `602000e`, `8b823b9` | C14 contract + tween engine (tests 90/90) |
+| `24bacdf`, `c117866` | C15 contract + knobs/wheels vendored, shimmed, wrapped |
+| `55beb69`, `9a1ed51` | C16 contract + imspinner/cimspinner + Spinner wrapper (I-08 accepted) |
+| `a96d64c` + C17 commit | C17 contract + ThemeDemo showcase (I-C17-01 accepted) |
 
 ### Verified state
-- `dotnet build DearImGui-KSP.slnx` 0/0; `dotnet test` **76/76**; native harness
-  **HARNESS PASS** (incl. gradient + ImPlot context checks); all 3 native builds 0 errors.
-- In-game: Plex Sans 18px default, ksp theme default (gradient windows/buttons,
-  circular radios with rim, animated toggles, grey secondary buttons, orange input
-  text), font fallback + v4/v5 mismatch popup paths, demo two-plot window live,
-  benchmark no-regression, fault-barrier scope-exception test.
+- `dotnet build DearImGui-KSP.slnx` 0/0; `dotnet test` **90/90**; native harness
+  **HARNESS PASS**; all 3 native builds 0 errors (1 tolerated C4190 from generated
+  cimspinner code).
+- In-game (M1–M4 evidence): Plex Sans 18px default, ksp theme default, font
+  fallback + v4/v5 mismatch popup paths, demo two-plot window, benchmark
+  no-regression, fault-barrier scope-exception test.
+- **M5 gate checklist for the user** (demo window, main window "Widget showcase"
+  section): spinner row animating (4 types, one green-tinted); Tick knob is
+  tween-driven / WiperOnly knob draggable; horizontal + vertical wheels draggable;
+  "Play tween" animates the knob 0↔100 and the section header orange↔green over
+  2 s, ping-pongs on re-click; "Cancel tween" freezes mid-flight; F2 suspension
+  pauses tween motion (resume continues). Note: spinner row is stacked vertically
+  (no public SameLine — accepted, I-C17-01).
 
-## What's next — M5 (widgets + tween), chunks C14–C17
+## What's next — M6 (telemetry showcase), chunks C18–C21
 
-Order per `INTEGRATION_CONTRACT.md`: **C14 → C15 → C16 → C17** (C15/C16 serialized —
-both edit the 3 native build scripts + `ExtensionShimsNative.cs`).
+After the user confirms the M5 gate in-game: **C18 → C19 → C20/C21** (C20/C21
+parallel-safe; C19 isolated as the first real ImGuiPlot consumer). Contracts per
+INTEGRATION_CONTRACT: C18 ring buffer + sampler + addon skeleton with placeholder
+tabs; C19 graph panel (2x2 rolling plots); C20 stage analyzer/panel; C21 orbit
+panel. M6 gate: in-flight acceptance in the full D16 environment.
 
-- **C14** — C# tween engine (`Application/Animation/`, ~3 files). Zero native work;
-  xUnit-gated. API per spec §4.3: `Tween.To(Action<float> set, from, to, seconds,
-  Ease)` → handle with `Cancel`/`IsPlaying`; Color overload; driven by the library
-  frame loop. Acceptance: tween/easing xUnit green incl. cancel, completion
-  removal, suspension pause.
-- **C15** — imgui-knobs (altschuler, MIT) + imgui-wheels (Engineer162, MIT —
-  immature, knowingly accepted spec §11; droppable pre-release if it misbehaves).
-  Vendor + PIN_RECORD rows + hand shims in `src/shims/` + facade methods on the
-  `DearImGuiKSP` partial (same pattern as C10's `DearImGuiKSP.Toggle.cs`).
-- **C16** — imspinner (dalerank, header-only) + cimspinner regeneration against the
-  pinned cimgui clone (same generator drill as C11 — canonical **gcc** path, LuaJIT;
-  see I-06). `Spinner(type, ...)` enum-dispatched over ~15 curated types (spec §4.3),
-  NOT all ~590.
-- **C17** — ThemeDemo showcase tab in the demo mod consuming C9/C10/C14/C15/C16.
-  M5 gate: all widgets + animations live in-game, user sign-off.
-
-Then M6 (telemetry showcase C18–C21; C20/C21 parallel-safe, C19 isolated as first
-real ImGuiPlot consumer), M7 (docs C22–C24), M8 (packaging C25 + D33 OpenGL
+Then M7 (docs C22–C24; C22/C23 parallel-safe), M8 (packaging C25 + D33 OpenGL
 decision point).
 
 ## How this session runs (conventions the next agent must keep)
@@ -97,7 +95,10 @@ decision point).
 
 ## First action on resume
 
-Write `CHUNK_C14_CONTRACT.md` (tween engine — see plan
+If the user has confirmed the M5 gate: mark M5 VERIFIED in PROGRESS_LOG.md, then
+write `CHUNK_C18_CONTRACT.md` (telemetry foundation — plan
 `notes/active/2026-09-03_NewProject_PreReleaseFeatureWave/IMPLEMENTATION_PLAN.md`
-§2 "Entity: Tween/TweenHandle", §3 "Component: TweenEngine", spec §4.3) and
-dispatch its coder sub-agent, per the per-chunk loop above.
+§2 "Entity: TelemetrySample/RingBuffer", §3 "Component: TelemetrySampler", spec §5.5)
+and dispatch its coder sub-agent, per the per-chunk loop above.
+If the M5 gate found defects: file per `ISSUES/README.md` (Next ID: #005), fix
+forward in a patch chunk, re-verify.
