@@ -15,7 +15,7 @@ namespace DearImGuiKSP
     /// Widget calls are only valid inside a callback invoked by the frame loop;
     /// calling them from anywhere else is a no-op/undefined, never an exception.
     /// </summary>
-    public static class DearImGuiKSP
+    public static partial class DearImGuiKSP
     {
         // Wiring hooks (C7/C12): Application cannot see Infrastructure.Composition, so
         // Composition assigns these at startup — the logger in Awake, the registry

@@ -16,4 +16,4 @@ imgui/cimgui themselves are **not** vendored: they come from the sibling clone
 | `imgui-wheels/` | Engineer162/imgui-wheels | _pending_ | _pending_ | MIT | Immature repo (accepted knowingly, spec §11); hand shim in `src/shims/` |
 | `imspinner/` | dalerank/imspinner | _pending_ | _pending_ | MIT | Header-only; C ABI via cimspinner |
 | `cimspinner/` | dalerank/imspinner `cimspinner/` | _regenerated_ | _pending_ | MIT | Regenerated against the pinned cimgui clone; record generator commit here |
-| `imgui_toggle/` | cmdwtf/imgui_toggle | _pending_ | _pending_ | 0BSD | Scalar/flag overloads only; hand shim in `src/shims/` |
+| `imgui_toggle/` | cmdwtf/imgui_toggle | 2c178f539693117ca736504c22e63ba8a0b1c4f5 (main HEAD) | 2026-09-04 | 0BSD | Scalar/flag overloads only; hand shim in `src/shims/`. Vendored: imgui_toggle.cpp/.h, imgui_toggle_palette.cpp/.h, imgui_toggle_presets.cpp/.h, imgui_toggle_renderer.cpp/.h, imgui_toggle_math.h, imgui_offset_rect.h, LICENSE (11 files, md5-verified byte-identical) |

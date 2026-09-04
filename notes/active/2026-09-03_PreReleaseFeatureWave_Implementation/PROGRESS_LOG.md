@@ -10,9 +10,9 @@
 | C4 | Done | `src/ContextHost.h/.cpp`, `src/DearImGuiKSPNative.cpp` (+44/−1) | 3 native builds 0 errors; harness HARNESS PASS; export present; GetVersion()=5 (build + GameData DLLs); return codes 0/1/2/3 runtime-verified via direct P/Invoke | G3: PASS; G6 native half: PASS | Committed 8fdd44b; s_FramesBegun gate added; GameData DLL now v5 vs managed v4 (intentional interim mismatch) |
 | C7 | Done | `GameData/DearImGuiKSP/Fonts/` (2 TTF + OFL.txt) | Build 0 errors; all 3 files mirrored to game install (sizes match); TTFs tracked in git per repo convention (source assets, not regenerated) | G3: PASS (asset mirror) | Committed 7d41e92; static TTFs only (variable fonts excluded per D29) |
 | C5 | Done | `INativeBridge.cs`, `NativeBridge.cs`, `DearImGuiKSPAddon.cs`, `FrameLoopOrchestratorTests.cs` (+1-line fake stub) | Build 0 err/0 warn; tests 63/63; init order proven (font load at Start step 3, first frame gated on MarkRunning at step 5); §5.9 Check 3 teardown traced | G3: PASS; G6 managed half: PASS (compile-time) | Deviations accepted: test-fake stub, Info log level, stale doc fix; in-game gate deferred |
-| C8 | Pending | - | - | - | M3 |
+| C8 | Done | Native: ContextHost.h/.cpp, DearImGuiKSPNative.cpp (4 exports); Managed: Theming/{KspPalette,ThemePresets,ThemeEngine}.cs (NEW), SettingsModel, LibraryConfig, FrameLoopOrchestrator, DearImGuiKSP.cs (CurrentTheme), Composition, DearImGuiKSPAddon, settings.cfg; Tests: ThemePresetsTests (NEW 7), SettingsModelTests (+4) | 3 native builds 0 errors, harness PASS, 4 exports verified w/ direct-call read-back; build 0/0; tests 74/74 (63+11) | G3: PASS (C8 scope) | Committed 7cf14ae; I-04 accepted + fixed (whole-style reset before StyleColorsDark); deviations accepted: Composition.cs + test csproj edits; in-game visual pass deferred to M3 gate |
 | C9 | Pending | - | - | - | M3 |
-| C10 | Pending | - | - | - | M3 |
+| C10 | Done | `vendor/imgui_toggle/` (11 files @ 2c178f5), `src/shims/imgui_toggle_shim.h/.cpp` (NEW), 3 build scripts (+5 TUs), `Interop/ExtensionShimsNative.cs` (NEW), facade +`partial`, `Api/DearImGuiKSP.Toggle.cs` (NEW), PIN_RECORD toggle row | 3 native builds 0 errors; harness PASS; DK_Toggle/DK_ToggleFlags in export table; build 0/0; tests 74/74 | G3: PASS (C10 scope) | Deviation I-05 accepted (no KnobInset upstream — real ToggleFlags subset); vendored byte-identical, LICENSE (0BSD) included |
 | C11 | Pending | - | - | - | M4 |
 | C12 | Pending | - | - | - | M4 |
 | C13 | Pending | - | - | - | M4 |
@@ -46,3 +46,5 @@
 
 ### Decisions Made
 - 2026-09-03: M2 order is C6 → C4 → C5 (C7 parallel) so no interface stubs are needed; recorded in INTEGRATION_CONTRACT.md.
+- 2026-09-04: C9/C10 serialized (was parallel group B). Both would edit the facade, `ImGuiInternal.cs`, and run concurrent native builds in the same `build/` dir — file/tool conflicts, so sequential per the parallel policy. Order: C10 then C9.
+- 2026-09-04: Public widget methods (RadioButton, Toggle, later Knob/Wheel/Spinner) go on the `DearImGuiKSP` facade (as a partial class split across files), consistent with the existing Button/SliderFloat pattern. `Application/Api/ImGuiWidgets.cs` from the plan is superseded; `ImGuiGradients.cs` and `ImGuiPlot.cs` remain separate files (helpers and substantial wrapper respectively).

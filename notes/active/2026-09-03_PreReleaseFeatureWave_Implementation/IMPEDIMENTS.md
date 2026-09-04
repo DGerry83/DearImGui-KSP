@@ -97,3 +97,23 @@
   `ContextHost_StyleColorsDark` (ContextHost.cpp:275-284). Default-constructed ImGuiStyle
   + StyleColorsDark == stock style by construction. Applied by the Lead, all 3 native
   builds 0 errors, harness PASS, mirrored to game.
+
+## I-05 (C10): Contract's `ToggleFlags` subset names `KnobInset` — no such flag exists in imgui_toggle.h
+
+- **Found by:** Chunk C10 (imgui_toggle end-to-end), Phase 0, after vendoring.
+- **Contract text:** CHUNK_C10_CONTRACT.md step 5 — "`public enum ToggleFlags` ... values verified against
+  `imgui_toggle.h` (`ImGuiToggleFlags` subset: None, Animated, Bordered, KnobInset — only what the shim forwards)."
+- **Reality (pinned commit 2c178f539693117ca736504c22e63ba8a0b1c4f5, imgui_toggle.h:39-53):**
+  `ImGuiToggleFlags_` = None(0), Animated(1<<0), BorderedFrame(1<<3), BorderedKnob(1<<4),
+  ShadowedFrame(1<<5), ShadowedKnob(1<<6), A11y(1<<8), Bordered(BorderedFrame|BorderedKnob),
+  Shadowed(ShadowedFrame|ShadowedKnob). **There is no `KnobInset` flag** — knob inset is an
+  `ImOffsetRect` config field (`ImGuiToggleStateConfig::KnobInset`, imgui_toggle.h:152), reachable
+  only through the `ImGuiToggleConfig` overload, which the same contract explicitly excludes
+  ("no config-struct or preset overloads (YAGNI)").
+- **Resolution taken:** implemented the real flag subset instead: None, Animated, BorderedFrame,
+  BorderedKnob, ShadowedFrame, ShadowedKnob, A11y, plus the two upstream shorthands Bordered and
+  Shadowed (the contract's "Bordered" name exists upstream as the shorthand). All values cited
+  to imgui_toggle.h lines in XML docs. `KnobInset` held back — it cannot be forwarded by the
+  flags shim without adding a config-struct overload, which the contract forbids.
+- **Held back:** any knob-inset knob control. If a consumer asks for it, the route is a
+  third shim overload taking inset params (still not a flag), decided at that time.
