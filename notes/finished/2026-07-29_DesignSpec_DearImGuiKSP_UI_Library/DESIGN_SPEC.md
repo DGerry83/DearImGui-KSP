@@ -341,3 +341,4 @@ None identified in the game dump — zero existing native-plugin render integrat
 |------|--------|--------|
 | 2026-07-29 | Agent + User | Initial specification (Q1–Q47 answered across 7 phases; decisions D1–D18) |
 | 2026-09-03 | Agent + User | Post-MVP amendments: uGUI pointer blocker + IMGUI input suppression (D22, D23); opt-out viewport clamp setting (D21) |
+| 2026-09-03 | Agent + User | Pre-release feature wave spec confirmed (KSP default theme, bundled IBM Plex Sans, extension integrations, telemetry showcase, modder docs; D24–D34): `notes/finished/2026-09-03_DesignSpec_Theming_Extensions_Showcase/DESIGN_SPEC.md`. D24 narrows D18's Unity-free Application rule to permit UnityEngine.CoreModule math structs in public signatures. |
