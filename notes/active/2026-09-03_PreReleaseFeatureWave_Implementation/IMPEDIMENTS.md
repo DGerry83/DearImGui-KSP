@@ -195,3 +195,68 @@
   Unity 2019.4 mscorlib is the only viable pin path and keeps the zero-alloc invariant;
   documented at the call sites. (3) YAGNI omission endorsed — C19 adds the overload if it
   needs it.
+
+## I-08 (C16): cimspinner's generator is a Ruby regex transform, not a cpp2ffi/Lua generator — and its hand-written config gates the bindable surface to a subset that mostly excludes the contract's candidate list
+
+- **Found by:** Chunk C16 (imspinner + cimspinner), Phase 1, immediately after vendoring
+  imspinner @ master HEAD (8c638c486a020f085315c0da2142919f5c480547, 2026-08-22).
+- **Contract text:** CHUNK_C16_CONTRACT.md step 2 — "the `cimspinner/` subdirectory of the
+  same repo holds the generator (mirrors cimgui/cimplot's Lua generator) ... run it against
+  the pinned sibling clone `..\..\cimgui` ... canonical **gcc** path — `luajit
+  generator.lua gcc "internal"`".
+- **Reality:** at the pinned commit the `cimspinner/` subdir has NO Lua/cpp2ffi generator.
+  Its generator is `genCimSpinner.rb` (dinau, 2025-2026) — a pure Ruby regex transform of the
+  `imspinner{,_dots,_bars,_shapes,_text}.h` headers that emits the `extern "C"` wrappers.
+  It never preprocesses against imgui and has no cimgui-clone input at all, so the entire
+  I-06 gcc/cpp2ffi discipline (and the `luajit generator.lua` invocation) has nothing to
+  apply to. It also consumes the hand-written `cimspinner_config.h`, whose checked-in
+  upstream contents `#define` only 26 `SPINNER_*` groups — each generated wrapper body is
+  `#ifdef SPINNER_<NAME>`-gated, so only config-enabled spinners are compiled/exported.
+- **Consequence for the curated set:** of the contract's 16 candidates, only Ang8, Atom,
+  Clock, Pulsar exist AND are config-enabled. Ang, AngTriple, BounceBall, BounceDots, Dots,
+  FadeBlocks (does not exist upstream at all), Heart, IncDots, MoonLine, Ring (no such
+  upstream function; only RingSynchronous/RingWatermarks), RotateDots exist in the headers
+  but are NOT config-enabled; Rainbow exists but only RainbowMix is enabled. Disabled
+  spinners have no compiled export — binding them is impossible without editing the
+  hand-written config.
+- **Resolution taken:** (1) installed ruby 3.4.10 (winget; scoop's 7zip dep is broken — same
+  failure I-06 hit) and re-ran the actual generator in a %TEMP% scratch clone:
+  output was byte-identical to the repo's checked-in generated files (scratch `git status`
+  clean after regeneration; all 11 vendored files md5-verified byte-identical). No vendored
+  or generated source was patched at any point. (2) Curated the final 15 SpinnerType values
+  from the config-enabled subset only: RainbowMix, Ang8, Clock, Pulsar, Atom, DotsToBar,
+  SwingDots, DnaDots, FadeBars, MorphShape, FlipTriangle, FoldSquare, Pinwheel,
+  CornerSquares, SplitSquare — each a near-equivalent stand-in for the contract candidates
+  (Rainbow→RainbowMix, Dots→DnaDots/SwingDots, Ring/square-family→Pinwheel/CornerSquares/
+  SplitSquare/FoldSquare/FlipTriangle/MorphShape, FadeBlocks→FadeBars, Bounce*→DotsToBar/
+  SwingDots). Every value line-cited to vendored imspinner.h / imspinner_*.h. (3) Export
+  wiring: the generated header leaves `CIMSPINNER_API` empty via `#ifndef` guard
+  (cimspinner.h:118-119) — all three build scripts now pass
+  `/DCIMSPINNER_API=__declspec(dllexport)` (the same mechanism cimgui's own `API` macro
+  uses); no source patch.
+- **Held back:** enabling the contract's literal candidates by editing the vendored
+  `cimspinner_config.h` (adding `#define SPINNER_ANG` etc.). That file is a hand-written
+  part of the vendored tree; editing it breaks byte-identity with upstream and is exactly
+  the "patch vendored sources" the contract forbids without a ruling. If the Lead prefers
+  the literal candidates (Ang/AngTriple/BounceBall/BounceDots/Dots/IncDots/MoonLine/
+  RotateDots/RotatingHeart), the fix is purely additive defines in that config (one line
+  per spinner, still upstream-format) + regenerating the same wrappers (already proven
+  byte-stable) + extending SpinnerType — no ABI risk. Also held back: any `Ex` variant
+  exposing bespoke knobs (speed/arcs/mode); the wrapper fixes them at upstream defaults per
+  the contract's common-mapping rule.
+- **Verification standing:** all 3 native builds 0 errors (1 pre-existing-style C4190 from
+  the generated header's `LeafColor` typedef, tolerated per contract), harness PASS,
+  c16_verify.ps1 all 15 spinner exports + DK_Knob/DK_KnobInt/ImPlot_BeginPlot present,
+  managed 0/0, tests 90/90. In-game spinner rendering is the M5 gate (C17, user-assisted).
+- **Lead ruling 2026-09-04:** ACCEPTED as implemented. (1) The contract's generator
+  description was wrong, not the execution — upstream's real generator was run and its
+  output proven byte-identical to the checked-in generated files, which is the strongest
+  provenance available; recorded in PIN_RECORD. (2) The config-enabled 15-type curated set
+  stands: it keeps the vendored tree byte-identical (hard repo rule), still meets spec §4.3
+  ("~15 curated", enum-dispatched), and the swapped values are documented line-cited
+  near-equivalents. Adding defines to `cimspinner_config.h` to chase the contract's literal
+  candidates is REJECTED — not worth breaking upstream byte-identity over a candidate list
+  that was itself a guess. (3) Wrapper-chosen defaults for `DotsToBar offset_k` and
+  `RainbowMix` color/speed accepted (documented in XML docs). (4) Ruby 3.4.10 machine-wide
+  install noted as a local toolchain addition — no repo impact; add it to the
+  regeneration-provenance note if cimspinner is ever regenerated again.
