@@ -326,6 +326,70 @@ namespace DearImGuiKSP
         }
 
         /// <summary>
+        /// Begins a tab bar. Only valid inside a registered callback, inside a window.
+        /// </summary>
+        /// <param name="id">Tab bar identifier; also its ImGui identity.</param>
+        /// <returns>
+        /// False when the tab bar is clipped — <see cref="EndTabBar"/> must NOT be
+        /// called then (imgui.h:965). Also false when called while unavailable.
+        /// Use <c>ImGuiEx.TabBar</c> (C18) for exception-safe pairing.
+        /// </returns>
+        public static bool BeginTabBar(string id)
+        {
+            if (!IsAvailable)
+            {
+                return false;
+            }
+            return ImGuiInternal.BeginTabBar(id);
+        }
+
+        /// <summary>
+        /// Ends the current tab bar. Only call after a <see cref="BeginTabBar"/> that
+        /// returned true (imgui.h:965). Only valid inside a registered callback.
+        /// </summary>
+        public static void EndTabBar()
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.EndTabBar();
+        }
+
+        /// <summary>
+        /// Begins a non-closable tab inside the current tab bar. Only valid inside a
+        /// registered callback, after a successful <see cref="BeginTabBar"/>.
+        /// </summary>
+        /// <param name="label">Tab label; also its ImGui identity.</param>
+        /// <returns>
+        /// True when the tab is selected (draw its content this frame). False when
+        /// unselected/clipped — <see cref="EndTabItem"/> must NOT be called then
+        /// (imgui.h:967). Also false when called while unavailable.
+        /// Use <c>ImGuiEx.TabItem</c> (C18) for exception-safe pairing.
+        /// </returns>
+        public static bool BeginTabItem(string label)
+        {
+            if (!IsAvailable)
+            {
+                return false;
+            }
+            return ImGuiInternal.BeginTabItem(label);
+        }
+
+        /// <summary>
+        /// Ends the current tab. Only call after a <see cref="BeginTabItem"/> that
+        /// returned true (imgui.h:967). Only valid inside a registered callback.
+        /// </summary>
+        public static void EndTabItem()
+        {
+            if (!IsAvailable)
+            {
+                return;
+            }
+            ImGuiInternal.EndTabItem();
+        }
+
+        /// <summary>
         /// Pushes an RGBA color onto the style-color stack, affecting all widgets drawn
         /// after this call until <see cref="PopStyleColor"/> (typically the end of the
         /// frame). Only valid inside a registered callback. Every Push must be paired

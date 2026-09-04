@@ -56,6 +56,26 @@ namespace DearImGuiKSP.Interop
     }
 
     /// <summary>
+    /// Tab-bar flags for <see cref="ImGuiInternal.BeginTabBar"/>; values match
+    /// <c>ImGuiTabBarFlags_</c> in imgui.h (typedef int, imgui.h:266). Only the values we use.
+    /// </summary>
+    [Flags]
+    internal enum ImGuiTabBarFlags
+    {
+        None = 0,
+    }
+
+    /// <summary>
+    /// Tab-item flags for <see cref="ImGuiInternal.BeginTabItem"/>; values match
+    /// <c>ImGuiTabItemFlags_</c> in imgui.h (typedef int, imgui.h:267). Only the values we use.
+    /// </summary>
+    [Flags]
+    internal enum ImGuiTabItemFlags
+    {
+        None = 0,
+    }
+
+    /// <summary>
     /// Blittable mirror of cimgui's <c>ImVec4_c</c> (<c>struct { float x, y, z, w; }</c>, cimgui.h:264-268).
     /// 16 bytes, passed by value to <c>igPushStyleColor_Vec4</c>/<c>igGetColorU32_Vec4</c> — safe on Win64 Cdecl.
     /// </summary>
@@ -258,6 +278,30 @@ namespace DearImGuiKSP.Interop
         // CIMGUI_API ImU32 igGetColorU32_Col(ImGuiCol idx,float alpha_mul); (cimgui.h:4175)
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         private static extern uint igGetColorU32_Col(int idx, float alpha_mul);
+
+        // ---- Tab bar / tab items (chunk C18) ----
+        // Verified against the pinned cimgui.h (sibling clone, imgui 1.92.9).
+
+        // CIMGUI_API bool igBeginTabBar(const char* str_id,ImGuiTabBarFlags flags); (cimgui.h:4418)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igBeginTabBar([In] byte[] str_id, int flags);
+
+        // CIMGUI_API void igEndTabBar(void); (cimgui.h:4419)
+        // Pairing rule: only call EndTabBar() if BeginTabBar() returned true (imgui.h:965).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igEndTabBar();
+
+        // CIMGUI_API bool igBeginTabItem(const char* label,bool* p_open,ImGuiTabItemFlags flags); (cimgui.h:4420)
+        // p_open is NULL (non-closable tab; the imgui.h:966 default allows NULL).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igBeginTabItem([In] byte[] label, IntPtr p_open, int flags);
+
+        // CIMGUI_API void igEndTabItem(void); (cimgui.h:4421)
+        // Pairing rule: only call EndTabItem() if BeginTabItem() returned true (imgui.h:967).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igEndTabItem();
 
         // ---- Native theme exports (chunk C8) ----
         // Own DearImGuiKSPNative_* ABI (ContextHost.h), not cimgui: cimgui exports
@@ -491,6 +535,29 @@ namespace DearImGuiKSP.Interop
         internal static uint GetColorU32(int idx, float alphaMul)
         {
             return igGetColorU32_Col(idx, alphaMul);
+        }
+
+        // Tab bar / tab items (C18). Both Begins take flags from the matching
+        // internal enum; p_open is always NULL (non-closable tabs).
+
+        internal static bool BeginTabBar(byte[] idUtf8)
+        {
+            return igBeginTabBar(idUtf8, (int)ImGuiTabBarFlags.None);
+        }
+
+        internal static void EndTabBar()
+        {
+            igEndTabBar();
+        }
+
+        internal static bool BeginTabItem(byte[] labelUtf8)
+        {
+            return igBeginTabItem(labelUtf8, IntPtr.Zero, (int)ImGuiTabItemFlags.None);
+        }
+
+        internal static void EndTabItem()
+        {
+            igEndTabItem();
         }
 
         // Window-bg gradient descriptor (C9). <paramref name="enabled"/> != 0

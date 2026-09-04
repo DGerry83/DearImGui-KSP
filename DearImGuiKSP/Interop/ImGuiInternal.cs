@@ -475,6 +475,55 @@ namespace DearImGuiKSP.Interop
             return ImGuiNative.GetColorU32(idx, alphaMul);
         }
 
+        // ---- Tab bar / tab items (chunk C18) ----
+
+        /// <summary>
+        /// Begins a tab bar. Wraps cimgui <c>igBeginTabBar</c> with
+        /// ImGuiTabBarFlags_None. Null <paramref name="id"/> renders as an empty string.
+        /// </summary>
+        /// <returns>
+        /// False when the tab bar is clipped (or the library is unavailable) — in that
+        /// case <see cref="EndTabBar"/> must NOT be called (imgui.h:965); the
+        /// <c>ImGuiEx.TabBar</c> scope encodes that pairing.
+        /// </returns>
+        internal static bool BeginTabBar(string id)
+        {
+            return ImGuiNative.BeginTabBar(ToUtf8(id));
+        }
+
+        /// <summary>
+        /// Ends the current tab bar. Wraps cimgui <c>igEndTabBar</c>. Only call after a
+        /// <see cref="BeginTabBar"/> that returned true (imgui.h:965).
+        /// </summary>
+        internal static void EndTabBar()
+        {
+            ImGuiNative.EndTabBar();
+        }
+
+        /// <summary>
+        /// Begins a non-closable tab inside the current tab bar. Wraps cimgui
+        /// <c>igBeginTabItem</c> with p_open = NULL and ImGuiTabItemFlags_None.
+        /// Null <paramref name="label"/> renders as an empty string.
+        /// </summary>
+        /// <returns>
+        /// True when the tab is selected (its content should be drawn this frame).
+        /// False when unselected or clipped — <see cref="EndTabItem"/> must NOT be
+        /// called then (imgui.h:967); the <c>ImGuiEx.TabItem</c> scope encodes that pairing.
+        /// </returns>
+        internal static bool BeginTabItem(string label)
+        {
+            return ImGuiNative.BeginTabItem(ToUtf8(label));
+        }
+
+        /// <summary>
+        /// Ends the current tab. Wraps cimgui <c>igEndTabItem</c>. Only call after a
+        /// <see cref="BeginTabItem"/> that returned true (imgui.h:967).
+        /// </summary>
+        internal static void EndTabItem()
+        {
+            ImGuiNative.EndTabItem();
+        }
+
         /// <summary>
         /// Sets the native two-stop vertical window-background gradient
         /// descriptor (C9, spec §6.1). <paramref name="enabled"/> != 0 turns on

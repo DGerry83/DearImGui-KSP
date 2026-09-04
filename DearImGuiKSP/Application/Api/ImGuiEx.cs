@@ -157,6 +157,128 @@ namespace DearImGuiKSP
         }
 
         /// <summary>
+        /// Begins a tab bar and returns a scope that ends it when the begin succeeded.
+        /// Only valid inside a registered callback, inside a window.
+        /// </summary>
+        /// <param name="id">Tab bar identifier; also its ImGui identity.</param>
+        /// <returns>
+        /// A scope whose <see cref="TabBarScope.Visible"/> mirrors the facade's
+        /// BeginTabBar result. Unlike windows/regions, EndTabBar is only valid when
+        /// BeginTabBar returned true (imgui.h:965), so Dispose ends the tab bar only
+        /// when this scope is visible; otherwise it is an inert no-op (including when
+        /// the library is unavailable or the body throws).
+        /// </returns>
+        /// <remarks>
+        /// Must be disposed within the same frame/callback (immediate-mode rule).
+        /// </remarks>
+        public static TabBarScope TabBar(string id)
+        {
+            return new TabBarScope(DearImGuiKSP.BeginTabBar(id));
+        }
+
+        /// <summary>
+        /// Begins a non-closable tab and returns a scope that ends it when the tab is
+        /// selected. Only valid inside a registered callback, inside a tab bar.
+        /// </summary>
+        /// <param name="label">Tab label; also its ImGui identity.</param>
+        /// <returns>
+        /// A scope whose <see cref="TabItemScope.Visible"/> mirrors the facade's
+        /// BeginTabItem result: true when the tab is selected (draw its content).
+        /// EndTabItem is only valid when BeginTabItem returned true (imgui.h:967), so
+        /// Dispose ends the tab only when this scope is visible; otherwise it is an
+        /// inert no-op (including when the library is unavailable or the body throws).
+        /// </returns>
+        /// <remarks>
+        /// Must be disposed within the same frame/callback (immediate-mode rule).
+        /// </remarks>
+        public static TabItemScope TabItem(string label)
+        {
+            return new TabItemScope(DearImGuiKSP.BeginTabItem(label));
+        }
+
+        /// <summary>
+        /// Scope guard pairing a facade <see cref="DearImGuiKSP.BeginTabBar"/> with
+        /// exactly one <see cref="DearImGuiKSP.EndTabBar"/> — but only when the begin
+        /// returned true (EndTabBar is only valid then, imgui.h:965). Obtain it from
+        /// <see cref="ImGuiEx.TabBar"/>; do not construct it directly (a default
+        /// instance ends nothing — dispose only what a factory returned).
+        /// </summary>
+        public readonly struct TabBarScope : IDisposable
+        {
+            private readonly bool _visible;
+
+            internal TabBarScope(bool visible)
+            {
+                _visible = visible;
+            }
+
+            /// <summary>
+            /// The BeginTabBar result captured when this scope was created: false when
+            /// the tab bar is clipped (or the library is unavailable) — skip the tab
+            /// bar's content for this frame. Dispose ends the tab bar only when true.
+            /// </summary>
+            public bool Visible
+            {
+                get { return _visible; }
+            }
+
+            /// <summary>
+            /// Ends the tab bar, but only when <see cref="Visible"/> is true — an
+            /// unpaired EndTabBar would violate ImGui's pairing rule (imgui.h:965).
+            /// Called once by <c>using</c> on every exit path, including when the body
+            /// throws. Routes through the facade, which no-ops when unavailable.
+            /// </summary>
+            public void Dispose()
+            {
+                if (_visible)
+                {
+                    DearImGuiKSP.EndTabBar();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Scope guard pairing a facade <see cref="DearImGuiKSP.BeginTabItem"/> with
+        /// exactly one <see cref="DearImGuiKSP.EndTabItem"/> — but only when the tab is
+        /// selected (EndTabItem is only valid then, imgui.h:967). Obtain it from
+        /// <see cref="ImGuiEx.TabItem"/>; do not construct it directly (a default
+        /// instance ends nothing — dispose only what a factory returned).
+        /// </summary>
+        public readonly struct TabItemScope : IDisposable
+        {
+            private readonly bool _visible;
+
+            internal TabItemScope(bool visible)
+            {
+                _visible = visible;
+            }
+
+            /// <summary>
+            /// The BeginTabItem result captured when this scope was created: true when
+            /// the tab is selected — draw its content this frame. False when unselected
+            /// or clipped. Dispose ends the tab only when true.
+            /// </summary>
+            public bool Visible
+            {
+                get { return _visible; }
+            }
+
+            /// <summary>
+            /// Ends the tab, but only when <see cref="Visible"/> is true — an unpaired
+            /// EndTabItem would violate ImGui's pairing rule (imgui.h:967). Called once
+            /// by <c>using</c> on every exit path, including when the body throws.
+            /// Routes through the facade, which no-ops when unavailable.
+            /// </summary>
+            public void Dispose()
+            {
+                if (_visible)
+                {
+                    DearImGuiKSP.EndTabItem();
+                }
+            }
+        }
+
+        /// <summary>
         /// Scope guard pairing a facade <see cref="DearImGuiKSP.BeginWindow"/> with
         /// exactly one <see cref="DearImGuiKSP.EndWindow"/>. Obtain it from
         /// <see cref="ImGuiEx.Window"/>; do not construct it directly (a default
