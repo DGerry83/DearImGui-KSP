@@ -109,39 +109,51 @@ int main()
         const ImU32 topStop = IM_COL32(255, 0, 0, 255);
         const ImU32 bottomStop = IM_COL32(0, 0, 255, 255);
 
-        // The first command's referenced vertex range (what the pass shades).
+        // The first command's referenced vertex range, and the white-pixel UV
+        // the pass uses to select solid-fill verts (glyph verts sharing the
+        // atlas texture are deliberately left untouched so text keeps its
+        // color).
         const ImDrawCmd& cmd = dl->CmdBuffer[0];
         int vertEnd = 0;
         for (unsigned int n = 0; n < cmd.ElemCount; ++n)
             if ((int)dl->IdxBuffer.Data[n] + 1 > vertEnd)
                 vertEnd = (int)dl->IdxBuffer.Data[n] + 1;
+        const ImVec2 whiteUv = dl->_Data->TexUvWhitePixel;
 
         float minY = 1e30f, maxY = -1e30f;
         for (int i = 0; i < vertEnd; ++i)
         {
-            const float y = dl->VtxBuffer.Data[i].pos.y;
-            if (y < minY) minY = y;
-            if (y > maxY) maxY = y;
+            const ImDrawVert& v = dl->VtxBuffer.Data[i];
+            if (v.uv.x != whiteUv.x || v.uv.y != whiteUv.y)
+                continue;
+            if (v.pos.y < minY) minY = v.pos.y;
+            if (v.pos.y > maxY) maxY = v.pos.y;
         }
 
         bool bottomOk = false, topChanged = false, anyChanged = false;
         for (int i = 0; i < refVtxCount; ++i)
         {
-            const ImU32 col = dl->VtxBuffer.Data[i].col;
+            const ImDrawVert& v = dl->VtxBuffer.Data[i];
+            const ImU32 col = v.col;
             // KeepAlpha: alpha channel must be untouched everywhere.
             if ((col >> 24) != (refCols[i] >> 24))
                 return Fail("gradient changed alpha", 14);
             if (col != refCols[i])
                 anyChanged = true;
-            if (i < vertEnd)
+            const bool shaded = i < vertEnd
+                && v.uv.x == whiteUv.x && v.uv.y == whiteUv.y;
+            if (shaded)
             {
-                const float y = dl->VtxBuffer.Data[i].pos.y;
                 // KeepAlpha: the stop comparison is RGB-only (the fill keeps
                 // its own alpha, e.g. 0xF0 for stock-dark WindowBg).
-                if (y == maxY && (col & 0x00FFFFFFu) == (bottomStop & 0x00FFFFFFu))
+                if (v.pos.y == maxY && (col & 0x00FFFFFFu) == (bottomStop & 0x00FFFFFFu))
                     bottomOk = true; // bg bottom lands exactly on the bottom stop
-                if (y == minY && col != refCols[i])
+                if (v.pos.y == minY && col != refCols[i])
                     topChanged = true; // top region (title bar or bg top) recolored
+            }
+            else if (col != refCols[i])
+            {
+                return Fail("non-solid-fill vert recolored", 16); // text/glyph verts must be untouched
             }
         }
         if (!anyChanged || !topChanged || !bottomOk)

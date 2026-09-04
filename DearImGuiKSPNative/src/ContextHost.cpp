@@ -299,16 +299,23 @@ static void ApplyWindowBgGradient()
         // map 1:1 to vertices). The title-bar/border/scrollbar fills use the
         // same white-texture draw and may merge into that first command;
         // shading the merged range is accepted per the C9 contract — verts
-        // above the bg top clamp to the top stop (ShadeVerts saturates t,
-        // imgui_draw.cpp:2399).
+        // above the bg top clamp to the top stop (saturate t as
+        // ShadeVertsLinearColorGradientKeepAlpha does, imgui_draw.cpp:2399).
+        //
+        // Glyph verts share the font-atlas texture with the bg fill, so text
+        // (e.g. scroll-region list rows) merges into this same first command.
+        // Only solid-fill verts — the ones sampling the atlas white pixel —
+        // are shaded; recoloring glyph verts tints item text toward the
+        // gradient and rows "disappear" into it (M3 in-game fix).
         ImDrawList* drawList = window->DrawList;
         if (drawList->CmdBuffer.Size == 0)
             continue;
         const ImDrawCmd& cmd = drawList->CmdBuffer[0];
         if (cmd.ElemCount == 0)
             continue;
+        const int vtxBase = (int)cmd.VtxOffset;
         int vertEnd = 0;
-        const ImDrawIdx* idx = drawList->IdxBuffer.Data;
+        const ImDrawIdx* idx = drawList->IdxBuffer.Data + cmd.IdxOffset;
         for (unsigned int n = 0; n < cmd.ElemCount; ++n)
             if ((int)idx[n] + 1 > vertEnd)
                 vertEnd = (int)idx[n] + 1;
@@ -316,10 +323,22 @@ static void ApplyWindowBgGradient()
             continue;
 
         const ImVec2 gradientP0 = window->Pos;
-        const ImVec2 gradientP1(window->Pos.x, window->Pos.y + window->Size.y);
-        ImGui::ShadeVertsLinearColorGradientKeepAlpha(
-            drawList, 0, vertEnd, gradientP0, gradientP1,
-            s_WindowBgGradientTop, s_WindowBgGradientBottom);
+        const float gradientHeight = window->Size.y;
+        const ImVec2 whiteUv = drawList->_Data->TexUvWhitePixel;
+        ImDrawVert* verts = drawList->VtxBuffer.Data + vtxBase;
+        for (int n = 0; n < vertEnd; ++n)
+        {
+            ImDrawVert& vert = verts[n];
+            if (vert.uv.x != whiteUv.x || vert.uv.y != whiteUv.y)
+                continue; // glyph vert — leave text colors untouched
+            float t = gradientHeight > 0.0f ? (vert.pos.y - gradientP0.y) / gradientHeight : 0.0f;
+            t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+            const float invT = 1.0f - t;
+            const ImU32 r = (ImU32)(((s_WindowBgGradientTop      ) & 0xFF) * invT + ((s_WindowBgGradientBottom      ) & 0xFF) * t + 0.5f);
+            const ImU32 gcol = (ImU32)(((s_WindowBgGradientTop >>  8) & 0xFF) * invT + ((s_WindowBgGradientBottom >>  8) & 0xFF) * t + 0.5f);
+            const ImU32 b = (ImU32)(((s_WindowBgGradientTop >> 16) & 0xFF) * invT + ((s_WindowBgGradientBottom >> 16) & 0xFF) * t + 0.5f);
+            vert.col = (vert.col & 0xFF000000u) | r | (gcol << 8) | (b << 16);
+        }
     }
 }
 

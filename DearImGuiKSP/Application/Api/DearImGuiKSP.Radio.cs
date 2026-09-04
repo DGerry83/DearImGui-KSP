@@ -1,3 +1,4 @@
+using DearImGuiKSP.Application;
 using DearImGuiKSP.Interop;
 
 namespace DearImGuiKSP
@@ -19,7 +20,9 @@ namespace DearImGuiKSP
             {
                 return false;
             }
-            return ImGuiInternal.RadioButton(label, value);
+            bool clicked = ImGuiInternal.RadioButton(label, value);
+            DrawRadioRim();
+            return clicked;
         }
 
         /// <summary>
@@ -40,7 +43,27 @@ namespace DearImGuiKSP
             {
                 return false;
             }
-            return ImGuiInternal.RadioButton(label, ref value, option);
+            bool clicked = ImGuiInternal.RadioButton(label, ref value, option);
+            DrawRadioRim();
+            return clicked;
+        }
+
+        // Light-grey interior rim so the ring stays readable against the dark
+        // end of the window-bg gradient (M3 in-game fix). Drawn over the stock
+        // radio geometry at the same item rect — the button does not grow.
+        private static void DrawRadioRim()
+        {
+            ImVec2 min = ImGuiInternal.GetItemRectMin();
+            ImVec2 max = ImGuiInternal.GetItemRectMax();
+            float frameHeight = max.Y - min.Y;
+            var center = new ImVec2(min.X + frameHeight * 0.5f, min.Y + frameHeight * 0.5f);
+            ImGuiInternal.DrawListAddCircle(
+                ImGuiInternal.GetWindowDrawList(),
+                center,
+                frameHeight * 0.5f - 1f,
+                ImGuiInternal.GetColorU32(ToImVec4(KspPalette.TextLightGrey)),
+                0,
+                1.5f);
         }
     }
 }

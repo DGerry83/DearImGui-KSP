@@ -30,6 +30,7 @@
 | C25 | Pending | - | - | - | M8 |
 
 | M3-TUNE | Done | `Theming/{KspPalette,ThemePresets}`, `Api/{ImGuiGradients,DearImGuiKSP.TextColored.cs (NEW)}`, `Application/DearImGuiKSP.cs` (InputText), `Interop/{ImGuiNative,ImGuiInternal}` (SameLine + hidden-label input), `DemoConsumer.cs`, `ThemePresetsTests.cs` | Build 0/0; tests 75/75; native untouched (gradient flip is descriptor data) | G3: PASS (patch scope) | User M3-gate tuning applied; spec §6.1 revised 2026-09-04; radio-label highlight deferred (boundary ruling); ISSUES #004 filed (UI flicker) |
+| M3-FIX | Done | `src/ContextHost.cpp` (gradient pass: white-UV filter, inline lerp replacing ShadeVerts call), `harness_main.cpp` (checks scoped to solid-fill verts + new glyph-untouched check 16), `Api/DearImGuiKSP.Radio.cs` (light-grey interior rim) | 3 native builds 0 errors; harness PASS (incl. new code-16 glyph check); build 0/0; tests 75/75 | G3: PASS (patch scope) | Root cause: glyph verts share the font-atlas texture with the bg fill and merge into draw cmd 0 — shading them tinted list text into the gradient. Radio rim: 1.5 px TextLightGrey circle at frame-height radius −1, button size unchanged |
 
 ### Blockers
 - None
@@ -38,8 +39,8 @@
 | Milestone | Status | Evidence |
 |-----------|--------|----------|
 | M1 Ergonomics (C1–C3) | **VERIFIED 2026-09-03** | In-game: demo/benchmark windows render identically through scope API; `Throw inside scope (test)` → fault barrier logged `Consumer 'DearImGuiKSPDemo' threw an exception: InvalidOperationException` and UI kept rendering with no disruption (user-confirmed). Build 0/0, tests 59/59. |
-| M2 Fonts (C4–C7) | **VERIFIED 2026-09-04** (happy path) | In-game: IBM Plex Sans renders (user-confirmed); base size tuned 15→18 px per user feedback. Gate failure I-03 (io.FontDefault never set) found, fixed, committed 31d7f0d. **Deferred to M3 gate batch (user decision):** fallback-path test (bogus font name) and v4/v5 mismatch popup test — native_v4.dll/native_v5.dll staged in DearImGuiKSPNative/build/ for this. G6 in-game portion stays Pending until then. |
-| M3 Theme (C8–C10) | Not started | |
+| M2 Fonts (C4–C7) | **VERIFIED 2026-09-04** | In-game, user-confirmed: Plex Sans renders (size tuned to 18 px base); fallback path (bogus font → log line + ProggyClean) PASS; v4/v5 mismatch popup PASS (G6 in-game evidence complete). I-03 found/fixed along the way. |
+| M3 Theme (C8–C10) | **VERIFIED 2026-09-04** (residual spot-check pending) | In-game, user-approved after tuning (M3-TUNE: gradient flip, frame backfill rgb(58,58,63), input text light orange, secondary grey button gradient, brighter active green; header text = consumer choice via TextColored). Two gate defects fixed inline (M3-FIX): list text tinted by gradient pass (glyph verts merged into draw cmd 0 — now filtered by white-pixel UV), radio rim added. Spot-check of those two on next launch; ISSUES #004 (flicker) filed separately. |
 | M4 ImPlot (C11–C13) | Not started | |
 | M5 Widgets+tween (C14–C17) | Not started | |
 | M6 Showcase (C18–C21) | Not started | |
