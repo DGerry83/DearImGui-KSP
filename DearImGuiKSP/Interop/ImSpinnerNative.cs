@@ -32,9 +32,12 @@ namespace DearImGuiKSP.Interop
     /// C9 owns ImGuiNative.cs / ImGuiInternal.cs, so this file is self-contained and
     /// layering-clean: it knows nothing of the facade — the public SpinnerType enum
     /// dispatch lives in the facade (C16 contract), which calls the safe wrappers
-    /// below. No string ever enters this layer: the native label parameter is a
-    /// shared static empty buffer (see EmptyLabel below), so the whole path is
-    /// allocation-free.
+    /// below. The label parameter exists only to seed a state-free ImGuiID
+    /// (vendor/imspinner/imspinner.h:110 — SpinnerBegin's GetID + ItemAdd); it must
+    /// be NON-EMPTY, because GetID("") at the window root returns the window's own
+    /// ID and trips ItemAdd's assert (imgui.cpp:12203, ISSUES #005). The facade
+    /// supplies a unique per-type invisible "##dk_spinner_*" label by default, so
+    /// the common path stays allocation-free.
     /// </summary>
     internal static class ImSpinnerNative
     {
@@ -44,18 +47,14 @@ namespace DearImGuiKSP.Interop
         private static readonly ImSpinnerColor White = new ImSpinnerColor(new ImVec4(1f, 1f, 1f, 1f));
         private static readonly ImSpinnerColor HalfWhite = new ImSpinnerColor(new ImVec4(1f, 1f, 1f, 0.5f));
 
-        // Shared label for the no-label path. Spinners use the label only for a
-        // state-free ImGuiID (vendor/imspinner/imspinner.h:110) — they hold no per-ID
-        // state, so an empty shared ID is layout-safe and keeps the path allocation-free.
-        private static readonly byte[] EmptyLabel = { 0 };
-
         // --- Curated spinner externs (15), each cited to vendor/cimspinner ---
-        // Common parameter mapping (contract C16): label = shared empty ID (see above);
-        // radius/thickness are forwarded by the safe wrappers below (FadeBars forwards
-        // radius as its width parameter w); every ImColor comes from the nullable tint
-        // (null = the upstream default color for that spinner, applied in the wrapper);
-        // every other bespoke upstream argument is a wrapper constant equal to the
-        // upstream C++ default cited at each wrapper.
+        // Common parameter mapping (contract C16): label = caller-supplied unique ID
+        // seed (see the class doc — never empty); radius/thickness are forwarded by
+        // the safe wrappers below (FadeBars forwards radius as its width parameter w);
+        // every ImColor comes from the nullable tint (null = the upstream default
+        // color for that spinner, applied in the wrapper); every other bespoke
+        // upstream argument is a wrapper constant equal to the upstream C++ default
+        // cited at each wrapper.
 
         // CIMSPINNER_API void SpinnerRainbowMixEx(const char *label, float radius, float thickness, const ImColor color, float speed, float ang_min, float ang_max, int arcs, int mode);
         // (vendor/cimspinner/cimspinner.h:125)
@@ -160,93 +159,93 @@ namespace DearImGuiKSP.Interop
         // to the vendored imspinner headers.
 
         /// <summary>SpinnerRainbowMix (imspinner.h:331; upstream defines no color/speed defaults — 2.8f is the library-standard speed; sweep 0..2π, 1 arc, mode 0).</summary>
-        internal static void SpinnerRainbowMix(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerRainbowMix(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerRainbowMixEx(EmptyLabel, radius, thickness, tint ?? White, 2.8f, 0f, 6.2831855f, 1, 0);
+            SpinnerRainbowMixEx(label, radius, thickness, tint ?? White, 2.8f, 0f, 6.2831855f, 1, 0);
         }
 
         /// <summary>SpinnerAng8 (imspinner.h:387: bg white, speed 2.8f, angle π, mode 0, rkoef 0.5f).</summary>
-        internal static void SpinnerAng8(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerAng8(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerAng8Ex(EmptyLabel, radius, thickness, tint ?? White, White, 2.8f, 3.1415927f, 0, 0.5f);
+            SpinnerAng8Ex(label, radius, thickness, tint ?? White, White, 2.8f, 3.1415927f, 0, 0.5f);
         }
 
         /// <summary>SpinnerClock (imspinner.h:484: bg half-white, speed 2.8f).</summary>
-        internal static void SpinnerClock(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerClock(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerClockEx(EmptyLabel, radius, thickness, tint ?? White, HalfWhite, 2.8f);
+            SpinnerClockEx(label, radius, thickness, tint ?? White, HalfWhite, 2.8f);
         }
 
         /// <summary>SpinnerPulsar (imspinner.h:497: this spinner's only color is its bg ring; default half-white, speed 2.8f, sequence on, angle 0, mode 0).</summary>
-        internal static void SpinnerPulsar(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerPulsar(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerPulsarEx(EmptyLabel, radius, thickness, tint ?? HalfWhite, 2.8f, true, 0f, 0);
+            SpinnerPulsarEx(label, radius, thickness, tint ?? HalfWhite, 2.8f, true, 0f, 0);
         }
 
         /// <summary>SpinnerAtom (imspinner.h:2535: speed 2.8f, 3 ellipses).</summary>
-        internal static void SpinnerAtom(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerAtom(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerAtomEx(EmptyLabel, radius, thickness, tint ?? White, 2.8f, 3);
+            SpinnerAtomEx(label, radius, thickness, tint ?? White, 2.8f, 3);
         }
 
         /// <summary>SpinnerDotsToBar (imspinner_dots.h:88: offset_k 0.5f — no upstream default, the upstream demo value (imspinner_demo.h:279); speed 2.8f, 5 dots).</summary>
-        internal static void SpinnerDotsToBar(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerDotsToBar(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerDotsToBarEx(EmptyLabel, radius, thickness, 0.5f, tint ?? White, 2.8f, new UIntPtr(5));
+            SpinnerDotsToBarEx(label, radius, thickness, 0.5f, tint ?? White, 2.8f, new UIntPtr(5));
         }
 
         /// <summary>SpinnerSwingDots (imspinner_dots.h:606: speed 2.8f).</summary>
-        internal static void SpinnerSwingDots(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerSwingDots(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerSwingDotsEx(EmptyLabel, radius, thickness, tint ?? White, 2.8f);
+            SpinnerSwingDotsEx(label, radius, thickness, tint ?? White, 2.8f);
         }
 
         /// <summary>SpinnerDnaDots (imspinner_dots.h:636: speed 2.8f, 8 rungs, delta 0.5f, mode off).</summary>
-        internal static void SpinnerDnaDots(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerDnaDots(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerDnaDotsEx(EmptyLabel, radius, thickness, tint ?? White, 2.8f, 8, 0.5f, false);
+            SpinnerDnaDotsEx(label, radius, thickness, tint ?? White, 2.8f, 8, 0.5f, false);
         }
 
         /// <summary>SpinnerFadeBars (imspinner_bars.h:20: radius forwarded as w — this spinner has no thickness parameter; speed 2.8f, 3 bars, no scale).</summary>
-        internal static void SpinnerFadeBars(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerFadeBars(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerFadeBarsEx(EmptyLabel, radius, tint ?? White, 2.8f, new UIntPtr(3), false);
+            SpinnerFadeBarsEx(label, radius, tint ?? White, 2.8f, new UIntPtr(3), false);
         }
 
         /// <summary>SpinnerMorphShape (imspinner_shapes.h:22: speed 1f, mode 0).</summary>
-        internal static void SpinnerMorphShape(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerMorphShape(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerMorphShapeEx(EmptyLabel, radius, thickness, tint ?? White, 1f, 0);
+            SpinnerMorphShapeEx(label, radius, thickness, tint ?? White, 1f, 0);
         }
 
         /// <summary>SpinnerFlipTriangle (imspinner_shapes.h:97: speed 1f, mode 0).</summary>
-        internal static void SpinnerFlipTriangle(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerFlipTriangle(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerFlipTriangleEx(EmptyLabel, radius, thickness, tint ?? White, 1f, 0);
+            SpinnerFlipTriangleEx(label, radius, thickness, tint ?? White, 1f, 0);
         }
 
         /// <summary>SpinnerFoldSquare (imspinner_shapes.h:127: speed 1f, mode 0).</summary>
-        internal static void SpinnerFoldSquare(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerFoldSquare(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerFoldSquareEx(EmptyLabel, radius, thickness, tint ?? White, 1f, 0);
+            SpinnerFoldSquareEx(label, radius, thickness, tint ?? White, 1f, 0);
         }
 
         /// <summary>SpinnerPinwheel (imspinner_shapes.h:183: speed 1f, mode 0).</summary>
-        internal static void SpinnerPinwheel(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerPinwheel(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerPinwheelEx(EmptyLabel, radius, thickness, tint ?? White, 1f, 0);
+            SpinnerPinwheelEx(label, radius, thickness, tint ?? White, 1f, 0);
         }
 
         /// <summary>SpinnerCornerSquares (imspinner_shapes.h:225: speed 1f, mode 0).</summary>
-        internal static void SpinnerCornerSquares(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerCornerSquares(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerCornerSquaresEx(EmptyLabel, radius, thickness, tint ?? White, 1f, 0);
+            SpinnerCornerSquaresEx(label, radius, thickness, tint ?? White, 1f, 0);
         }
 
         /// <summary>SpinnerSplitSquare (imspinner_shapes.h:263: speed 1f, mode 0).</summary>
-        internal static void SpinnerSplitSquare(float radius, float thickness, ImSpinnerColor? tint)
+        internal static void SpinnerSplitSquare(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
-            SpinnerSplitSquareEx(EmptyLabel, radius, thickness, tint ?? White, 1f, 0);
+            SpinnerSplitSquareEx(label, radius, thickness, tint ?? White, 1f, 0);
         }
     }
 }

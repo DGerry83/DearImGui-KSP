@@ -1,3 +1,4 @@
+using System.Text;
 using DearImGuiKSP.Interop;
 using Color = UnityEngine.Color;
 
@@ -117,6 +118,44 @@ namespace DearImGuiKSP
 
     public static partial class DearImGuiKSP
     {
+        // ISSUES #005: a spinner's label seeds its ImGuiID via SpinnerBegin's
+        // GetID + ItemAdd (vendor/imspinner/imspinner.h:110) — an EMPTY label
+        // returns the window's own ID and trips ItemAdd's assert
+        // (imgui.cpp:12203). The default IDs below are unique per SpinnerType
+        // and invisible ("##" prefix). Placing two spinners of the SAME type in
+        // one window needs distinct caller-provided ids (standard ImGui ID rules).
+        private static readonly byte[][] s_spinnerDefaultIds =
+        {
+            Label("##dk_spinner_rainbowmix"),
+            Label("##dk_spinner_ang8"),
+            Label("##dk_spinner_clock"),
+            Label("##dk_spinner_pulsar"),
+            Label("##dk_spinner_atom"),
+            Label("##dk_spinner_dotstobar"),
+            Label("##dk_spinner_swingdots"),
+            Label("##dk_spinner_dnadots"),
+            Label("##dk_spinner_fadebars"),
+            Label("##dk_spinner_morphshape"),
+            Label("##dk_spinner_fliptriangle"),
+            Label("##dk_spinner_foldsquare"),
+            Label("##dk_spinner_pinwheel"),
+            Label("##dk_spinner_cornersquares"),
+            Label("##dk_spinner_splitsquare"),
+        };
+
+        // Null-terminated UTF-8, static-init only (default IDs) or the
+        // caller-provided id path. Same convention as the Interop ToUtf8 helpers.
+        private static byte[] Label(string value)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(value);
+            byte[] terminated = new byte[bytes.Length + 1];
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                terminated[i] = bytes[i];
+            }
+            return terminated;
+        }
+
         /// <summary>
         /// Draws an animated spinner (vendored dalerank/imspinner) of the given
         /// type. Spinners indicate ongoing work; they animate themselves natively
@@ -131,65 +170,71 @@ namespace DearImGuiKSP
         /// (white for most types, half-white for Clock and Pulsar backgrounds —
         /// see the <see cref="SpinnerType"/> value docs).
         /// </param>
-        public static void Spinner(SpinnerType type, float radius, float thickness, Color? tint = null)
+        /// <param name="id">
+        /// Optional ImGui ID for the widget (invisible; standard "##" semantics
+        /// apply). Null uses a unique per-type default. Pass distinct ids when
+        /// placing two spinners of the same type in one window.
+        /// </param>
+        public static void Spinner(SpinnerType type, float radius, float thickness, Color? tint = null, string id = null)
         {
             if (!IsAvailable)
             {
                 return;
             }
             // Nullable<ImSpinnerColor> is a stack value type; null = "upstream
-            // default color" resolved per spinner in ImSpinnerNative (hot-path
-            // checklist Check 2 — zero per-frame allocation, pure value-type
-            // enum dispatch).
+            // default color" resolved per spinner in ImSpinnerNative. The default
+            // id path is allocation-free; a caller-provided id allocates one
+            // short-lived UTF-8 buffer, the same convention as every facade label.
             ImSpinnerColor? spinnerTint = tint.HasValue
                 ? new ImSpinnerColor(ToImVec4(tint.Value))
                 : (ImSpinnerColor?)null;
+            byte[] label = id == null ? s_spinnerDefaultIds[(int)type] : Label(id);
             switch (type)
             {
                 case SpinnerType.RainbowMix:
-                    ImSpinnerNative.SpinnerRainbowMix(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerRainbowMix(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.Ang8:
-                    ImSpinnerNative.SpinnerAng8(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerAng8(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.Clock:
-                    ImSpinnerNative.SpinnerClock(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerClock(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.Pulsar:
-                    ImSpinnerNative.SpinnerPulsar(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerPulsar(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.Atom:
-                    ImSpinnerNative.SpinnerAtom(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerAtom(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.DotsToBar:
-                    ImSpinnerNative.SpinnerDotsToBar(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerDotsToBar(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.SwingDots:
-                    ImSpinnerNative.SpinnerSwingDots(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerSwingDots(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.DnaDots:
-                    ImSpinnerNative.SpinnerDnaDots(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerDnaDots(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.FadeBars:
-                    ImSpinnerNative.SpinnerFadeBars(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerFadeBars(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.MorphShape:
-                    ImSpinnerNative.SpinnerMorphShape(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerMorphShape(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.FlipTriangle:
-                    ImSpinnerNative.SpinnerFlipTriangle(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerFlipTriangle(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.FoldSquare:
-                    ImSpinnerNative.SpinnerFoldSquare(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerFoldSquare(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.Pinwheel:
-                    ImSpinnerNative.SpinnerPinwheel(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerPinwheel(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.CornerSquares:
-                    ImSpinnerNative.SpinnerCornerSquares(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerCornerSquares(label, radius, thickness, spinnerTint);
                     break;
                 case SpinnerType.SplitSquare:
-                    ImSpinnerNative.SpinnerSplitSquare(radius, thickness, spinnerTint);
+                    ImSpinnerNative.SpinnerSplitSquare(label, radius, thickness, spinnerTint);
                     break;
             }
         }
