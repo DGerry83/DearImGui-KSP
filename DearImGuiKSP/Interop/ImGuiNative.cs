@@ -208,6 +208,27 @@ namespace DearImGuiKSP.Interop
         [return: MarshalAs(UnmanagedType.I1)]
         private static extern bool igRadioButton_IntPtr([In] byte[] label, ref int v, int v_button);
 
+        // ---- Native theme exports (chunk C8) ----
+        // Own DearImGuiKSPNative_* ABI (ContextHost.h), not cimgui: cimgui exports
+        // no per-field style setters, so the DLL provides these pass-throughs over
+        // the live ImGuiStyle. Returns: 0 ok, 1 no context, 2 bad index/unknown var.
+
+        // int DearImGuiKSPNative_SetStyleColor(int idx, float r, float g, float b, float a); (ContextHost.h)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int DearImGuiKSPNative_SetStyleColor(int idx, float r, float g, float b, float a);
+
+        // int DearImGuiKSPNative_SetStyleVarFloat(int idx, float v); (ContextHost.h)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int DearImGuiKSPNative_SetStyleVarFloat(int idx, float v);
+
+        // int DearImGuiKSPNative_SetStyleVarVec2(int idx, float x, float y); (ContextHost.h)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int DearImGuiKSPNative_SetStyleVarVec2(int idx, float x, float y);
+
+        // int DearImGuiKSPNative_StyleColorsDark(void); (ContextHost.h)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int DearImGuiKSPNative_StyleColorsDark();
+
         // ---- Internal surface for ImGuiInternal (keeps the raw P/Invokes private) ----
 
         internal static bool Begin(byte[] nameUtf8, ImGuiWindowFlags flags)
@@ -357,6 +378,29 @@ namespace DearImGuiKSP.Interop
         internal static bool RadioButton(byte[] labelUtf8, ref int v, int vButton)
         {
             return igRadioButton_IntPtr(labelUtf8, ref v, vButton);
+        }
+
+        // Theme style setters (C8). <paramref name="idx"/> is a DearImGuiKSP.ImGuiCol /
+        // DearImGuiKSP.ImGuiStyleVar value passed as int (single source of truth, C1).
+
+        internal static int SetStyleColor(int idx, float r, float g, float b, float a)
+        {
+            return DearImGuiKSPNative_SetStyleColor(idx, r, g, b, a);
+        }
+
+        internal static int SetStyleVarFloat(int idx, float v)
+        {
+            return DearImGuiKSPNative_SetStyleVarFloat(idx, v);
+        }
+
+        internal static int SetStyleVarVec2(int idx, float x, float y)
+        {
+            return DearImGuiKSPNative_SetStyleVarVec2(idx, x, y);
+        }
+
+        internal static int StyleColorsDark()
+        {
+            return DearImGuiKSPNative_StyleColorsDark();
         }
     }
 }

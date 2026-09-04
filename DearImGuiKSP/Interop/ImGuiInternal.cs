@@ -334,6 +334,55 @@ namespace DearImGuiKSP.Interop
         }
 
         /// <summary>
+        /// Writes one slot of the global style color table (NOT the push/pop stack).
+        /// Wraps the native <c>DearImGuiKSPNative_SetStyleColor</c> export (C8).
+        /// <paramref name="idx"/> is a <c>DearImGuiKSP.ImGuiCol</c> value passed as int.
+        /// Returns 0 on success, 1 when the native context does not exist, 2 for a
+        /// bad index (nothing written).
+        /// </summary>
+        internal static int SetStyleColor(int idx, float r, float g, float b, float a)
+        {
+            return ImGuiNative.SetStyleColor(idx, r, g, b, a);
+        }
+
+        /// <summary>
+        /// Writes one float field of the global style (rounding, border size, ...).
+        /// Wraps the native <c>DearImGuiKSPNative_SetStyleVarFloat</c> export (C8);
+        /// the native side accepts only the float-var subset the theme presets use.
+        /// <paramref name="idx"/> is a <c>DearImGuiKSP.ImGuiStyleVar</c> value passed as int.
+        /// Returns 0 on success, 1 when the native context does not exist, 2 for an
+        /// unknown/wrong-arity variable (nothing written).
+        /// </summary>
+        internal static int SetStyleVarFloat(int idx, float v)
+        {
+            return ImGuiNative.SetStyleVarFloat(idx, v);
+        }
+
+        /// <summary>
+        /// Writes one <see cref="ImVec2"/> field of the global style (paddings, spacing).
+        /// Wraps the native <c>DearImGuiKSPNative_SetStyleVarVec2</c> export (C8);
+        /// the native side accepts only the Vec2-var subset the theme presets use.
+        /// <paramref name="idx"/> is a <c>DearImGuiKSP.ImGuiStyleVar</c> value passed as int.
+        /// Returns 0 on success, 1 when the native context does not exist, 2 for an
+        /// unknown/wrong-arity variable (nothing written).
+        /// </summary>
+        internal static int SetStyleVarVec2(int idx, float x, float y)
+        {
+            return ImGuiNative.SetStyleVarVec2(idx, x, y);
+        }
+
+        /// <summary>
+        /// Re-applies the stock ImGui dark style to the global style color table.
+        /// Wraps the native <c>DearImGuiKSPNative_StyleColorsDark</c> export (C8) —
+        /// the "dark" preset's exactness comes from calling this, never from a
+        /// managed color table. Returns 0 on success, 1 when there is no context.
+        /// </summary>
+        internal static int StyleColorsDark()
+        {
+            return ImGuiNative.StyleColorsDark();
+        }
+
+        /// <summary>
         /// Opaque handle to a native <c>ImDrawList</c>, obtained from
         /// <see cref="GetWindowDrawList"/>. Keeps raw pointers out of the safe surface (Q46);
         /// do not retain across frames.

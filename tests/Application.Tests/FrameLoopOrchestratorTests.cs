@@ -47,9 +47,12 @@ namespace Application.Tests
             var machine = new LifecycleStateMachine(new FakeLogger());
             machine.MarkInitializing();
             machine.MarkRunning();
+            // Real ThemeEngine over the test settings: no theme change fires in
+            // these tests, so ApplyIfDirty never reaches native code.
+            var themeEngine = new ThemeEngine(settings, new FakeLogger());
             return new FrameLoopOrchestrator(
                 bridge, registry, tracker, new FaultBarrier(new FakeLogger()), machine,
-                new FakeLogger(), settings);
+                new FakeLogger(), settings, themeEngine);
         }
 
         private static SettingsModel CreateSettings(bool clampWindowsToViewport)

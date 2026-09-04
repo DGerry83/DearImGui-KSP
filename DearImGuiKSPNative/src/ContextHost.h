@@ -48,6 +48,33 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_FeedFrameInput(float mouseX, flo
 // DearImGuiKSPNative_ClampWindowsToViewport lives in DearImGuiKSPNative.cpp.
 void ContextHost_ClampWindowsToViewport(float width, float height);
 
+// Writes ImGui::GetStyle().Colors[idx] (theme presets, spec §5.1). idx is an
+// ImGuiCol_* value, bounds-checked against ImGuiCol_COUNT. Returns 0 on success,
+// 1 if there is no context, 2 for a bad index (nothing written). Not part of
+// the exported C ABI itself — the exported wrapper
+// DearImGuiKSPNative_SetStyleColor lives in DearImGuiKSPNative.cpp.
+int ContextHost_SetStyleColor(int idx, float r, float g, float b, float a);
+
+// Writes a float ImGuiStyle field selected by an ImGuiStyleVar_* value; the
+// switch covers exactly the subset the theme presets use (WindowRounding,
+// WindowBorderSize, FrameRounding, FrameBorderSize, GrabRounding, GrabMinSize,
+// ScrollbarRounding, TabRounding, ChildRounding, PopupRounding). Unknown idx
+// returns 2 and writes nothing; 1 = no context. Not exported directly — the
+// wrapper DearImGuiKSPNative_SetStyleVarFloat lives in DearImGuiKSPNative.cpp.
+int ContextHost_SetStyleVarFloat(int idx, float v);
+
+// Writes an ImVec2 ImGuiStyle field (WindowPadding, FramePadding, ItemSpacing).
+// Same return codes as ContextHost_SetStyleVarFloat. Not exported directly —
+// the wrapper DearImGuiKSPNative_SetStyleVarVec2 lives in DearImGuiKSPNative.cpp.
+int ContextHost_SetStyleVarVec2(int idx, float x, float y);
+
+// Re-applies the stock ImGui dark style to the live style (spec §5.1: "dark"
+// is the exact stock dark, and every theme apply resets to it first so slots
+// a preset does not map are never stale). Returns 0 on success, 1 if there is
+// no context. Not exported directly — the wrapper
+// DearImGuiKSPNative_StyleColorsDark lives in DearImGuiKSPNative.cpp.
+int ContextHost_StyleColorsDark(void);
+
 // Loads a font file into the context atlas (spec §4.2). Legal only before
 // the first NewFrame — afterwards the atlas is built and locked. Returns
 // 0 on success, 1 if there is no context, 2 if frames have already begun,

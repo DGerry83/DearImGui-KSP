@@ -59,3 +59,41 @@
   caught-exception detail (`DearImGuiKSPAddon.cs`). Rebuilt native (harness PASS) and
   managed (0 errors); both mirrored to the game.
 - **Verification standing:** M2 gate remains OPEN pending user re-launch.
+
+## I-04 (C8): "dark" = `StyleColorsDark()` + zero overrides does not restore style VARS after a ksp→dark switch
+
+- **Found by:** Chunk C8 (Theme engine), Phase 0/implementation.
+- **Contract text:** CHUNK_C8_CONTRACT.md Constraints — '"dark" must be byte-exact
+  stock ImGui dark: implement it as native `StyleColorsDark()` + zero
+  overrides'; Verification — 'live switch to "dark" matches stock'.
+- **Reality:** In imgui 1.92.9 `ImGui::StyleColorsDark()` sets ONLY the
+  `ImGuiStyle::Colors` table. Scalar/vector style fields (WindowRounding,
+  WindowBorderSize, paddings, ...) are `ImGuiStyle`-constructor defaults and are
+  never touched by it (verified by direct read-back in
+  `DearImGuiKSPNative/build/c8_verify.ps1`: after writing WindowRounding=6,
+  `StyleColorsDark()` leaves it at 6 while Colors[WindowBg] restores byte-exact).
+- **Consequence:** fresh session with `theme = dark` is byte-exact stock dark in
+  colors AND vars (ContextInit's ImGuiStyle ctor defaults hold). But after a
+  live ksp→dark switch, the 9 var slots the ksp preset wrote (rounding 4–6 px,
+  1 px border, WindowPadding) persist — only colors return to stock.
+- **Resolution taken:** implemented the contract mechanism literally (native
+  `StyleColorsDark()` + zero overrides; no hand-copied table of any kind). The
+  ksp preset's var set is deliberately small (8 float + 1 vec2 slot). If the
+  Lead rules that "live switch to dark" must also restore vars, the clean fix
+  is one native line — `ImGui::GetStyle() = ImGuiStyle();` before
+  `StyleColorsDark()` inside `ContextHost_StyleColorsDark` (full ctor reset, no
+  hand-copied values) — but that exceeds the contract's literal export
+  definition, so it is held back for a Lead ruling.
+- **Held back:** the optional var-reset line above; nothing else.
+
+## I-04 (C8): StyleColorsDark resets colors only — live ksp→dark switch kept ksp's var overrides
+
+- **Found by:** Chunk C8, Phase 0 (verified by direct read-back against imgui 1.92.9).
+- **Issue:** `ImGui::StyleColorsDark()` rewrites only the Colors table. After a live
+  ksp→dark switch, the 9 style-var slots ksp wrote (rounding, padding, borders) persisted,
+  so "dark" was not byte-exact stock on the switch path (fresh dark sessions were exact).
+- **Lead ruling:** ACCEPTED the chunk's documented one-line fix —
+  `ImGui::GetStyle() = ImGuiStyle();` before `StyleColorsDark()` in
+  `ContextHost_StyleColorsDark` (ContextHost.cpp:275-284). Default-constructed ImGuiStyle
+  + StyleColorsDark == stock style by construction. Applied by the Lead, all 3 native
+  builds 0 errors, harness PASS, mirrored to game.

@@ -191,5 +191,61 @@ namespace Application.Tests
 
             Assert.Equal("PersistedFont", model.Font);
         }
+
+        [Fact]
+        public void Theme_DefaultsToKsp_FromLibraryConfig()
+        {
+            SettingsModel model = CreateModel(out FakeSettingsStore _);
+
+            Assert.Equal("ksp", model.Theme);
+            Assert.Equal(LibraryConfig.DefaultTheme, model.Theme);
+        }
+
+        [Fact]
+        public void Theme_Unknown_NormalizesToKsp_AndRejectionIsConsumableOnce()
+        {
+            var store = new FakeSettingsStore();
+            store.Loaded.Theme = "neon";
+
+            var model = new SettingsModel(store);
+
+            Assert.Equal("ksp", model.Theme);
+            Assert.Equal("neon", model.ConsumeRejectedTheme());
+            Assert.Null(model.ConsumeRejectedTheme());
+        }
+
+        [Fact]
+        public void Theme_CaseNormalizes_ToLowercase()
+        {
+            var store = new FakeSettingsStore();
+            store.Loaded.Theme = "DARK";
+
+            var model = new SettingsModel(store);
+
+            Assert.Equal("dark", model.Theme);
+            Assert.Null(model.ConsumeRejectedTheme());
+
+            model.Theme = "KSP";
+            Assert.Equal("ksp", model.Theme);
+
+            model.Theme = "Dark";
+            Assert.Equal("dark", model.Theme);
+        }
+
+        [Fact]
+        public void Theme_ValidValue_RoundTripsThroughStore()
+        {
+            var store = new FakeSettingsStore();
+            store.Loaded.Theme = "dark";
+
+            var model = new SettingsModel(store);
+
+            Assert.Equal("dark", model.Theme);
+            Assert.Null(model.ConsumeRejectedTheme());
+
+            model.Theme = "ksp";
+            Assert.Single(store.Saves);
+            Assert.Equal("ksp", store.Saves[0].Theme);
+        }
     }
 }

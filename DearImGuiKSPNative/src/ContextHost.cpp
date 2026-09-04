@@ -224,3 +224,63 @@ int ContextHost_LoadFontFromFile(const char* utf8Path, float sizePixels)
         io.FontDefault = font;
     return 0;
 }
+
+int ContextHost_SetStyleColor(int idx, float r, float g, float b, float a)
+{
+    if (s_Context == nullptr)
+        return 1; // no context
+    if (idx < 0 || idx >= ImGuiCol_COUNT)
+        return 2; // bad index — the style table is untouched
+    ImGui::GetStyle().Colors[idx] = ImVec4(r, g, b, a);
+    return 0;
+}
+
+int ContextHost_SetStyleVarFloat(int idx, float v)
+{
+    if (s_Context == nullptr)
+        return 1; // no context
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    switch (idx)
+    {
+        case ImGuiStyleVar_WindowRounding:    style.WindowRounding    = v; return 0;
+        case ImGuiStyleVar_WindowBorderSize:  style.WindowBorderSize  = v; return 0;
+        case ImGuiStyleVar_FrameRounding:     style.FrameRounding     = v; return 0;
+        case ImGuiStyleVar_FrameBorderSize:   style.FrameBorderSize   = v; return 0;
+        case ImGuiStyleVar_GrabRounding:      style.GrabRounding      = v; return 0;
+        case ImGuiStyleVar_GrabMinSize:       style.GrabMinSize       = v; return 0;
+        case ImGuiStyleVar_ScrollbarRounding: style.ScrollbarRounding = v; return 0;
+        case ImGuiStyleVar_TabRounding:       style.TabRounding       = v; return 0;
+        case ImGuiStyleVar_ChildRounding:     style.ChildRounding     = v; return 0;
+        case ImGuiStyleVar_PopupRounding:     style.PopupRounding     = v; return 0;
+        default: return 2; // not a float var this layer supports — nothing written
+    }
+}
+
+int ContextHost_SetStyleVarVec2(int idx, float x, float y)
+{
+    if (s_Context == nullptr)
+        return 1; // no context
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    switch (idx)
+    {
+        case ImGuiStyleVar_WindowPadding: style.WindowPadding = ImVec2(x, y); return 0;
+        case ImGuiStyleVar_FramePadding:  style.FramePadding  = ImVec2(x, y); return 0;
+        case ImGuiStyleVar_ItemSpacing:   style.ItemSpacing   = ImVec2(x, y); return 0;
+        default: return 2; // not a Vec2 var this layer supports — nothing written
+    }
+}
+
+int ContextHost_StyleColorsDark(void)
+{
+    if (s_Context == nullptr)
+        return 1; // no context
+    // StyleColorsDark (1.92.9) rewrites only the Colors table. Resetting the whole
+    // style to default-constructed values first makes the "dark" preset byte-exact
+    // stock — including after a live ksp->dark switch, where ksp's var overrides
+    // (rounding, padding) would otherwise persist (I-04).
+    ImGui::GetStyle() = ImGuiStyle();
+    ImGui::StyleColorsDark(&ImGui::GetStyle());
+    return 0;
+}

@@ -4,8 +4,9 @@ using DearImGuiKSP.Application.Interfaces;
 namespace DearImGuiKSP.Application
 {
     /// <summary>
-    /// Executes the per-frame sequence (locked in C7, spec §5.3):
-    /// sample capture state → apply/release input locks (C9) → native BeginUiFrame →
+    /// Executes the per-frame sequence (locked in C7, spec §5.3; theme apply added in C8):
+    /// sample capture state → apply/release input locks (C9) → deferred theme apply
+    /// when dirty (C8, one bool check at steady state) → native BeginUiFrame →
     /// consumer callbacks in registration order through the FaultBarrier (C10) →
     /// native EndUiFrame. The render-event handoff is issued separately by the addon.
     /// Frames run only while the lifecycle state machine (C12) is Running —
@@ -26,6 +27,7 @@ namespace DearImGuiKSP.Application
         private readonly LifecycleStateMachine _lifecycle;
         private readonly ILogger _log;
         private readonly SettingsModel _settings;
+        private readonly ThemeEngine _themeEngine;
 
         private readonly Stopwatch _frameWatch = new Stopwatch();
         private double _frameMsSum;
@@ -44,7 +46,8 @@ namespace DearImGuiKSP.Application
             FaultBarrier faultBarrier,
             LifecycleStateMachine lifecycle,
             ILogger log,
-            SettingsModel settings)
+            SettingsModel settings,
+            ThemeEngine themeEngine)
         {
             _bridge = bridge;
             _registry = registry;
@@ -53,6 +56,7 @@ namespace DearImGuiKSP.Application
             _lifecycle = lifecycle;
             _log = log;
             _settings = settings;
+            _themeEngine = themeEngine;
         }
 
         /// <summary>
@@ -66,6 +70,11 @@ namespace DearImGuiKSP.Application
             {
                 return;
             }
+
+            // Deferred theme apply (C8): a settings change only dirties the
+            // engine; the re-apply happens here at frame start — never inside a
+            // consumer callback. Steady-state cost is the bool check.
+            _themeEngine.ApplyIfDirty();
 
             // Viewport clamp (ISSUES #002, G3 rework): GameEvents.onScreenResolutionModified
             // may never fire, and at event time io.DisplaySize still holds the OLD size,

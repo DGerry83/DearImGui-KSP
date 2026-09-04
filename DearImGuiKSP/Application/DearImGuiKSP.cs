@@ -20,9 +20,20 @@ namespace DearImGuiKSP
         // Wiring hooks (C7/C12): Application cannot see Infrastructure.Composition, so
         // Composition assigns these at startup — the logger in Awake, the registry
         // alongside it, and the lifecycle state machine after it is created.
+        // ThemeEngine (C8) joins the same pattern for <see cref="CurrentTheme"/>.
         internal static ILogger Log { get; set; }
         internal static ConsumerRegistry Registry { get; set; }
         internal static LifecycleStateMachine Lifecycle { get; set; }
+        internal static Application.ThemeEngine ThemeEngine { get; set; }
+
+        /// <summary>
+        /// Name of the currently applied theme preset: "ksp" (the default) or
+        /// "dark" (exact stock ImGui dark). Read-only; change the theme via the
+        /// library's settings.cfg <c>theme</c> key (spec §9, D25) — the new theme
+        /// applies at the start of the next UI frame.
+        /// </summary>
+        public static string CurrentTheme =>
+            ThemeEngine != null ? ThemeEngine.CurrentThemeName : LibraryConfig.DefaultTheme;
 
         /// <summary>
         /// True when the library is initialized and either running or temporarily suspended.

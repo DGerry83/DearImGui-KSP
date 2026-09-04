@@ -26,6 +26,7 @@ namespace DearImGuiKSP.Infrastructure
         private static InputCaptureTracker _captureTracker;
         private static FaultBarrier _faultBarrier;
         private static LifecycleStateMachine _stateMachine;
+        private static ThemeEngine _themeEngine;
         private static GameEventHooks _gameEventHooks;
         private static FailureNotifier _failureNotifier;
 
@@ -101,7 +102,15 @@ namespace DearImGuiKSP.Infrastructure
 
         /// <summary>The frame loop orchestrator singleton (C7; C9/C10/C12 wired, C14 timing), driven by DearImGuiKSPAddon.Update().</summary>
         internal static FrameLoopOrchestrator Orchestrator =>
-            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine, Logger, Settings));
+            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine, Logger, Settings, ThemeEngine));
+
+        /// <summary>
+        /// The theme engine singleton (C8): subscribes to SettingsModel.Changed,
+        /// applies the configured preset at startup (DearImGuiKSPAddon.Start, after
+        /// the font load) and re-applies through the orchestrator's dirty-flag path.
+        /// </summary>
+        internal static ThemeEngine ThemeEngine =>
+            _themeEngine ?? (_themeEngine = new ThemeEngine(Settings, Logger));
 
         /// <summary>The failure notifier singleton (C13). Shows the one-per-session failure popup.</summary>
         internal static FailureNotifier Notifier =>
@@ -118,6 +127,7 @@ namespace DearImGuiKSP.Infrastructure
             DearImGuiKSP.Log = Logger;
             DearImGuiKSP.Registry = Registry;
             DearImGuiKSP.Lifecycle = StateMachine;
+            DearImGuiKSP.ThemeEngine = ThemeEngine;
 
             // -=/+= keeps the call idempotent: event subscription is not.
             StateMachine.EnteredFailed -= OnEnteredFailed;

@@ -36,7 +36,7 @@
 | Milestone | Status | Evidence |
 |-----------|--------|----------|
 | M1 Ergonomics (C1–C3) | **VERIFIED 2026-09-03** | In-game: demo/benchmark windows render identically through scope API; `Throw inside scope (test)` → fault barrier logged `Consumer 'DearImGuiKSPDemo' threw an exception: InvalidOperationException` and UI kept rendering with no disruption (user-confirmed). Build 0/0, tests 59/59. |
-| M2 Fonts (C4–C7) | Not started | |
+| M2 Fonts (C4–C7) | **VERIFIED 2026-09-04** (happy path) | In-game: IBM Plex Sans renders (user-confirmed); base size tuned 15→18 px per user feedback. Gate failure I-03 (io.FontDefault never set) found, fixed, committed 31d7f0d. **Deferred to M3 gate batch (user decision):** fallback-path test (bogus font name) and v4/v5 mismatch popup test — native_v4.dll/native_v5.dll staged in DearImGuiKSPNative/build/ for this. G6 in-game portion stays Pending until then. |
 | M3 Theme (C8–C10) | Not started | |
 | M4 ImPlot (C11–C13) | Not started | |
 | M5 Widgets+tween (C14–C17) | Not started | |

@@ -27,7 +27,11 @@ namespace DearImGuiKSP
         // Setting defaults (spec §9.1)
         internal const float DefaultUiScale = 1.0f;
         internal const float DefaultFontScale = 1.0f;
-        internal const string DefaultTheme = "dark";
+        /// <summary>Default theme preset (D25): "ksp"; the stock ImGui dark stays available as <see cref="DarkThemeName"/>.</summary>
+        internal const string DefaultTheme = "ksp";
+
+        /// <summary>The retained stock-ImGui-dark preset name (spec §5.1, D25).</summary>
+        internal const string DarkThemeName = "dark";
         internal const string DefaultFont = "IBMPlexSans";
         internal const string EmbeddedFontName = "ProggyClean";
         internal const string FontsDir = "GameData/DearImGuiKSP/Fonts";

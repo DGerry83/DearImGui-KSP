@@ -146,13 +146,45 @@ namespace DearImGuiKSP.Application
             });
         }
 
+        // The raw theme name most recently rejected by NormalizeTheme. The model
+        // has no logger, so ThemeEngine consumes this at the apply site to log
+        // the spec §7 line ("Unknown theme '<name>'; using 'ksp'."). Null when
+        // the last normalization recognized the name (or it was empty).
+        private string _rejectedTheme;
+
+        /// <summary>
+        /// Returns the raw theme name most recently rejected by normalization,
+        /// once, then clears it — so the apply site logs exactly one line per
+        /// unknown name (spec §7).
+        /// </summary>
+        internal string ConsumeRejectedTheme()
+        {
+            string rejected = _rejectedTheme;
+            _rejectedTheme = null;
+            return rejected;
+        }
+
         private static float ClampScale(float value) =>
             Math.Max(LibraryConfig.MinScale, Math.Min(LibraryConfig.MaxScale, value));
 
-        private static string NormalizeTheme(string value) =>
-            string.Equals(value, LibraryConfig.DefaultTheme, StringComparison.OrdinalIgnoreCase)
-                ? LibraryConfig.DefaultTheme
-                : LibraryConfig.DefaultTheme;
+        private string NormalizeTheme(string value)
+        {
+            string trimmed = value?.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+            {
+                return LibraryConfig.DefaultTheme;
+            }
+            if (string.Equals(trimmed, LibraryConfig.DefaultTheme, StringComparison.OrdinalIgnoreCase))
+            {
+                return LibraryConfig.DefaultTheme;
+            }
+            if (string.Equals(trimmed, LibraryConfig.DarkThemeName, StringComparison.OrdinalIgnoreCase))
+            {
+                return LibraryConfig.DarkThemeName;
+            }
+            _rejectedTheme = trimmed;
+            return LibraryConfig.DefaultTheme;
+        }
 
         private static string NormalizeFont(string value)
         {

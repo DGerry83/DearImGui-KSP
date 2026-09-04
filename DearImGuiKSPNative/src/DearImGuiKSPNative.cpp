@@ -45,6 +45,30 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_ClampWindowsToViewport(float wid
     ContextHost_ClampWindowsToViewport(width, height);
 }
 
+// Theme style setters (chunk C8, spec §5.1). Thin pass-throughs over the
+// context host; the "dark" preset's exactness comes from
+// DearImGuiKSPNative_StyleColorsDark being the stock ImGui::StyleColorsDark,
+// never a hand-copied color table. Return codes: 0 ok, 1 no context, 2 bad idx.
+DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_SetStyleColor(int idx, float r, float g, float b, float a)
+{
+    return ContextHost_SetStyleColor(idx, r, g, b, a);
+}
+
+DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_SetStyleVarFloat(int idx, float v)
+{
+    return ContextHost_SetStyleVarFloat(idx, v);
+}
+
+DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_SetStyleVarVec2(int idx, float x, float y)
+{
+    return ContextHost_SetStyleVarVec2(idx, x, y);
+}
+
+DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_StyleColorsDark(void)
+{
+    return ContextHost_StyleColorsDark();
+}
+
 // Hands the D3D11 backend a Unity-created ID3D11Texture2D
 // (Texture.GetNativeTexturePtr() managed-side) so it can capture the device.
 // Returns 0 on success; see BackendD3D11.h for error codes.

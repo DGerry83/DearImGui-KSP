@@ -37,6 +37,9 @@ namespace DearImGuiKSP.Infrastructure
             if (Composition.BridgeInitResult == NativeBridge.InitOk)
             {
                 LoadStartupFont();
+                // Theme apply (C8, spec §5.1): after the font load, before frames
+                // run — style writes are legal any time the context exists.
+                Composition.ThemeEngine.ApplyCurrent();
                 Composition.WireLifecycle();
                 Composition.StateMachine.MarkRunning();
                 Composition.Logger.Info("Native bridge up; frame loop running.");

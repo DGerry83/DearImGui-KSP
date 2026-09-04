@@ -18,4 +18,16 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\DearImGuiKSP\DearImGuiKSP.csproj" />
 	</ItemGroup>
+	<!-- UnityEngine.CoreModule (C8): the theming tests assert spec §6.1 palette
+	     anchors on Color32 values, which requires the Unity type at compile time
+	     and run time (Color32/Vector2 are pure structs — safe outside Unity). The
+	     library resolves it through KSPBuildTools' FrameworkPathOverride; the test
+	     project has no KSPBuildTools, so copy the assembly from the pinned game
+	     instance instead. -->
+	<ItemGroup Condition="Exists('$(KSPBT_GameRoot)\KSP_x64_Data\Managed\UnityEngine.CoreModule.dll')">
+		<Reference Include="UnityEngine.CoreModule">
+			<HintPath>$(KSPBT_GameRoot)\KSP_x64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+			<Private>true</Private>
+		</Reference>
+	</ItemGroup>
 </Project>
