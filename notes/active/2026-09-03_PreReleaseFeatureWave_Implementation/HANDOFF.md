@@ -1,13 +1,13 @@
-# Handoff: Pre-Release Feature Wave Implementation — Resume at M6
+# Handoff: Pre-Release Feature Wave Implementation — M6 gate pending
 ## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-04 (M5 gate VERIFIED by user; paused before M6)
+## Written: 2026-09-04 (paused for user M6 in-flight gate)
 
 ## Where we are
 
-M1–M5 all **VERIFIED** (in-game, user-confirmed). M6–M8 remain.
+M1–M5 **VERIFIED**; M6 chunks C18–C21 all **Done and committed** — waiting on the
+user's in-flight M6 gate. M7 (docs) and M8 (packaging) remain.
 Full state lives in this folder — read `PROGRESS_LOG.md` first (chunk table,
-milestone table, decisions), then `CHUNK_MAP.md` (remaining chunks/dependencies)
-and `INTEGRATION_CONTRACT.md` (locked inter-chunk contracts, per-chunk acceptance).
+milestone table, decisions), then `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
 
 ### Commits (on `main`; user pushes to remote themselves)
 | Commit | Content |
@@ -26,24 +26,37 @@ and `INTEGRATION_CONTRACT.md` (locked inter-chunk contracts, per-chunk acceptanc
 | `55beb69`, `9a1ed51` | C16 contract + imspinner/cimspinner + Spinner wrapper (I-08 accepted) |
 | `a96d64c` + `c722490` | C17 contract + ThemeDemo showcase (I-C17-01 accepted) |
 | `dad7666` | M5-FIX: spinner empty-ID assert (ISSUES #005 resolved); M5 gate VERIFIED |
+| `9b7049f`, `0f18770` | C18 contract + telemetry foundation (tab bindings, RingBuffer, sampler, addon skeleton) |
+| `591f8c0`, `5a533c7` | C19 contract + graph panel (subplots scope, hover readout) |
+| `978139c`, `b098aad` | C20 contract + ImGuiDraw surface + stage analyzer/panel (C20/C21 serialized) |
+| `6735c56`, `45de285` | C21 contract + orbit panel (M6 gate pending) |
 
 ### Verified state
 - `dotnet build DearImGui-KSP.slnx` 0/0; `dotnet test` **90/90**; native harness
   **HARNESS PASS**; all 3 native builds 0 errors (1 tolerated C4190 from generated
-  cimspinner code).
-- In-game (all user-confirmed): Plex Sans 18px, ksp theme, font fallback + v4/v5
-  popup paths, two-plot window, benchmark no-regression, fault-barrier test,
-  spinner/knob/wheel widgets + tween play/cancel/F2-pause (M5).
+  cimspinner code). New bindings proven via export spot-checks (c18/c19/c20
+  verify scripts) — no native rebuild was needed for M6 (cimgui/cimplot compiled
+  in whole).
+- In-game (all user-confirmed through M5): Plex Sans 18px, ksp theme, font
+  fallback + v4/v5 popup paths, two-plot window, benchmark no-regression,
+  fault-barrier test, spinner/knob/wheel widgets + tween play/cancel/F2-pause.
+- **M6 gate checklist for the user** (FLIGHT scene; new toolbar button, blue
+  icon, telemetry window starts hidden): Graphs tab — 2x2 rolling plots
+  (altitude/q/throttle/G) animating at 60 Hz, legends present, hover readout line
+  under the grid; Stages tab — per-stage propellant meters with color transitions
+  on staging, "approx dV" labels, Isp/burn-time readouts; Orbit tab — live radar
+  ellipse + vessel/Ap/Pe markers (+ target/node markers when applicable),
+  elements readout; main menu → all tabs show `No active vessel.`; no measurable
+  FPS cost; D16 environment intact (Deferred etc. unaffected); click-through
+  protections still inert-when-not-capturing. Known cosmetic limits: graphs grid
+  fixed 520x360, hover readout is a text line not a floating tooltip, spinner
+  aesthetics (#006).
 
-## What's next — M6 (telemetry showcase), chunks C18–C21
+## What's next — M7 (docs), chunks C22–C24
 
-After the user confirms the M5 gate in-game: **C18 → C19 → C20/C21** (C20/C21
-parallel-safe; C19 isolated as the first real ImGuiPlot consumer). Contracts per
-INTEGRATION_CONTRACT: C18 ring buffer + sampler + addon skeleton with placeholder
-tabs; C19 graph panel (2x2 rolling plots); C20 stage analyzer/panel; C21 orbit
-panel. M6 gate: in-flight acceptance in the full D16 environment.
-
-Then M7 (docs C22–C24; C22/C23 parallel-safe), M8 (packaging C25 + D33 OpenGL
+After the user confirms the M6 gate in-flight: **C22/C23** (parallel-safe, disjoint
+doc files per spec §8.2) then **C24** (XML-doc sweep + LICENSE attribution
+aggregation: MIT x4 / 0BSD / OFL). Then M8 (C25: release packaging + D33 OpenGL
 decision point).
 
 ## How this session runs (conventions the next agent must keep)
@@ -66,7 +79,8 @@ decision point).
    PowerShell PE-export parser (`DearImGuiKSPNative/build/c*_verify.ps1`).
 5. **Never commit** `notes/plans/2026-09-03_DearImGui-KSP_Fix_Backlog.md`
    (untracked, belongs to another session).
-6. ISSUES tracker is gitignored — `ISSUES/TRACKER.md` Next ID: **#005**.
+6. ISSUES tracker is gitignored — `ISSUES/TRACKER.md` Next ID: **#007**
+   (#005 resolved+archived, #006 KNOWNLIMIT open).
 
 ## Active gotchas / open threads
 
@@ -93,10 +107,10 @@ decision point).
 
 ## First action on resume
 
-Write `CHUNK_C18_CONTRACT.md` (telemetry foundation: RingBuffer + TelemetrySampler
-+ TelemetryAddon skeleton with placeholder tabs — plan
-`notes/active/2026-09-03_NewProject_PreReleaseFeatureWave/IMPLEMENTATION_PLAN.md`
-§2 "Entity: TelemetrySample/RingBuffer", §3 "Component: TelemetrySampler",
-spec §5.5; locked contracts in INTEGRATION_CONTRACT.md: RingBuffer, Sampler
-channels, Telemetry tab slots) and dispatch its coder sub-agent, per the
-per-chunk loop above.
+If the user has confirmed the M6 gate: mark M6 VERIFIED in PROGRESS_LOG.md, then
+write `CHUNK_C22_CONTRACT.md` + `CHUNK_C23_CONTRACT.md` (docs sets A/B per spec
+§8.2 — 00-getting-started, 10-api-fundamentals, 20-widgets, 30-theming vs
+40-plotting, 50-animation, 60-migration-from-imgui, 70-troubleshooting) and
+dispatch both coder sub-agents in parallel, per the per-chunk loop above.
+If the M6 gate found defects: file per `ISSUES/README.md` (Next ID: #007), fix
+forward in a patch chunk, re-verify.
