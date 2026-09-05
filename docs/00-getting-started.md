@@ -44,6 +44,13 @@ Two rules:
   as a matched pair. A version mismatch at runtime is a startup failure.
   Never mix DLLs from different releases.
 
+**Player settings:** the library adds its own button to the KSP toolbar (in
+every scene). It opens the "DearImGui-KSP Settings" window, where the theme
+(ksp / dark) and the overall UI scale change immediately, verbose logging
+toggles on the spot, and the font plus font scale are saved but only take
+effect on the next KSP start. The button uses `Textures/toolbar.png` from
+this folder when present and a generated placeholder until the icon ships.
+
 **Who installs this:** your players, from the library's own release — not
 you, from your mod's download. DearImGui-KSP is a shared library: players
 install this folder once, and every mod that depends on the library uses that

@@ -33,7 +33,8 @@ namespace DearImGuiKSP.Infrastructure
 
         // Managed/native handshake constant (spec §5.4, D17); must match
         // DearImGuiKSPNative_GetVersion(). Bump both DLLs in lockstep.
-        private const int ExpectedNativeVersion = 5;
+        // 4: ISSUES #001-#003; 5: C5 font load; 6: C31 live uiScale (SetUiScale export).
+        private const int ExpectedNativeVersion = 6;
 
         private readonly ILogger _logger;
         private readonly InputCaptureState _captureState = new InputCaptureState();

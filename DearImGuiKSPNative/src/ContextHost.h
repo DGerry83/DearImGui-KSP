@@ -87,6 +87,16 @@ int ContextHost_SetStyleVarFloat(int idx, float v);
 // the wrapper DearImGuiKSPNative_SetStyleVarVec2 lives in DearImGuiKSPNative.cpp.
 int ContextHost_SetStyleVarVec2(int idx, float x, float y);
 
+// Live UI scale (chunk C31): ImGuiStyle::ScaleAllSizes(scale) multiplies the
+// style's CURRENT sizes, so the contract is "call only right after a whole-style
+// reset" (ContextHost_StyleColorsDark) — then it multiplies the defaults and
+// repeated applies cannot compound. io.FontGlobalScale is set absolutely by the
+// same call and scales rendered glyph size on top of the loaded font size.
+// Returns 0 on success, 1 if there is no context, 2 for a non-positive scale
+// (nothing written). Not exported directly — the exported wrapper
+// DearImGuiKSPNative_SetUiScale lives in DearImGuiKSPNative.cpp.
+int ContextHost_SetUiScale(float scale);
+
 // Re-applies the stock ImGui dark style to the live style (spec §5.1: "dark"
 // is the exact stock dark, and every theme apply resets to it first so slots
 // a preset does not map are never stale). Returns 0 on success, 1 if there is

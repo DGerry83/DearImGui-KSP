@@ -458,6 +458,21 @@ int ContextHost_SetStyleVarVec2(int idx, float x, float y)
     }
 }
 
+int ContextHost_SetUiScale(float scale)
+{
+    if (s_Context == nullptr)
+        return 1; // no context
+    if (scale <= 0.0f)
+        return 2; // bad scale — the style and IO are untouched
+
+    // ScaleAllSizes multiplies the CURRENT values: the managed ThemeEngine
+    // resets the whole style (ContextHost_StyleColorsDark) before every apply,
+    // so this always multiplies the defaults and repeated applies stay exact.
+    ImGui::GetStyle().ScaleAllSizes(scale);
+    ImGui::GetIO().FontGlobalScale = scale;
+    return 0;
+}
+
 int ContextHost_StyleColorsDark(void)
 {
     if (s_Context == nullptr)

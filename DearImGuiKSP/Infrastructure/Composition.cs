@@ -28,6 +28,7 @@ namespace DearImGuiKSP.Infrastructure
         private static FaultBarrier _faultBarrier;
         private static LifecycleStateMachine _stateMachine;
         private static ThemeEngine _themeEngine;
+        private static LibraryControlPanel _controlPanel;
         private static TweenEngine _tweenEngine;
         private static GameEventHooks _gameEventHooks;
         private static FailureNotifier _failureNotifier;
@@ -113,6 +114,15 @@ namespace DearImGuiKSP.Infrastructure
         /// </summary>
         internal static ThemeEngine ThemeEngine =>
             _themeEngine ?? (_themeEngine = new ThemeEngine(Settings, Logger));
+
+        /// <summary>
+        /// The library's own control panel singleton (C31): the "DearImGui-KSP
+        /// Settings" window. Registered as a regular consumer from
+        /// DearImGuiKSPAddon.Start; the toolbar button addon
+        /// (<see cref="LibraryPanelToolbar"/>) toggles its visibility.
+        /// </summary>
+        internal static LibraryControlPanel ControlPanel =>
+            _controlPanel ?? (_controlPanel = new LibraryControlPanel(Settings));
 
         /// <summary>
         /// The tween engine singleton (C14): advanced once per frame by the

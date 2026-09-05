@@ -21,6 +21,12 @@ namespace DearImGuiKSP
         /// <summary>Directory NativeBridge loads the native DLL from, relative to the KSP root.</summary>
         internal const string NativePluginDataDir = "GameData/DearImGuiKSP/PluginData";
 
+        /// <summary>Library control-panel toolbar icon as a GameDatabase URL (no extension), relative to GameData.</summary>
+        internal const string ToolbarIconUrl = "DearImGuiKSP/Textures/toolbar";
+
+        /// <summary>On-disk toolbar icon path, relative to the KSP root (existence probe before the GameDatabase lookup).</summary>
+        internal const string ToolbarIconPath = "GameData/DearImGuiKSP/Textures/toolbar.png";
+
         /// <summary>Consecutive throwing frames before a consumer is auto-disabled (spec §5.3).</summary>
         internal const int ConsumerFailureThreshold = 5;
 

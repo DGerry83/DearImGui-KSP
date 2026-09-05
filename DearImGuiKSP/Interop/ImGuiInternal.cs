@@ -644,6 +644,20 @@ namespace DearImGuiKSP.Interop
         }
 
         /// <summary>
+        /// Applies the live UI scale: multiplies every style size by
+        /// <paramref name="scale"/> (the native call operates on the CURRENT
+        /// style, so the caller must reset the whole style first — the theme
+        /// engine's apply does) and sets the global font scale absolutely.
+        /// Wraps the native <c>DearImGuiKSPNative_SetUiScale</c> export (C31).
+        /// Returns 0 on success, 1 when there is no context, 2 for a
+        /// non-positive scale (nothing written).
+        /// </summary>
+        internal static int SetUiScale(float scale)
+        {
+            return ImGuiNative.SetUiScale(scale);
+        }
+
+        /// <summary>
         /// Opaque handle to a native <c>ImDrawList</c>, obtained from
         /// <see cref="GetWindowDrawList"/>. Keeps raw pointers out of the safe surface (Q46);
         /// do not retain across frames.

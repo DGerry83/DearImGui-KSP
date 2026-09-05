@@ -41,6 +41,10 @@ namespace DearImGuiKSP.Infrastructure
                 // run — style writes are legal any time the context exists.
                 Composition.ThemeEngine.ApplyCurrent();
                 Composition.WireLifecycle();
+                // C31: the library's own consumer (the settings panel) joins the
+                // same registry/frame-loop path as any consumer — the fault
+                // barrier covers it, and the toolbar button addon toggles it.
+                Composition.Registry.TryRegister(LibraryConfig.ModName, Composition.ControlPanel.OnFrame);
                 Composition.StateMachine.MarkRunning();
                 Composition.Logger.Info("Native bridge up; frame loop running.");
             }
@@ -53,6 +57,14 @@ namespace DearImGuiKSP.Infrastructure
                 Composition.Logger.Error("Native bridge initialization failed with code " + Composition.BridgeInitResult + "; library inactive for this session.");
             }
             StartCoroutine(RenderEventPump());
+        }
+
+        private void OnDestroy()
+        {
+            // C31: consumer registration symmetry — the panel unregisters with
+            // the once-addon (session end). The panel never holds input locks
+            // or hooks, so nothing else needs tearing down here.
+            Composition.Registry.Unregister(LibraryConfig.ModName);
         }
 
         private void Update()

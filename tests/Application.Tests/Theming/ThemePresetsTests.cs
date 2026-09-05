@@ -107,6 +107,25 @@ namespace Application.Tests
         }
 
         [Fact]
+        public void Ksp_ResizeGripChain_IsVisibleAndBrightens()
+        {
+            ThemePreset ksp = ThemePresets.Ksp();
+
+            // C31: the stock-dark fallback is white at ~20% alpha (51) — nearly
+            // invisible on the theme background. The ksp grip must sit clearly
+            // above that at rest and brighten monotonically hover -> active.
+            Color32 rest = FindColor(ksp, ImGuiCol.ResizeGrip);
+            Color32 hovered = FindColor(ksp, ImGuiCol.ResizeGripHovered);
+            Color32 active = FindColor(ksp, ImGuiCol.ResizeGripActive);
+
+            Assert.InRange(rest.a, 90, 160);
+            Assert.True(hovered.a > rest.a);
+            Assert.True(active.a > hovered.a);
+            Assert.Equal(KspPalette.TextLightGrey.r, rest.r);
+            Assert.Equal(KspPalette.TextOffWhite.r, active.r);
+        }
+
+        [Fact]
         public void Dark_HasZeroOverrides()
         {
             ThemePreset dark = ThemePresets.Dark();

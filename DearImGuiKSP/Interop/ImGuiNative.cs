@@ -355,6 +355,13 @@ namespace DearImGuiKSP.Interop
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         private static extern int DearImGuiKSPNative_StyleColorsDark();
 
+        // int DearImGuiKSPNative_SetUiScale(float scale); (ContextHost.h, chunk C31)
+        // Live UI scale: ScaleAllSizes(scale) on the current style plus an
+        // absolute io.FontGlobalScale. Legal only right after a whole-style
+        // reset (StyleColorsDark), which every theme apply performs.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int DearImGuiKSPNative_SetUiScale(float scale);
+
         // ---- Native window-bg gradient descriptor (chunk C9) ----
 
         // int DearImGuiKSPNative_SetWindowBgGradient(int enabled, float r1, float g1, float b1, float a1, float r2, float g2, float b2, float a2); (ContextHost.h)
@@ -650,6 +657,11 @@ namespace DearImGuiKSP.Interop
         internal static int StyleColorsDark()
         {
             return DearImGuiKSPNative_StyleColorsDark();
+        }
+
+        internal static int SetUiScale(float scale)
+        {
+            return DearImGuiKSPNative_SetUiScale(scale);
         }
     }
 }

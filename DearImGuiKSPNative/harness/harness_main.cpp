@@ -213,6 +213,75 @@ int main()
     }
     std::printf("Gradient disabled: draw list byte-exact vs. stock reference (%d verts)\n", refVtxCount);
 
+    // ---- C31: live UI scale ----
+    //
+    // The managed ThemeEngine contract: a whole-style reset (defaults restored)
+    // BEFORE every SetUiScale call, so ScaleAllSizes always multiplies defaults
+    // and repeated applies cannot compound. Prove both halves here via the
+    // context-host entry point (the harness links ContextHost.cpp, not the
+    // exported wrapper TU).
+
+    // Baseline reset, then 1.5: default WindowPadding (8,8) -> (12,12);
+    // FontGlobalScale is absolute.
+    rc = ContextHost_StyleColorsDark();
+    if (rc != 0)
+        return Fail("StyleColorsDark (ui-scale baseline)", rc);
+    rc = ContextHost_SetUiScale(1.5f);
+    if (rc != 0)
+        return Fail("SetUiScale(1.5)", rc);
+    {
+        const ImGuiStyle& s = ImGui::GetStyle();
+        if (s.WindowPadding.x != 12.0f || s.WindowPadding.y != 12.0f)
+            return Fail("SetUiScale(1.5) WindowPadding != (12,12)", 30);
+        if (s.WindowRounding != 0.0f || s.FramePadding.x != 6.0f || s.ItemSpacing.x != 12.0f)
+            return Fail("SetUiScale(1.5) other size vars wrong", 31);
+        if (ImGui::GetIO().FontGlobalScale != 1.5f)
+            return Fail("SetUiScale(1.5) FontGlobalScale", 32);
+    }
+    std::printf("UiScale 1.5: WindowPadding (8,8)->(12,12), FontGlobalScale 1.5\n");
+
+    // Non-positive scale is rejected and writes nothing.
+    rc = ContextHost_SetUiScale(0.0f);
+    if (rc != 2)
+        return Fail("SetUiScale(0) should return 2", 33);
+    if (ImGui::GetIO().FontGlobalScale != 1.5f || ImGui::GetStyle().WindowPadding.x != 12.0f)
+        return Fail("SetUiScale(0) wrote something", 34);
+
+    // Re-apply at 1.0 after a fresh reset restores the defaults exactly.
+    rc = ContextHost_StyleColorsDark();
+    if (rc != 0)
+        return Fail("StyleColorsDark (ui-scale restore)", rc);
+    rc = ContextHost_SetUiScale(1.0f);
+    if (rc != 0)
+        return Fail("SetUiScale(1.0)", rc);
+    {
+        const ImGuiStyle& s = ImGui::GetStyle();
+        const ImGuiStyle def; // default-constructed = stock sizes
+        if (s.WindowPadding.x != def.WindowPadding.x || s.WindowPadding.y != def.WindowPadding.y)
+            return Fail("SetUiScale(1.0) did not restore WindowPadding", 35);
+        if (s.WindowRounding != def.WindowRounding || s.FramePadding.x != def.FramePadding.x ||
+            s.ItemSpacing.y != def.ItemSpacing.y || s.GrabMinSize != def.GrabMinSize)
+            return Fail("SetUiScale(1.0) did not restore size vars", 36);
+        if (ImGui::GetIO().FontGlobalScale != 1.0f)
+            return Fail("SetUiScale(1.0) FontGlobalScale", 37);
+    }
+    std::printf("UiScale 1.0 after reset: defaults restored exactly\n");
+
+    // The managed pattern (reset + apply) repeated at 1.5 must land on exactly
+    // (12,12) every time — no compounding across applies.
+    for (int i = 0; i < 3; ++i)
+    {
+        rc = ContextHost_StyleColorsDark();
+        if (rc != 0)
+            return Fail("StyleColorsDark (ui-scale repeat)", rc);
+        rc = ContextHost_SetUiScale(1.5f);
+        if (rc != 0)
+            return Fail("SetUiScale(1.5 repeat)", rc);
+        if (ImGui::GetStyle().WindowPadding.x != 12.0f || ImGui::GetStyle().WindowPadding.y != 12.0f)
+            return Fail("compounding detected across repeated applies", 38);
+    }
+    std::printf("UiScale 1.5 x3 with resets: (12,12) every time (no compounding)\n");
+
     DearImGuiKSPNative_ContextShutdown();
 
     // C12: the ImPlot context must be gone after shutdown (destroyed before

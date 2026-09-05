@@ -12,9 +12,10 @@ namespace DearImGuiKSP.Application
     /// base, so slots a preset does not map are never stale — then writes the
     /// preset's color and var overrides through the C8 native setters.
     /// Startup applies the configured theme once (DearImGuiKSPAddon.Start,
-    /// after the font load); a settings change only sets a dirty flag and the
-    /// frame loop re-applies at frame start, never mid-callback. Steady-state
-    /// per-frame cost is one bool check; nothing here allocates per frame.
+    /// after the font load); a theme or uiScale change only sets a dirty flag
+    /// and the frame loop re-applies at frame start, never mid-callback.
+    /// Steady-state per-frame cost is one bool check; nothing here allocates
+    /// per frame.
     /// Application-layer; no KSP types. Native calls route through Interop.
     /// </summary>
     internal sealed class ThemeEngine
@@ -25,6 +26,13 @@ namespace DearImGuiKSP.Application
         private readonly ILogger _log;
         private ThemePreset _active;
         private bool _dirty;
+
+        // The uiScale value the last apply forwarded to the native side.
+        // Initialized to the default: the startup apply (DearImGuiKSPAddon.Start)
+        // runs before anything can mutate the setting, so treating "not yet
+        // applied" as the default is exact — and an unrelated settings change
+        // must not arm the re-apply.
+        private float _appliedUiScale = LibraryConfig.DefaultUiScale;
 
         internal ThemeEngine(SettingsModel settings, ILogger log)
         {
@@ -59,7 +67,7 @@ namespace DearImGuiKSP.Application
 
         /// <summary>
         /// Deferred apply driven by the frame loop at frame start: no-op unless
-        /// a theme change dirtied the engine since the last apply.
+        /// a theme or uiScale change dirtied the engine since the last apply.
         /// </summary>
         internal void ApplyIfDirty()
         {
@@ -70,6 +78,13 @@ namespace DearImGuiKSP.Application
             _dirty = false;
             ApplyCurrent();
         }
+
+        /// <summary>
+        /// True when a theme or uiScale change has armed the deferred re-apply.
+        /// Test observability for the dirty-flag logic: <see cref="ApplyIfDirty"/>
+        /// itself reaches native code and is exercised by the native harness.
+        /// </summary>
+        internal bool HasPendingApply => _dirty;
 
         private void Apply(ThemePreset preset)
         {
@@ -120,11 +135,29 @@ namespace DearImGuiKSP.Application
                 wbgBottom.a * ByteToFloat);
 
             _active = preset;
+            _appliedUiScale = ApplyUiScale();
+        }
+
+        // Live uiScale (C31): applied LAST, after the whole-style reset at the
+        // top of Apply — ScaleAllSizes then always multiplies the default
+        // sizes, so repeated applies (and the ksp<->dark switch) cannot
+        // compound. FontGlobalScale is set absolutely by the same native call;
+        // it scales rendered glyph size on top of the loaded font size, so the
+        // startup font pipeline (18 px base) is unaffected by a 1.0 scale.
+        private float ApplyUiScale()
+        {
+            ImGuiInternal.SetUiScale(_settings.UiScale);
+            return _settings.UiScale;
         }
 
         private void OnSettingsChanged()
         {
-            if (!string.Equals(_settings.Theme, CurrentThemeName, StringComparison.Ordinal))
+            // C31: a uiScale change needs the same deferred re-apply as a theme
+            // change (the apply path forwards the current scale to the native
+            // side). Other settings (font, fontScale, verboseLogging, ...) do
+            // not touch the live style.
+            if (!string.Equals(_settings.Theme, CurrentThemeName, StringComparison.Ordinal) ||
+                _settings.UiScale != _appliedUiScale)
             {
                 _dirty = true;
             }

@@ -114,6 +114,14 @@ namespace DearImGuiKSP.Application
                 (ImGuiCol.Header, KspPalette.TitleBar),
                 (ImGuiCol.HeaderHovered, KspPalette.ButtonGradientTop),
                 (ImGuiCol.HeaderActive, KspPalette.TitleBar),
+                // C31: resize-grip visibility — stock dark leaves these at
+                // white ~20% alpha, nearly invisible on the theme background.
+                // Rest is subtle but clearly present; hover/active brighten
+                // toward off-white. RGB comes from the palette, alpha only
+                // distinguishes the three states.
+                (ImGuiCol.ResizeGrip, new Color32(KspPalette.TextLightGrey.r, KspPalette.TextLightGrey.g, KspPalette.TextLightGrey.b, 117)),
+                (ImGuiCol.ResizeGripHovered, new Color32(KspPalette.TextOffWhite.r, KspPalette.TextOffWhite.g, KspPalette.TextOffWhite.b, 160)),
+                (ImGuiCol.ResizeGripActive, new Color32(KspPalette.TextOffWhite.r, KspPalette.TextOffWhite.g, KspPalette.TextOffWhite.b, 220)),
             };
 
             var floatVars = new (ImGuiStyleVar Var, float Value)[]

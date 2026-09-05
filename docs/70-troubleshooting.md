@@ -4,7 +4,7 @@ Symptom-first fixes for the failure modes a modder or player is likely to hit. F
 
 ## Reading the log
 
-Every library log line is written to `KSP.log` (KSP's standard log at the install root) with the `[DearImGuiKSP]` prefix. Warn/error/info lines are always on; additional `[DearImGuiKSP] [debug] ...` diagnostics require `verboseLogging = true` in `GameData/DearImGuiKSP/settings.cfg`. When reporting a bug, attach the log with that setting on.
+Every library log line is written to `KSP.log` (KSP's standard log at the install root) with the `[DearImGuiKSP]` prefix. Warn/error/info lines are always on; additional `[DearImGuiKSP] [debug] ...` diagnostics require `verboseLogging = true` in `GameData/DearImGuiKSP/settings.cfg`. Players can also flip that switch live in the "DearImGui-KSP Settings" window (the library's own toolbar button). When reporting a bug, attach the log with verbose logging on.
 
 ## "DearImGui-KSP — Startup Failed" popup at the main menu
 
@@ -23,12 +23,12 @@ Your mod is unaffected code-wise: `DearImGuiKSP.IsAvailable` is false, your `Reg
 
 Managed and native DLLs always release together in lockstep — never mix DLLs
 from different releases. A startup version handshake enforces this
-(currently expected version **5** on the managed side). A stale or partially
+(currently expected version **6** on the managed side). A stale or partially
 copied native DLL fails the handshake before anything else runs, with this
 log line:
 
 ```
-[DearImGuiKSP] Native/managed handshake mismatch: expected version 5, DearImGuiKSPNative reported <n>.
+[DearImGuiKSP] Native/managed handshake mismatch: expected version 6, DearImGuiKSPNative reported <n>.
 ```
 
 Fix: copy both DLLs from the same release zip. `DearImGuiKSPNative.dll` belongs in `GameData/DearImGuiKSP/PluginData/` (not next to the managed DLL); a missing native DLL is the `NativeComponent` failure instead. Consumers: declaring `KSPAssemblyDependencyEqualMajor("DearImGuiKSP", x, y)` keeps KSP's loader from mixing a different managed major with your build (see [Getting Started](00-getting-started.md)).

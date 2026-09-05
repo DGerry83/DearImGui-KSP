@@ -24,9 +24,10 @@
 
 // Managed/native version handshake (spec §5.4, D17). Bump in lockstep with the
 // managed ExpectedNativeVersion constant; mismatch -> Failed state.
+// 4: ISSUES #001-#003 fixed; 5: C5 font load (LoadFontFromFile); 6: C31 SetUiScale.
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetVersion()
 {
-    return 5; // handshake constant value 5 (managed side bumps in C5)
+    return 6; // handshake constant value 6 (managed side bumps in C31)
 }
 
 // Loads a font file into the atlas before the first frame (spec §4.2). The
@@ -68,6 +69,15 @@ DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_SetStyleVarVec2(int idx, float x,
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_StyleColorsDark(void)
 {
     return ContextHost_StyleColorsDark();
+}
+
+// Live UI scale (chunk C31): scales all style sizes by 'scale' (legal only
+// right after a whole-style reset — see ContextHost_SetUiScale) and sets
+// io.FontGlobalScale absolutely. Returns 0 on success, 1 = no context,
+// 2 = non-positive scale (nothing written).
+DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_SetUiScale(float scale)
+{
+    return ContextHost_SetUiScale(scale);
 }
 
 // Window-background gradient descriptor (chunk C9, spec §6.1). enabled != 0
