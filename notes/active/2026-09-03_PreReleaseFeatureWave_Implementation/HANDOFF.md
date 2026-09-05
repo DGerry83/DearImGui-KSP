@@ -1,13 +1,14 @@
-# Handoff: Pre-Release Feature Wave Implementation — M6 gate pending
+# Handoff: Pre-Release Feature Wave Implementation — M7 gate pending
 ## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-04 (paused for user M6 in-flight gate)
+## Written: 2026-09-04 (paused for user M7 docs dry-run gate)
 
 ## Where we are
 
-M1–M5 **VERIFIED**; M6 chunks C18–C21 all **Done and committed** — waiting on the
-user's in-flight M6 gate. M7 (docs) and M8 (packaging) remain.
-Full state lives in this folder — read `PROGRESS_LOG.md` first (chunk table,
-milestone table, decisions), then `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
+M1–M6 **VERIFIED**; M7 chunks C22–C24 all **Done and committed** — waiting on the
+user's modder-from-zero docs dry run (M7 gate). Only M8 (C25: packaging + D33)
+remains. NOTE: ISSUES #004 (UI flicker) is now **P0** — investigate before M8.
+Full state lives in this folder — read `PROGRESS_LOG.md` first, then
+`CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
 
 ### Commits (on `main`; user pushes to remote themselves)
 | Commit | Content |
@@ -37,11 +38,11 @@ milestone table, decisions), then `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
   cimspinner code). New bindings proven via export spot-checks (c18/c19/c20
   verify scripts) — no native rebuild was needed for M6 (cimgui/cimplot compiled
   in whole).
-- In-game (all user-confirmed through M5): Plex Sans 18px, ksp theme, font
+- In-game (all user-confirmed through M6): Plex Sans 18px, ksp theme, font
   fallback + v4/v5 popup paths, two-plot window, benchmark no-regression,
-  fault-barrier test, spinner/knob/wheel widgets + tween play/cancel/F2-pause.
-- **M6 gate checklist for the user** (FLIGHT scene; new toolbar button, blue
-  icon, telemetry window starts hidden): Graphs tab — 2x2 rolling plots
+  fault-barrier test, spinner/knob/wheel widgets + tween play/cancel/F2-pause,
+  telemetry window (graphs/stages/orbit tabs) in flight.
+- M6 gate items verified in flight (record): Graphs tab — 2x2 rolling plots
   (altitude/q/throttle/G) animating at 60 Hz, legends present, hover readout line
   under the grid; Stages tab — per-stage propellant meters with color transitions
   on staging, "approx dV" labels, Isp/burn-time readouts; Orbit tab — live radar
@@ -52,12 +53,19 @@ milestone table, decisions), then `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
   fixed 520x360, hover readout is a text line not a floating tooltip, spinner
   aesthetics (#006).
 
-## What's next — M7 (docs), chunks C22–C24
+## What's next — M7 gate, then M8 (C25)
 
-After the user confirms the M6 gate in-flight: **C22/C23** (parallel-safe, disjoint
-doc files per spec §8.2) then **C24** (XML-doc sweep + LICENSE attribution
-aggregation: MIT x4 / 0BSD / OFL). Then M8 (C25: release packaging + D33 OpenGL
-decision point).
+**Now**: waiting on the user's M7 gate — a modder-from-zero dry run following
+`docs/` alone (start `docs/00-getting-started.md`) to a working themed window
+with a plot, without opening the demo source. Then **M8 = C25** (release
+packaging + D33 OpenGL decision point; gate: zip installs into a clean KSP in
+the full D16 environment, D33 recorded in DECISION_LOG). C25 follow-ups already
+assigned: vendor upstream cimplot's MIT LICENSE into `vendor/cimplot/`
+(C24 found none ships there); version is 0.1.0.0 from the csproj `<Version>`.
+**Before M8 ships**: investigate ISSUES **#004 (P0)** flicker — worse in flight,
+especially under time warp, no reliable repro; suspects listed in the issue
+file (gradient pass window filtering, render-event pump timing vs game frame,
+deltaTime source under warp).
 
 ## How this session runs (conventions the next agent must keep)
 
@@ -79,14 +87,16 @@ decision point).
    PowerShell PE-export parser (`DearImGuiKSPNative/build/c*_verify.ps1`).
 5. **Never commit** `notes/plans/2026-09-03_DearImGui-KSP_Fix_Backlog.md`
    (untracked, belongs to another session).
-6. ISSUES tracker is gitignored — `ISSUES/TRACKER.md` Next ID: **#007**
-   (#005 resolved+archived, #006 KNOWNLIMIT open).
+6. ISSUES tracker is gitignored — `ISSUES/TRACKER.md` Next ID: **#008**
+   (#005 and #007 resolved+archived, #006 KNOWNLIMIT open, #004 P0 open).
 
 ## Active gotchas / open threads
 
-- **ISSUES #004** (UNCONFIRMED, P2): occasional 1–2 frame UI flicker/disappear,
-  incl. on rapid button clicks. Filed only; not investigated. Per-frame window
-  filtering is a suspect.
+- **ISSUES #004** (UNCONFIRMED, **P0** — escalated at M6 gate): UI flicker,
+  worse in flight and especially under time warp, more panels open may
+  correlate; no reliable repro. Investigate before M8 packaging. Suspects in
+  the issue file: gradient pass window filtering, render-event pump timing vs
+  game frame, deltaTime source under warp.
 - **ISSUES #006** (KNOWNLIMIT, P3): spinner aesthetics — RainbowMix hue comes from
   the tint's HSV (white tint → grey arc, no rainbow); Atom's electron dots are
   hardcoded RGB upstream. Deferred pre-release by user at M5 gate; resolution
@@ -107,10 +117,10 @@ decision point).
 
 ## First action on resume
 
-If the user has confirmed the M6 gate: mark M6 VERIFIED in PROGRESS_LOG.md, then
-write `CHUNK_C22_CONTRACT.md` + `CHUNK_C23_CONTRACT.md` (docs sets A/B per spec
-§8.2 — 00-getting-started, 10-api-fundamentals, 20-widgets, 30-theming vs
-40-plotting, 50-animation, 60-migration-from-imgui, 70-troubleshooting) and
-dispatch both coder sub-agents in parallel, per the per-chunk loop above.
-If the M6 gate found defects: file per `ISSUES/README.md` (Next ID: #007), fix
+If the user reports the **M7 docs dry-run gate PASS**: mark M7 VERIFIED in
+PROGRESS_LOG.md, update this handoff, commit, then (only on the user's
+"proceed") write `CHUNK_C25_CONTRACT.md` (read spec §10 + the plan's M8 row
+first; DECISION_LOG entry format per
+`notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DECISION_LOG.md`).
+If the gate found defects: file per `ISSUES/README.md` (Next ID: #008), fix
 forward in a patch chunk, re-verify.
