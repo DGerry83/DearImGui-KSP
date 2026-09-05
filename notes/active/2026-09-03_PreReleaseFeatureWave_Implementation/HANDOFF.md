@@ -1,16 +1,14 @@
-# Handoff: Pre-Release Feature Wave Implementation — wave polish done, M8 remains
+# Handoff: Pre-Release Feature Wave Implementation — all chunks done, M8 remains
 ## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-04 (C26–C30 landed; user in-game gates pending for C28–C30)
+## Written: 2026-09-04 (C31 landed; user in-game gate for C31 pending)
 
 ## Where we are
 
-M1–M7 **VERIFIED**. Wave-polish chunks C26–C30 all **Done and committed**;
-C27's gate PASSED in-game (user 2026-09-04: #004 flicker gone, #008 arrow
-fixed, #009 z-order works — #004/#008 resolved+archived, #009 closed
-not-a-defect with polish spin-off #012). C28 (CollapsingHeader), C29 (throttle
-dial), C30 (spinner investigation: upstream small-size behavior, sizing
-guidance, no trim/cut — #006 open pending visual gate) await the user's
-in-game spot-check. Only M8 (C25: packaging + D33) remains.
+M1–M7 **VERIFIED**. Wave-polish chunks C26–C31 all **Done and committed**;
+C27–C30 gates PASSED in-game (user 2026-09-04). C31 (library control panel,
+live uiScale, handshake **v6**, visible resize grips, user's toolbar icon wired
+to `GameData/DearImGuiKSP/Textures/toolbar.png`) awaits the user's in-game
+spot-check. Only M8 (C25: packaging + D33) remains.
 Full state lives in this folder — read `PROGRESS_LOG.md` first, then
 `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
 
@@ -57,14 +55,15 @@ Full state lives in this folder — read `PROGRESS_LOG.md` first, then
   fixed 520x360, hover readout is a text line not a floating tooltip, spinner
   aesthetics (#006).
 
-## What's next — user spot-check of C28–C30, then M8 (C25)
+## What's next — user spot-check of C31, then M8 (C25)
 
-**User in-game gate (one session)**: (1) ThemeDemo has two collapsible sections
-("Spinners", "Knobs and wheels", default open); (2) Graphs tab throttle dial —
-drag changes the vessel's real throttle, Z/X keys move the dial; (3) "Spinners
-(large)" header — zoomed screenshots of Atom electrons (should be round at
-r=48) and Clock hands (should read as hands at t=r/6). On PASS: close #006 as
-documented known limitation; then C25 on the user's "proceed".
+**User in-game gate (one session)**: toolbar button with the user's icon in
+multiple scenes → "DearImGui-KSP Settings" window; theme radios live-switch;
+uiScale slider live-scales the whole UI; font radios + fontScale persist and
+apply after restart; verbose toggle works; resize grip visible in the corner,
+brighter on hover. Optional: v5-native/v6-managed mismatch popup (stashes at
+`DearImGuiKSPNative/build/native_v5.dll`; GameData DLL is v6). NOTE: handshake
+is now **v6** — managed and native must both be this build.
 
 **M8 = C25** (release packaging + D33 OpenGL decision point; gate: zip installs
 into a clean KSP in the full D16 environment, D33 recorded in DECISION_LOG).
