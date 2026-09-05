@@ -201,6 +201,35 @@ DearImGuiKSP.DearImGuiKSP.Knob(
     DearImGuiKSP.KnobFlags.ValueTooltip, 10);
 ```
 
+### Driving the game: two-way binding
+
+A knob can write back into the game, not just read from it. Seed a local
+from the game state each frame (so external changes — keyboard throttle
+keys, autopilots — are reflected in the dial), call `Knob` on the local,
+and write back only when it returns true:
+
+```csharp
+// inside the callback, with an active vessel:
+FlightCtrlState state = FlightInputHandler.state;
+if (state != null)
+{
+    float throttle = state.mainThrottle;
+    if (DearImGuiKSP.DearImGuiKSP.Knob(
+        "Throttle", ref throttle, 0f, 1f,
+        0f, DearImGuiKSP.KnobVariant.Wiper, 48f,
+        DearImGuiKSP.KnobFlags.None, 10))
+    {
+        state.mainThrottle = throttle;
+    }
+}
+```
+
+Never pass `ref` straight to the game field: the seed-then-write-on-change
+pattern keeps the widget responsive to outside input and touches game state
+only while the user is actively dragging. The same shape generalizes to any
+widget that reports a change and a game-side write — `SliderFloat`, `Wheel`,
+or a `Spinner` writing a camera zoom, for example.
+
 ## Wheel
 
 ```csharp
