@@ -58,19 +58,30 @@ int main()
     // Warm-up frames: the window's first frames have deferred/auto-fit sizing
     // (AutoFitFrames counts down from creation), so the reference snapshot
     // below (and every later comparison frame) must run with stable geometry.
+    // C34: both windows are submitted through one helper so every frame in
+    // this section (warm-up, reference, enabled, interaction, disabled) has
+    // identical geometry; grad-scroll is pinned and forced to show a vertical
+    // scrollbar so its bg/grab prims land in command 0 every frame.
+    auto submitGradientWindows = []()
+    {
+        igBegin("grad-test", nullptr, 0);
+        igEnd();
+        igSetNextWindowPos(ImVec2_c{600.0f, 100.0f}, ImGuiCond_Always, ImVec2_c{0.0f, 0.0f});
+        igSetNextWindowSize(ImVec2_c{300.0f, 200.0f}, ImGuiCond_Always);
+        igBegin("grad-scroll", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+        igEnd();
+    };
     for (int i = 0; i < 3; ++i)
     {
         DearImGuiKSPNative_BeginFrame(1920.0f, 1080.0f, 1.0f / 60.0f);
-        igBegin("grad-test", nullptr, 0);
-        igEnd();
+        submitGradientWindows();
         DearImGuiKSPNative_EndFrame();
     }
 
     // Stock reference frame (descriptor is disabled by default): the gradient
     // pass must be an exact no-op, so every later comparison targets this.
     DearImGuiKSPNative_BeginFrame(1920.0f, 1080.0f, 1.0f / 60.0f);
-    igBegin("grad-test", nullptr, 0);
-    igEnd();
+    submitGradientWindows();
     DearImGuiKSPNative_EndFrame();
 
     ImGuiContext* ctx = ImGui::GetCurrentContext();
@@ -89,10 +100,31 @@ int main()
     if (testWindow == nullptr)
         return Fail("grad-test window not found", 11);
 
+    // C34: the scrollbar test window and its own stock reference snapshot.
+    ImGuiWindow* scrollWindow = nullptr;
+    for (int i = 0; i < ctx->Windows.Size; ++i)
+    {
+        ImGuiWindow* w = ctx->Windows[i];
+        if (w != nullptr && w->Active && std::strcmp(w->Name, "grad-scroll") == 0)
+        {
+            scrollWindow = w;
+            break;
+        }
+    }
+    if (scrollWindow == nullptr)
+        return Fail("grad-scroll window not found", 50);
+    if (!scrollWindow->ScrollbarY)
+        return Fail("grad-scroll has no vertical scrollbar", 51);
+
     const int refVtxCount = testWindow->DrawList->VtxBuffer.Size;
     std::vector<ImU32> refCols;
     for (int i = 0; i < refVtxCount; ++i)
         refCols.push_back(testWindow->DrawList->VtxBuffer.Data[i].col);
+
+    const int refScrollVtxCount = scrollWindow->DrawList->VtxBuffer.Size;
+    std::vector<ImU32> refScrollCols;
+    for (int i = 0; i < refScrollVtxCount; ++i)
+        refScrollCols.push_back(scrollWindow->DrawList->VtxBuffer.Data[i].col);
 
     // The vtx-count export must agree with the live draw list.
     if (ContextHost_GetDrawListVtxCount(testWindow->DrawList) != refVtxCount || refVtxCount <= 0)
@@ -104,8 +136,7 @@ int main()
         return Fail("SetWindowBgGradient enable", rc);
 
     DearImGuiKSPNative_BeginFrame(1920.0f, 1080.0f, 1.0f / 60.0f);
-    igBegin("grad-test", nullptr, 0);
-    igEnd();
+    submitGradientWindows();
     DearImGuiKSPNative_EndFrame();
 
     {
@@ -207,9 +238,9 @@ int main()
 
         // Count solid-fill verts inside command 0's referenced range that carry
         // exactly <col> after EndFrame's gradient pass.
-        auto countGripColoredVerts = [&](ImU32 col) -> int
+        auto countColoredVerts = [](ImGuiWindow* window, ImU32 col) -> int
         {
-            const ImDrawList* dl = testWindow->DrawList;
+            const ImDrawList* dl = window->DrawList;
             if (dl->CmdBuffer.Size == 0)
                 return 0;
             const ImDrawCmd& c = dl->CmdBuffer[0];
@@ -229,12 +260,11 @@ int main()
         };
         // Submit one frame with the given input state (gradient descriptor
         // still enabled); FeedFrameInput queues the events NewFrame consumes.
-        auto submitStateFrame = [](float mouseX, float mouseY, int buttons)
+        auto submitStateFrame = [&](float mouseX, float mouseY, int buttons)
         {
             DearImGuiKSPNative_FeedFrameInput(mouseX, mouseY, 0.0f, buttons, 0, nullptr);
             DearImGuiKSPNative_BeginFrame(1920.0f, 1080.0f, 1.0f / 60.0f);
-            igBegin("grad-test", nullptr, 0);
-            igEnd();
+            submitGradientWindows();
             DearImGuiKSPNative_EndFrame();
         };
 
@@ -270,10 +300,10 @@ int main()
             const ImVec2 corner(testWindow->Pos.x + testWindow->Size.x,
                                 testWindow->Pos.y + testWindow->Size.y);
             submitStateFrame(corner.x - 3.0f, corner.y - 3.0f, 0);
-            if (countGripColoredVerts(gripHoveredCol) == 0)
+            if (countColoredVerts(testWindow, gripHoveredCol) == 0)
                 return Fail("hovered resize grip absent/recolored in command 0", 41);
             std::printf("Hovered grip verts survived the pass unchanged: %d\n",
-                        countGripColoredVerts(gripHoveredCol));
+                        countColoredVerts(testWindow, gripHoveredCol));
         }
 
         // Active state: same mouse, left button held (resize engaged).
@@ -281,10 +311,88 @@ int main()
             const ImVec2 corner(testWindow->Pos.x + testWindow->Size.x,
                                 testWindow->Pos.y + testWindow->Size.y);
             submitStateFrame(corner.x - 3.0f, corner.y - 3.0f, 1);
-            if (countGripColoredVerts(gripActiveCol) == 0)
+            if (countColoredVerts(testWindow, gripActiveCol) == 0)
                 return Fail("active resize grip absent/recolored in command 0", 42);
             std::printf("Active grip verts survived the pass unchanged: %d\n",
-                        countGripColoredVerts(gripActiveCol));
+                        countColoredVerts(testWindow, gripActiveCol));
+        }
+
+        // C34: the vertical scrollbar — RenderWindowDecorations draws bg + grab
+        // into command 0 as solid fills (imgui.cpp:7721-7725 ->
+        // imgui_widgets.cpp:1126-1134): bg in ScrollbarBg always, grab in
+        // ScrollbarGrab / GrabHovered / GrabActive by interaction state. Same
+        // merged-primitive fate as the grip: without an exclusion the gradient
+        // pass repaints them to the window bg color at their y and the
+        // scrollbar is invisible (ISSUES #014). The grad-scroll window forces
+        // a vertical scrollbar every frame; all four colors must survive.
+        //   idle:    mouse never fed (the enabled frame above)
+        //   hovered: mouse over the scrollbar strip, button up
+        //   active:  same mouse, left button held
+        const ImU32 sbBgCol      = ImGui::GetColorU32(ImGuiCol_ScrollbarBg);
+        const ImU32 sbGrabCol    = ImGui::GetColorU32(ImGuiCol_ScrollbarGrab);
+        const ImU32 sbHoverCol   = ImGui::GetColorU32(ImGuiCol_ScrollbarGrabHovered);
+        const ImU32 sbActiveCol  = ImGui::GetColorU32(ImGuiCol_ScrollbarGrabActive);
+
+        // Idle state: strong check against the stock reference, mirroring the
+        // idle grip check (40/43) — every vert that WAS scrollbar-colored must
+        // still be exactly that color.
+        {
+            const ImDrawList* dl = scrollWindow->DrawList;
+            const ImDrawCmd& c = dl->CmdBuffer[0];
+            int end = 0;
+            for (unsigned int n = 0; n < c.ElemCount; ++n)
+                if ((int)dl->IdxBuffer.Data[c.IdxOffset + n] + 1 > end)
+                    end = (int)dl->IdxBuffer.Data[c.IdxOffset + n] + 1;
+            const ImVec2 uv = dl->_Data->TexUvWhitePixel;
+            int bgCount = 0, grabCount = 0;
+            for (int i = 0; i < end && i < refScrollVtxCount; ++i)
+            {
+                const ImDrawVert& v = dl->VtxBuffer.Data[i];
+                if (v.uv.x != uv.x || v.uv.y != uv.y)
+                    continue;
+                if (refScrollCols[i] == sbBgCol)
+                {
+                    bgCount++;
+                    if (v.col != refScrollCols[i])
+                        return Fail("idle scrollbar bg recolored by the gradient pass", 52);
+                }
+                else if (refScrollCols[i] == sbGrabCol)
+                {
+                    grabCount++;
+                    if (v.col != refScrollCols[i])
+                        return Fail("idle scrollbar grab recolored by the gradient pass", 53);
+                }
+            }
+            if (bgCount == 0)
+                return Fail("idle scrollbar bg absent from command 0", 54);
+            if (grabCount == 0)
+                return Fail("idle scrollbar grab absent from command 0", 55);
+            std::printf("Idle scrollbar verts survived the pass unchanged: bg %d, grab %d\n",
+                        bgCount, grabCount);
+        }
+
+        // Hovered state: mouse mid-window over the scrollbar strip, button up.
+        {
+            const ImGuiStyle& style = ImGui::GetStyle();
+            const ImVec2 sbMid(scrollWindow->Pos.x + scrollWindow->Size.x - style.ScrollbarSize * 0.5f,
+                               scrollWindow->Pos.y + scrollWindow->Size.y * 0.5f);
+            submitStateFrame(sbMid.x, sbMid.y, 0);
+            if (countColoredVerts(scrollWindow, sbHoverCol) == 0)
+                return Fail("hovered scrollbar grab absent/recolored in command 0", 56);
+            std::printf("Hovered scrollbar grab verts survived the pass unchanged: %d\n",
+                        countColoredVerts(scrollWindow, sbHoverCol));
+        }
+
+        // Active state: same mouse, left button held (grab engaged).
+        {
+            const ImGuiStyle& style = ImGui::GetStyle();
+            const ImVec2 sbMid(scrollWindow->Pos.x + scrollWindow->Size.x - style.ScrollbarSize * 0.5f,
+                               scrollWindow->Pos.y + scrollWindow->Size.y * 0.5f);
+            submitStateFrame(sbMid.x, sbMid.y, 1);
+            if (countColoredVerts(scrollWindow, sbActiveCol) == 0)
+                return Fail("active scrollbar grab absent/recolored in command 0", 57);
+            std::printf("Active scrollbar grab verts survived the pass unchanged: %d\n",
+                        countColoredVerts(scrollWindow, sbActiveCol));
         }
 
         // Settle: release the button and move the mouse away so the resize id
@@ -301,8 +409,7 @@ int main()
         return Fail("SetWindowBgGradient disable", rc);
 
     DearImGuiKSPNative_BeginFrame(1920.0f, 1080.0f, 1.0f / 60.0f);
-    igBegin("grad-test", nullptr, 0);
-    igEnd();
+    submitGradientWindows();
     DearImGuiKSPNative_EndFrame();
 
     {
@@ -313,7 +420,16 @@ int main()
             if (dl->VtxBuffer.Data[i].col != refCols[i])
                 return Fail("disabled pass is not byte-exact", 17);
     }
-    std::printf("Gradient disabled: draw list byte-exact vs. stock reference (%d verts)\n", refVtxCount);
+    {
+        const ImDrawList* dl = scrollWindow->DrawList;
+        if (dl->VtxBuffer.Size != refScrollVtxCount)
+            return Fail("disabled-pass vertex count differs (grad-scroll)", 58);
+        for (int i = 0; i < refScrollVtxCount; ++i)
+            if (dl->VtxBuffer.Data[i].col != refScrollCols[i])
+                return Fail("disabled pass is not byte-exact (grad-scroll)", 59);
+    }
+    std::printf("Gradient disabled: draw list byte-exact vs. stock reference (%d + %d verts)\n",
+                refVtxCount, refScrollVtxCount);
 
     // ---- C31: live UI scale ----
     //
