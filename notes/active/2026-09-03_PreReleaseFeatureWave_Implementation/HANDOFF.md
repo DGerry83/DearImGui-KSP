@@ -54,18 +54,27 @@ Full state lives in this folder — read `PROGRESS_LOG.md` first, then
   fixed 520x360, hover readout is a text line not a floating tooltip, spinner
   aesthetics (#006).
 
-## What's next — M8 (C25), preceded by #004 P0 investigation
+## What's next — wave polish (C26–C30), then M8 (C25)
 
-**Before packaging**: investigate ISSUES **#004 (P0)** flicker — worse in flight,
-especially under time warp, no reliable repro; suspects listed in the issue
-file (gradient pass window filtering, render-event pump timing vs game frame,
-deltaTime source under warp). Also: user has friction points about demo-consumer
-ergonomics / docs browsing to triage (raised at the M7 gate, details pending).
+User-confirmed 2026-09-04 sequence, each chunk per the per-chunk loop:
+1. **C26** docs polish: strip "Authored in milestone…" headers; installation
+   sections must say players install DearImGuiKSP separately (consumers never
+   redistribute); purge spec/process refs ("see D17") from user-facing docs;
+   plain-language skim for human modders.
+2. **C27**: fix ISSUES #008 (root cause known — gradient pass repaints
+   collapse-arrow verts, `ContextHost.cpp:291-366`); investigate #004 (P0);
+   first look at #009 z-order (no forcing flag exists — needs in-game
+   characterization, user will test rigorously next session).
+3. **C28**: public CollapsingHeader scope (in compiled cimgui already,
+   unwrapped) + demo usage + `docs/20-widgets.md`.
+4. **C29**: throttle dial demo — wiper-style knob (user's pick, NOT a slider)
+   writing `FlightInputHandler.state.mainThrottle` in flight + docs example.
+5. **C30**: #006 spinner geometry investigation — demo renders spinners larger
+   for zoomed screenshots; then fix / trim curated set / cut from 0.1.0.
 Then **M8 = C25** (release packaging + D33 OpenGL decision point; gate: zip
 installs into a clean KSP in the full D16 environment, D33 recorded in
 DECISION_LOG). C25 follow-ups already assigned: vendor upstream cimplot's MIT
-LICENSE into `vendor/cimplot/` (C24 found none ships there); version is 0.1.0.0
-from the csproj `<Version>`.
+LICENSE into `vendor/cimplot/`; version is 0.1.0.0 from the csproj `<Version>`.
 
 ## How this session runs (conventions the next agent must keep)
 
@@ -87,8 +96,8 @@ from the csproj `<Version>`.
    PowerShell PE-export parser (`DearImGuiKSPNative/build/c*_verify.ps1`).
 5. **Never commit** `notes/plans/2026-09-03_DearImGui-KSP_Fix_Backlog.md`
    (untracked, belongs to another session).
-6. ISSUES tracker is gitignored — `ISSUES/TRACKER.md` Next ID: **#008**
-   (#005 and #007 resolved+archived, #006 KNOWNLIMIT open, #004 P0 open).
+6. ISSUES tracker is gitignored — `ISSUES/TRACKER.md` Next ID: **#012**
+   (#005, #007 resolved+archived; open: #004 P0, #006 P1, #008–#011).
 
 ## Active gotchas / open threads
 
@@ -117,9 +126,9 @@ from the csproj `<Version>`.
 
 ## First action on resume
 
-M7 is VERIFIED. Next work, in order: (1) triage the user's friction points
-(demo-consumer ergonomics / docs browsing — details pending from the user);
-(2) investigate ISSUES #004 (P0 flicker) before packaging; (3) on the user's
-"proceed", write `CHUNK_C25_CONTRACT.md` (read spec §10 + the plan's M8 row
-first; DECISION_LOG entry format per
-`notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DECISION_LOG.md`).
+M1–M7 VERIFIED. Wave polish chunks C26–C30 are planned and user-confirmed (see
+"What's next"); execute them in order per the per-chunk loop, starting with
+`CHUNK_C26_CONTRACT.md`. ISSUES #006–#011 filed/escalated 2026-09-04
+(Next ID: #012). After C30 lands, write `CHUNK_C25_CONTRACT.md` on the user's
+"proceed" (read spec §10 + the plan's M8 row first; DECISION_LOG entry format
+per `notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DECISION_LOG.md`).

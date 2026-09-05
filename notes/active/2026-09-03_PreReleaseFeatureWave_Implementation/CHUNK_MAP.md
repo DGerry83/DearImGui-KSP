@@ -30,6 +30,11 @@
 | C23 | Docs set B: plotting, animation, migration, troubleshooting | Vertical slice | `docs/40,50,60,70` | Med | M7 | Pending |
 | C24 | XML-doc sweep + README/LICENSE attribution | Cleanup | all new public members, `README.md`, `LICENSE` | Low | M7 | Pending |
 | C25 | Release packaging + D33 OpenGL decision record | Integration | release zip, `DECISION_LOG.md` | Med | M8 | Pending |
+| C26 | Docs polish (user friction pass) | Cleanup | `docs/*.md` (all 8) | Low | Wave polish | Pending |
+| C27 | #008 collapse-arrow fix + #004 P0 flicker investigation + #009 first look | Bugfix | `src/ContextHost.cpp` (gradient pass), investigation notes | Med | Wave polish | Pending |
+| C28 | CollapsingHeader public scope + demo usage + docs | Vertical slice | `Interop`, `ImGuiEx.cs`, demo, `docs/20-widgets.md` | Low | Wave polish | Pending |
+| C29 | Throttle dial demo (input direction showcase) | Consumer | `DearImGuiKSPDemo/Telemetry/*`, docs example | Low | Wave polish | Pending |
+| C30 | Spinner investigation: large-size demo rendering + #006 fix/trim/cut | Bugfix | demo ThemeDemo, possibly `Interop/ImSpinnerNative.cs`, docs | Med | Wave polish | Pending |
 
 ### Dependency Graph
 ```
@@ -41,7 +46,8 @@ M5:  C14 (independent within M5)   C15, C16 (independent of each other)
      C9, C10, C14, C15, C16 ──► C17
 M6:  C18 ──► C19 (needs C13)     C18 ──► C20, C21 (C20/C21 parallel-safe)
 M7:  C22, C23 (parallel-safe) ──► C24
-M8:  C25 (needs M1–M7 verified)
+Wave polish (post-M7, pre-M8): C26 ──► C27 ──► C28 ──► C29 ──► C30 (sequential; all must pass user in-game check before M8)
+M8:  C25 (needs M1–M7 verified + wave polish chunks done)
 ```
 - Arrow = hard dependency ("must be completed before").
 - Milestones remain strictly sequential per spec §12: no M(N) chunk starts until M(N−1) is verified, even where intra-wave parallelism is possible (e.g., C14 has no technical dependency on M4).
@@ -69,6 +75,7 @@ M8:  C25 (needs M1–M7 verified)
 | M5 Widgets+tween | C14, C15, C16, C17 | Tween tests green; widgets animate in demo; suspension pauses tweens |
 | M6 Showcase | C18, C19, C20, C21 | In-flight D16 acceptance: 60 Hz graphs, stage/Δv, orbit radar; zero-alloc hot path; placeholders outside flight |
 | M7 Docs | C22, C23, C24 | Modder-from-zero dry run; XML docs complete; LICENSE aggregates MIT/0BSD/OFL |
+| Wave polish | C26–C30 | Per-chunk build/test green; user in-game spot-check of C27 (arrow + flicker), C28, C29, C30 outcome before M8 |
 | M8 Packaging | C25 | Clean-KSP install of zip; D33 decision recorded |
 
 ### Cross-Cutting Concerns
