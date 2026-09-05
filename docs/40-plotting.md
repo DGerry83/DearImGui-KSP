@@ -122,6 +122,29 @@ using (var plot = DearImGuiKSP.ImGuiPlot.Begin("##alt", Vector2.zero))
 
 This is the exact pattern the demo's `GraphPanel` uses for its per-cell hover readout. Note the allocation trade-off it makes deliberately: `string.Format` runs only while the user hovers a cell with data — the unhovered steady-state path allocates nothing.
 
+## Axis fitting
+
+By default a plot fits its axes once — the first time it is shown — and then leaves them alone (the user can drag axes and use the right-click menu to re-fit by hand). To keep the whole series visible at all times, opt into per-frame auto-fit:
+
+```csharp
+public static void ImGuiPlot.SetupAxesAutoFit()
+```
+
+Call it once per frame inside the plot scope, before the `PlotLine` calls:
+
+```csharp
+using (var plot = DearImGuiKSP.ImGuiPlot.Begin("Airspeed", PlotSize))
+{
+    if (plot.Visible)
+    {
+        DearImGuiKSP.ImGuiPlot.SetupAxesAutoFit();
+        DearImGuiKSP.ImGuiPlot.PlotLine("m/s", _samples.OldestFirst);
+    }
+}
+```
+
+Both axes then re-fit to the data every frame. Pair this with a rolling window (see below): auto-fitting an ever-growing series draws all of it every frame, so the per-frame cost grows with the recording length. The demo plots all use auto-fit over a fixed-size window.
+
 ## The ring-buffer pattern
 
 Live graphs almost always mean a rolling history of samples. The pattern the library expects is a **fixed-capacity ring buffer preallocated once**, exposed oldest-to-newest as a span over a reused scratch array, so feeding the plot each frame costs one small in-place copy and zero allocation:
@@ -201,7 +224,7 @@ Per-frame plot cost grows with the number of points you submit — both the scra
 Rules of thumb:
 
 - **Use a rolling window.** The demo plots the newest 1200 samples per cell — about 20 seconds at 60 Hz sampling (`GraphPanel.WindowSamples`). Keep the full history recorded in the ring if you want it, but submit only the window to `PlotLine` (`ring.LatestOldestFirst(1200)`). Cost becomes constant regardless of how long the player has been flying.
-- **Auto-fit is fine at rolling-window sizes.** The 1200-point window keeps ImPlot's segment submission cheap and the auto-fitted axes readable; you do not need to manage axis limits yourself. (What made the full-buffer graphs unreadable was never auto-fit — it was the frame cost.)
+- **Auto-fit is fine at rolling-window sizes.** Call `ImGuiPlot.SetupAxesAutoFit()` (see [Axis fitting](#axis-fitting)) and the 1200-point window keeps ImPlot's segment submission cheap and the auto-fitted axes readable; you do not need to manage axis limits yourself. (What made the full-buffer graphs unreadable was never auto-fit — it was the frame cost.)
 - **Hover text is the one sanctioned allocation.** A `string.Format` readout line like the one above runs only while hovered; keep it to one line and only for the hovered cell.
 - **Regression-test with the demo's benchmark window.** The demo mod ships a naive-vs-virtualized 1000-item benchmark window (`DearImGuiKSPDemo/BenchmarkUI.cs`) used as the standing performance instrument. If you suspect your plots cost too much, compare against it.
 

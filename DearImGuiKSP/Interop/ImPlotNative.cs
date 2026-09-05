@@ -73,6 +73,22 @@ namespace DearImGuiKSP.Interop
     }
 
     /// <summary>
+    /// Axis flags for <see cref="ImPlotNative.SetupAxesAutoFit"/>; values match
+    /// <c>ImPlotAxisFlags_</c> in the vendored implot <c>implot.h</c> (typedef int,
+    /// implot.h:87, enum at implot.h:175). Only the values the wrapper needs;
+    /// extend the subset when more are required.
+    /// </summary>
+    [Flags]
+    internal enum ImPlotAxisFlags
+    {
+        /// <summary>Default (implot.h:176, ImPlotAxisFlags_None = 0).</summary>
+        None = 0,
+
+        /// <summary>Axis auto-fits to data extents every frame (implot.h:188, ImPlotAxisFlags_AutoFit = 1 &lt;&lt; 11).</summary>
+        AutoFit = 1 << 11,
+    }
+
+    /// <summary>
     /// Blittable mirror of cimplot's <c>ImPlotPoint_c</c> (<c>struct</c>,
     /// vendor/cimplot/cimplot.h:837-840), the by-value return of
     /// <c>ImPlot_GetPlotMousePos</c> (cimplot.h:1345). Two sequential doubles
@@ -203,6 +219,12 @@ namespace DearImGuiKSP.Interop
         [return: MarshalAs(UnmanagedType.I1)]
         private static extern bool ImPlot_IsPlotHovered();
 
+        // CIMGUI_API void ImPlot_SetupAxes(const char* x_label,const char* y_label,ImPlotAxisFlags x_flags,ImPlotAxisFlags y_flags);
+        // (vendor/cimplot/cimplot.h:1030) — labels passed NULL (the C++ defaults,
+        // implot.h:888: no axis labels).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ImPlot_SetupAxes([In] byte[] x_label, [In] byte[] y_label, int x_flags, int y_flags);
+
         /// <summary>
         /// Begins a plot. The label is encoded to a null-terminated UTF-8 buffer per
         /// call (same ToUtf8 convention as <c>ImGuiInternal</c>/<c>ExtensionShimsNative</c>);
@@ -279,6 +301,17 @@ namespace DearImGuiKSP.Interop
         internal static bool IsPlotHovered()
         {
             return ImPlot_IsPlotHovered();
+        }
+
+        /// <summary>
+        /// Sets both axes of the current plot to auto-fit to data extents every frame
+        /// (ImPlotAxisFlags_AutoFit, implot.h:188) with no axis labels (NULL labels,
+        /// the C++ defaults implot.h:888). Only meaningful between a successful
+        /// BeginPlot and its EndPlot; ImPlot applies SetupAxes per frame.
+        /// </summary>
+        internal static void SetupAxesAutoFit()
+        {
+            ImPlot_SetupAxes(null, null, (int)ImPlotAxisFlags.AutoFit, (int)ImPlotAxisFlags.AutoFit);
         }
 
         // Null-terminated UTF-8. Null becomes "\0" (empty string).

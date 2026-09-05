@@ -138,6 +138,10 @@ namespace DearImGuiKSP.Interop
         [return: MarshalAs(UnmanagedType.I1)]
         private static extern bool igSliderFloat([In] byte[] label, ref float v, float v_min, float v_max, IntPtr format, int flags);
 
+        // CIMGUI_API void igSetNextItemWidth(float item_width); (cimgui.h:4170)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igSetNextItemWidth(float item_width);
+
         // CIMGUI_API bool igInputFloat(const char* label,float* v,float step,float step_fast,const char* format,ImGuiInputTextFlags flags); (cimgui.h:4294)
         // step/step_fast are 0: ImGui::InputFloat passes a NULL step pointer
         // unless step > 0, so no step buttons render (imgui.cpp). format is
@@ -414,6 +418,11 @@ namespace DearImGuiKSP.Interop
         internal static bool SliderFloat(byte[] labelUtf8, ref float value, float min, float max, ImGuiSliderFlags flags)
         {
             return igSliderFloat(labelUtf8, ref value, min, max, IntPtr.Zero, (int)flags);
+        }
+
+        internal static void SetNextItemWidth(float width)
+        {
+            igSetNextItemWidth(width);
         }
 
         internal static bool InputText(byte[] labelUtf8, byte[] buffer, ImGuiInputTextFlags flags)

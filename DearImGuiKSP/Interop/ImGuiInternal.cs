@@ -69,6 +69,17 @@ namespace DearImGuiKSP.Interop
         }
 
         /// <summary>
+        /// Sets the pixel width of the next widget declared this frame. Wraps cimgui
+        /// <c>igSetNextItemWidth</c>; applies to exactly one item, then the default
+        /// (fill available width) returns. Positive values size the widget frame
+        /// itself, label excluded.
+        /// </summary>
+        internal static void SetNextItemWidth(float width)
+        {
+            ImGuiNative.SetNextItemWidth(width);
+        }
+
+        /// <summary>
         /// Draws a numeric type-in field bound to a float. Wraps cimgui
         /// <c>igInputFloat</c> with step = step_fast = 0 (no step buttons) and
         /// format = NULL (the float default "%.3f" applies). A "##" prefix in

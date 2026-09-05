@@ -42,6 +42,12 @@ namespace DearImGuiKSP.Infrastructure
         private const string VerboseToggleLabel = "Verbose logging";
         private const string VerboseHint = "Writes extra [DearImGuiKSP] diagnostics to KSP.log.";
 
+        // Fixed pixel widths for the scale rows: without them slider and type-in
+        // split the full window width, which the auto-resizing window then grows
+        // to fit — far wider than a 0.5–2.0 scale needs (C36).
+        private const float ScaleSliderWidth = 180f;
+        private const float ScaleTypeInWidth = 60f;
+
         private readonly SettingsModel _settings;
 
         internal LibraryControlPanel(SettingsModel settings)
@@ -94,12 +100,14 @@ namespace DearImGuiKSP.Infrastructure
         private void DrawUiScaleSection()
         {
             float uiScale = _settings.UiScale;
+            ImGuiInternal.SetNextItemWidth(ScaleSliderWidth);
             if (ImGuiInternal.SliderFloat(UiScaleSliderLabel, ref uiScale, LibraryConfig.MinScale, LibraryConfig.MaxScale))
             {
                 _settings.UiScale = uiScale; // persists; ThemeEngine forwards it to the native side live
             }
             ImGuiInternal.SameLine();
             float typedUiScale = _settings.UiScale;
+            ImGuiInternal.SetNextItemWidth(ScaleTypeInWidth);
             if (ImGuiInternal.InputFloat(UiScaleTypeInLabel, ref typedUiScale))
             {
                 // Two-way: typing applies here (the setter clamps 0.5–2.0), and
@@ -126,12 +134,14 @@ namespace DearImGuiKSP.Infrastructure
             }
 
             float fontScale = _settings.FontScale;
+            ImGuiInternal.SetNextItemWidth(ScaleSliderWidth);
             if (ImGuiInternal.SliderFloat(FontScaleSliderLabel, ref fontScale, LibraryConfig.MinScale, LibraryConfig.MaxScale))
             {
                 _settings.FontScale = fontScale;
             }
             ImGuiInternal.SameLine();
             float typedFontScale = _settings.FontScale;
+            ImGuiInternal.SetNextItemWidth(ScaleTypeInWidth);
             if (ImGuiInternal.InputFloat(FontScaleTypeInLabel, ref typedFontScale))
             {
                 // Same semantics as the slider (saved now, applied on next KSP

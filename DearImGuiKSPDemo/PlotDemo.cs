@@ -5,7 +5,8 @@ namespace DearImGuiKSPDemo
     /// <summary>
     /// C13/M4 ImPlot proof window: two live line plots drawn through the public
     /// <see cref="DearImGuiKSP.ImGuiPlot"/> API only — rolling frame time (ms) and
-    /// smoothed FPS, one series per plot. Both series are fed once per frame from
+    /// smoothed FPS, one series per plot, both axes auto-fitting every frame
+    /// (<see cref="DearImGuiKSP.ImGuiPlot.SetupAxesAutoFit"/>). Both series are fed once per frame from
     /// fixed-capacity ring buffers (preallocated in the constructor), so the
     /// steady-state per-frame path allocates no managed memory: ring writes and the
     /// oldest-first copy are in-place, plot labels are constants, and PlotLine pins
@@ -45,6 +46,7 @@ namespace DearImGuiKSPDemo
             {
                 if (frameMsPlot.Visible)
                 {
+                    DearImGuiKSP.ImGuiPlot.SetupAxesAutoFit();
                     DearImGuiKSP.ImGuiPlot.PlotLine(FrameMsLabel, _frameMs.OldestFirst);
                 }
             }
@@ -52,6 +54,7 @@ namespace DearImGuiKSPDemo
             {
                 if (fpsPlot.Visible)
                 {
+                    DearImGuiKSP.ImGuiPlot.SetupAxesAutoFit();
                     DearImGuiKSP.ImGuiPlot.PlotLine(FpsLabel, _fps.OldestFirst);
                 }
             }

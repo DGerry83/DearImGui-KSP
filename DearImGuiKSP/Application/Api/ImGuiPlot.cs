@@ -120,6 +120,25 @@ namespace DearImGuiKSP
         }
 
         /// <summary>
+        /// Sets both axes of the current plot to auto-fit to the plotted data every
+        /// frame, so the whole series always stays inside the plotting area (ImPlot's
+        /// <c>ImPlotAxisFlags_AutoFit</c> on x and y). Call once per frame inside a
+        /// plot scope whose <see cref="PlotScope.Visible"/> is true, before the plot's
+        /// series. Note the draw-cost consequence: auto-fitting an ever-growing series
+        /// draws all of it every frame — for long-running telemetry, feed a rolling
+        /// window of samples so auto-fit stays cheap and readable (the demo's
+        /// GraphPanel pattern).
+        /// </summary>
+        public static void SetupAxesAutoFit()
+        {
+            if (!DearImGuiKSP.IsAvailable)
+            {
+                return;
+            }
+            ImPlotNative.SetupAxesAutoFit();
+        }
+
+        /// <summary>
         /// Draws a line series (float32 y-values, x = index * 1 + 0) inside the
         /// current plot. Only valid between a successful
         /// <see cref="Begin(string, Vector2)"/> and its scope's Dispose.

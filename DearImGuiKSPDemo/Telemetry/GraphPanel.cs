@@ -158,6 +158,7 @@ namespace DearImGuiKSPDemo.Telemetry
                 {
                     return;
                 }
+                DearImGuiKSP.ImGuiPlot.SetupAxesAutoFit();
                 DearImGuiKSP.ImGuiPlot.PlotLine(label, ring.LatestOldestFirst(WindowSamples));
                 if (ring.Count > 0 && DearImGuiKSP.ImGuiPlot.IsPlotHovered())
                 {
