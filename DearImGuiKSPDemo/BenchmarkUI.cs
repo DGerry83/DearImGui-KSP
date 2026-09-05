@@ -22,6 +22,8 @@ namespace DearImGuiKSPDemo
         private const float ListViewHeight = 200f;
         private const int ItemCount = 1000;
 
+        private const string ResizeNote = "Auto-sizing off — drag the corner or edge to resize.";
+
         // Rolling-average window for the declaration-cost readouts.
         private const int RollingWindowFrames = 60;
 
@@ -108,6 +110,8 @@ namespace DearImGuiKSPDemo
 
         private void DrawImGuiContent()
         {
+            DearImGuiKSP.DearImGuiKSP.TextColored(
+                DearImGuiKSP.Application.KspPalette.TextLightGrey, ResizeNote);
             DearImGuiKSP.DearImGuiKSP.Text(string.Format(
                 "FPS: {0:0.0}  ({1:0.0} ms frame)", 1f / _fpsEma, _fpsEma * 1000f));
             DearImGuiKSP.DearImGuiKSP.Text(string.Format(

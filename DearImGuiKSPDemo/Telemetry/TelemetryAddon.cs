@@ -125,7 +125,7 @@ namespace DearImGuiKSPDemo.Telemetry
                 return;
             }
 
-            using (var window = DearImGuiKSP.ImGuiEx.Window(WindowTitle))
+            using (var window = DearImGuiKSP.ImGuiEx.Window(WindowTitle, autoResize: true))
             {
                 if (!window.Visible)
                 {

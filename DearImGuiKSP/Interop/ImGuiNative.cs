@@ -11,6 +11,9 @@ namespace DearImGuiKSP.Interop
     internal enum ImGuiWindowFlags
     {
         None = 0,
+
+        /// <summary>Resize every window to its content every frame (imgui.h:1225, 1 &lt;&lt; 6).</summary>
+        AlwaysAutoResize = 0x40,
     }
 
     /// <summary>

@@ -20,6 +20,7 @@ namespace DearImGuiKSPDemo
         private const string FrameMsLabel = "ms/frame";
         private const string FpsTitle = "Smoothed FPS";
         private const string FpsLabel = "fps";
+        private const string ResizeNote = "Auto-sizing off — drag the corner or edge to resize.";
         private static readonly Vector2 PlotSize = new Vector2(340f, 130f);
 
         private readonly RingBuffer _frameMs = new RingBuffer(Capacity);
@@ -38,6 +39,8 @@ namespace DearImGuiKSPDemo
         {
             Tick();
 
+            DearImGuiKSP.DearImGuiKSP.TextColored(
+                DearImGuiKSP.Application.KspPalette.TextLightGrey, ResizeNote);
             using (var frameMsPlot = DearImGuiKSP.ImGuiPlot.Begin(FrameMsTitle, PlotSize))
             {
                 if (frameMsPlot.Visible)

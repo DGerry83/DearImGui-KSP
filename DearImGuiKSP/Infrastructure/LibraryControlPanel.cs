@@ -60,7 +60,7 @@ namespace DearImGuiKSP.Infrastructure
                 return; // steady-state closed path: one bool check, zero allocation
             }
 
-            using (var window = ImGuiEx.Window(WindowTitle))
+            using (var window = ImGuiEx.Window(WindowTitle, autoResize: true))
             {
                 if (!window.Visible)
                 {

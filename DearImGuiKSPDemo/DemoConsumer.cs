@@ -117,7 +117,7 @@ namespace DearImGuiKSPDemo
             {
                 return;
             }
-            using (var window = DearImGuiKSP.ImGuiEx.Window("DearImGui-KSP Demo"))
+            using (var window = DearImGuiKSP.ImGuiEx.Window("DearImGui-KSP Demo", autoResize: true))
             {
                 if (window.Visible)
                 {

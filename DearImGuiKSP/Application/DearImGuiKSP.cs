@@ -101,17 +101,25 @@ namespace DearImGuiKSP
         /// Begins an ImGui window. Only valid inside a registered callback.
         /// </summary>
         /// <param name="name">Window title; also its ImGui identity.</param>
+        /// <param name="autoResize">
+        /// Opt in to fit-to-content sizing (<c>ImGuiWindowFlags_AlwaysAutoResize</c>,
+        /// imgui.h:1225): the window is resized to its content every frame. While
+        /// enabled, the resize grip and edges are inactive (the window is not
+        /// user-resizable) and no scrollbars appear because the window always fits;
+        /// the title bar stays draggable.
+        /// </param>
         /// <returns>
         /// False when the window is collapsed/clipped — <see cref="EndWindow"/> is
         /// still required. Also false when called while unavailable.
         /// </returns>
-        public static bool BeginWindow(string name)
+        public static bool BeginWindow(string name, bool autoResize = false)
         {
             if (!IsAvailable)
             {
                 return false;
             }
-            return ImGuiInternal.BeginWindow(name);
+            return ImGuiInternal.BeginWindow(
+                name, autoResize ? ImGuiWindowFlags.AlwaysAutoResize : ImGuiWindowFlags.None);
         }
 
         /// <summary>

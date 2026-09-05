@@ -27,6 +27,17 @@ namespace DearImGuiKSP
         /// registered callback.
         /// </summary>
         /// <param name="name">Window title; also its ImGui identity.</param>
+        /// <param name="autoResize">
+        /// Opt in to fit-to-content sizing (stock ImGui <c>AlwaysAutoResize</c>):
+        /// the window is resized to fit its content every frame — it grows when a
+        /// collapsed section opens, shrinks when one closes, and reflows when the
+        /// library's UI scale changes. While enabled the window is NOT
+        /// user-resizable (the resize grip and edges are inactive) and no
+        /// scrollbars appear because the window always fits its content; the
+        /// title bar stays draggable. Defaults to false: the window is
+        /// user-resizable and shows an automatic scrollbar when content
+        /// overflows.
+        /// </param>
         /// <returns>
         /// A scope whose <see cref="WindowScope.Visible"/> mirrors the facade's
         /// BeginWindow result — when false, skip the window's content for this frame.
@@ -35,9 +46,9 @@ namespace DearImGuiKSP
         /// <remarks>
         /// Must be disposed within the same frame/callback (immediate-mode rule).
         /// </remarks>
-        public static WindowScope Window(string name)
+        public static WindowScope Window(string name, bool autoResize = false)
         {
-            return new WindowScope(DearImGuiKSP.BeginWindow(name));
+            return new WindowScope(DearImGuiKSP.BeginWindow(name, autoResize));
         }
 
         /// <summary>

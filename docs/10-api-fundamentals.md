@@ -77,7 +77,7 @@ code throws (the exception then reaches the fault barrier, section 7 below).
 
 | Factory | Scope type | `Visible` semantics | Dispose behavior |
 |---|---|---|---|
-| `Window(string name)` | `WindowScope` | false = window collapsed/clipped this frame | **Always** ends the window |
+| `Window(string name, bool autoResize = false)` | `WindowScope` | false = window collapsed/clipped this frame | **Always** ends the window |
 | `ScrollRegion(string id, float height)` | `ScrollRegionScope` | false = region clipped this frame | **Always** ends the region |
 | `ScrollRegion(string id, Vector2 size)` | `ScrollRegionScope` | same; `size.x = 0` stretches to available width | Always ends the region |
 | `TabBar(string id)` | `TabBarScope` | false = tab bar clipped | Ends the tab bar **only when visible** (ImGui requires End only after a successful Begin) |
@@ -117,6 +117,23 @@ For raw Begin/End pairs (`BeginWindow`/`EndWindow`,
 them manually: `EndWindow`/`EndScrollRegion` always after their Begin, but
 `EndTabBar`/`EndTabItem` only when the Begin returned true. The scopes exist
 so you do not have to remember which is which — prefer them.
+
+### Window sizing
+
+Every window chooses one of two sizing models via the `autoResize` argument
+of `ImGuiEx.Window` (or the matching parameter on the raw `BeginWindow`):
+
+- **Default (`autoResize: false`)** — the window is user-resizable: drag the
+  grip in the lower-right corner or any edge. When the content is taller or
+  wider than the window, an automatic scrollbar appears so nothing is lost.
+  This is the right choice for fixed-size views (plots, long lists) where the
+  reader wants control.
+- **Fit-to-content (`autoResize: true`)** — the window is resized to fit its
+  content every frame. It grows when a collapsing section opens, shrinks when
+  one closes, and reflows when the library's UI scale changes. The cost: the
+  window is no longer user-resizable (the grip and edges are inactive), and
+  scrollbars never appear because the window always fits. The title bar stays
+  draggable in both modes.
 
 ## 4. Public types
 
