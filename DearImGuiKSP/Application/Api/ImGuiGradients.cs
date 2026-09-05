@@ -245,8 +245,9 @@ namespace DearImGuiKSP
         }
 
         // Packs sRGB bytes into ImGui's ImU32 (A<<24 | B<<16 | G<<8 | R,
-        // imgui.h IM_COL32). Pure struct math.
-        private static uint Pack(Color32 c)
+        // imgui.h IM_COL32). Pure struct math. Internal so the C20 ImGuiDraw
+        // surface reuses it instead of duplicating the packing table.
+        internal static uint Pack(Color32 c)
         {
             return (uint)(c.r | (c.g << 8) | (c.b << 16) | (c.a << 24));
         }

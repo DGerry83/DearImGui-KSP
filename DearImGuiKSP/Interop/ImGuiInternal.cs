@@ -368,6 +368,39 @@ namespace DearImGuiKSP.Interop
             ImGuiNative.DrawListAddLine(drawList.NativePointer, p1, p2, col, thickness);
         }
 
+        // ---- Draw-list primitives + cursor position (chunk C20) ----
+
+        /// <summary>
+        /// Position where the next widget will be drawn, in screen coordinates —
+        /// the anchor for custom drawing over the current line's layout slot.
+        /// Wraps cimgui <c>igGetCursorScreenPos</c> (by-value return, cimgui.h:4179).
+        /// Valid only between <see cref="BeginWindow"/> and <see cref="EndWindow"/>.
+        /// </summary>
+        internal static ImVec2 GetCursorScreenPos()
+        {
+            return ImGuiNative.GetCursorScreenPos();
+        }
+
+        /// <summary>
+        /// Adds an ellipse outline to a draw list. Wraps cimgui
+        /// <c>ImDrawList_AddEllipse</c>; <paramref name="numSegments"/> = 0 lets
+        /// ImGui auto-calculate from the radii.
+        /// </summary>
+        internal static void DrawListAddEllipse(ImDrawListHandle drawList, ImVec2 center, ImVec2 radius, uint col, float rot, int numSegments = 0, float thickness = 1f)
+        {
+            ImGuiNative.DrawListAddEllipse(drawList.NativePointer, center, radius, col, rot, numSegments, thickness);
+        }
+
+        /// <summary>
+        /// Adds a filled ellipse to a draw list. Wraps cimgui
+        /// <c>ImDrawList_AddEllipseFilled</c>; <paramref name="numSegments"/> = 0
+        /// lets ImGui auto-calculate from the radii.
+        /// </summary>
+        internal static void DrawListAddEllipseFilled(ImDrawListHandle drawList, ImVec2 center, ImVec2 radius, uint col, float rot, int numSegments = 0)
+        {
+            ImGuiNative.DrawListAddEllipseFilled(drawList.NativePointer, center, radius, col, rot, numSegments);
+        }
+
         /// <summary>
         /// Draws a radio button whose state is an explicit boolean. Wraps cimgui
         /// <c>igRadioButton_Bool</c>. Null label renders as an empty string.

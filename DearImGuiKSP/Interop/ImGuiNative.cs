@@ -279,6 +279,25 @@ namespace DearImGuiKSP.Interop
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         private static extern uint igGetColorU32_Col(int idx, float alpha_mul);
 
+        // ---- Draw-list primitives + cursor position (chunk C20) ----
+        // Verified against the pinned cimgui.h (sibling clone, imgui 1.92.9).
+
+        // CIMGUI_API ImVec2_c igGetCursorScreenPos(void); (cimgui.h:4179)
+        // NOTE: cimgui 1.92.9 returns ImVec2_c BY VALUE (the generator does not
+        // emit the ImVec2* out-param sketched in the C20 contract) — same ABI
+        // pattern as igGetItemRectMin (cimgui.h:4469), so the blittable 8-byte
+        // ImVec2 struct carries it on Win64 Cdecl.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern ImVec2 igGetCursorScreenPos();
+
+        // CIMGUI_API void ImDrawList_AddEllipse(ImDrawList* self,const ImVec2_c center,const ImVec2_c radius,ImU32 col,float rot,int num_segments,float thickness); (cimgui.h:4688)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ImDrawList_AddEllipse(IntPtr self, ImVec2 center, ImVec2 radius, uint col, float rot, int num_segments, float thickness);
+
+        // CIMGUI_API void ImDrawList_AddEllipseFilled(ImDrawList* self,const ImVec2_c center,const ImVec2_c radius,ImU32 col,float rot,int num_segments); (cimgui.h:4689)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ImDrawList_AddEllipseFilled(IntPtr self, ImVec2 center, ImVec2 radius, uint col, float rot, int num_segments);
+
         // ---- Tab bar / tab items (chunk C18) ----
         // Verified against the pinned cimgui.h (sibling clone, imgui 1.92.9).
 
@@ -483,6 +502,23 @@ namespace DearImGuiKSP.Interop
         internal static void DrawListAddLine(IntPtr drawList, ImVec2 p1, ImVec2 p2, uint col, float thickness)
         {
             ImDrawList_AddLine(drawList, p1, p2, col, thickness);
+        }
+
+        // Draw-list primitives + cursor position (C20).
+
+        internal static ImVec2 GetCursorScreenPos()
+        {
+            return igGetCursorScreenPos();
+        }
+
+        internal static void DrawListAddEllipse(IntPtr drawList, ImVec2 center, ImVec2 radius, uint col, float rot, int numSegments, float thickness)
+        {
+            ImDrawList_AddEllipse(drawList, center, radius, col, rot, numSegments, thickness);
+        }
+
+        internal static void DrawListAddEllipseFilled(IntPtr drawList, ImVec2 center, ImVec2 radius, uint col, float rot, int numSegments)
+        {
+            ImDrawList_AddEllipseFilled(drawList, center, radius, col, rot, numSegments);
         }
 
         internal static bool RadioButton(byte[] labelUtf8, bool active)

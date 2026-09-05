@@ -7,8 +7,8 @@ namespace DearImGuiKSPDemo.Telemetry
     /// M6 telemetry showcase entry (spec §5.5; C18, Graphs tab C19): a SEPARATE
     /// KSPAddon from DemoConsumer, with its own ApplicationLauncher toolbar button
     /// (blue placeholder icon), its own consumer registration id, and one window
-    /// ("DearImGui-KSP Telemetry") hosting a tab bar with the Graphs panel (C19) and
-    /// two placeholder tabs (Stages / Orbit — replaced by C20/C21). Sampling runs
+    /// ("DearImGui-KSP Telemetry") hosting a tab bar with the Graphs panel (C19),
+    /// the Stages panel (C20), and one placeholder tab (Orbit — replaced by C21). Sampling runs
     /// before the visibility check so history stays warm while the window is closed.
     /// All ImGui calls go through the library's public API only; every label/title is
     /// a constant, so the per-frame path allocates no managed memory (the Graphs
@@ -24,11 +24,12 @@ namespace DearImGuiKSPDemo.Telemetry
         private const string StagesTab = "Stages";
         private const string OrbitTab = "Orbit";
         private const string NoVesselText = "No active vessel.";
-        private const string StagesPlaceholder = "Stages panel placeholder (C20).";
         private const string OrbitPlaceholder = "Orbit panel placeholder (C21).";
 
         private readonly TelemetrySampler _sampler = new TelemetrySampler();
+        private readonly StageAnalyzer _stageAnalyzer = new StageAnalyzer();
         private readonly GraphPanel _graphPanel;
+        private readonly StagePanel _stagePanel;
 
         private ApplicationLauncherButton _toolbarButton;
         private bool _windowVisible;
@@ -36,6 +37,7 @@ namespace DearImGuiKSPDemo.Telemetry
         public TelemetryAddon()
         {
             _graphPanel = new GraphPanel(_sampler);
+            _stagePanel = new StagePanel(_stageAnalyzer);
         }
 
         private void Start()
@@ -47,6 +49,7 @@ namespace DearImGuiKSPDemo.Telemetry
             }
             DearImGuiKSP.DearImGuiKSP.Register(ConsumerId, OnFrame);
             Debug.Log("[DearImGuiKSPDemo] Telemetry registered with DearImGui-KSP.");
+            _stageAnalyzer.Subscribe();
 
             GameEvents.onGUIApplicationLauncherReady.Add(OnLauncherReady);
             if (ApplicationLauncher.Ready)
@@ -57,6 +60,7 @@ namespace DearImGuiKSPDemo.Telemetry
 
         private void OnDestroy()
         {
+            _stageAnalyzer.Dispose();
             GameEvents.onGUIApplicationLauncherReady.Remove(OnLauncherReady);
             if (_toolbarButton != null && ApplicationLauncher.Instance != null)
             {
@@ -105,12 +109,16 @@ namespace DearImGuiKSPDemo.Telemetry
         }
 
         // Per-frame path. Sampling runs first and unconditionally: history stays warm
-        // while the window is closed (spec §5.5). All tab labels and placeholder
-        // strings are constants — no string building, no per-frame allocation (the
-        // Graphs hover readout is hover-only; see GraphPanel).
+        // while the window is closed (spec §5.5). The stage analyzer's Tick follows
+        // the same rule — its only per-frame cost is a dirty-flag check and a float
+        // comparison; part iteration happens inside the 1 s recompute (C20). All tab
+        // labels and placeholder strings are constants — no string building, no
+        // per-frame allocation (the Graphs hover readout is hover-only; see
+        // GraphPanel; StagePanel preformats its readouts at recompute cadence).
         private void OnFrame()
         {
             _sampler.Sample();
+            _stageAnalyzer.Tick();
             if (!_windowVisible)
             {
                 return;
@@ -148,7 +156,7 @@ namespace DearImGuiKSPDemo.Telemetry
                     {
                         if (tab.Visible)
                         {
-                            DrawPlaceholder(StagesPlaceholder);
+                            _stagePanel.DrawImGui();
                         }
                     }
                     using (var tab = DearImGuiKSP.ImGuiEx.TabItem(OrbitTab))
