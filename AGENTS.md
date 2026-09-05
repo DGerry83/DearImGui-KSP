@@ -6,7 +6,7 @@
 
 - **Target**: KSP 1.12.x, Unity 2019.4.18f1, Mono x64, Windows-first, D3D11 (OpenGL deferred post-MVP, D20).
 - **Structure**: `DearImGuiKSPNative.dll` (C++: Dear ImGui + cimgui + render backends) + `DearImGuiKSP.dll` (C#: KSP plugin, frame loop, input locks, public API).
-- **Current status**: implementation plan complete (2026-09-03) — all milestones M1–M6 verified in-game, all gates PASS, session verdict CONTINUE. See `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`. Post-MVP follow-ups landed 2026-09-03 (`notes\finished\2026-09-03_Bug_ClickThrough_WindowAnchor\`, `notes\finished\2026-09-03_Bug_IMGUI_ClickThrough\`): ISSUES #001–#003 resolved (uGUI + IMGUI click bleed-through, resolution-change window clamp, handshake v4); xUnit Application test suite live (59 tests). **Pre-release feature wave spec confirmed 2026-09-03** (`notes\finished\2026-09-03_DesignSpec_Theming_Extensions_Showcase\DESIGN_SPEC.md`, D24–D34): KSP default theme + IBM Plex Sans, ImPlot/knobs/wheels/spinners/toggles + C# tweens, telemetry showcase in the demo mod, modder docs in `docs\`. Next: implementation plan for the wave (bootstrap route), then execution; release packaging after the wave; OpenGL decision point post-wave (D33).
+- **Current status**: pre-release feature wave complete (2026-09-05) — all milestones M1–M7 verified in-game plus polish chunks C26–C36; session `notes\active\2026-09-03_PreReleaseFeatureWave_Implementation\` (read its HANDOFF.md first). **1.0.0 packaged**: `package_release.bat` builds both release zips into `dist\` (library + separate demo, D7); D35 records OpenGL post-release (user preparing a stripped-down GL test install); D36 records the versioning paradigm (see Hard constraints). Remaining: M8 gate = clean-KSP install of the zips in the D16 environment (user's test), then publish. Earlier history: implementation plan complete 2026-09-03 (M1–M6 verified, `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`); post-MVP follow-ups (ISSUES #001–#003); wave spec `notes\finished\2026-09-03_DesignSpec_Theming_Extensions_Showcase\DESIGN_SPEC.md` (D24–D34).
 
 ## Working on this repo — read these first
 
@@ -44,7 +44,7 @@ Authoritative design record, in `notes\finished\2026-07-29_DesignSpec_DearImGuiK
 | File | Contents |
 |------|----------|
 | `DESIGN_SPEC.md` | **The spec.** Confirmed by the user 2026-07-29. Build from this. |
-| `DECISION_LOG.md` | D1–D34: every design decision, alternatives, rationale. Check before reversing anything. |
+| `DECISION_LOG.md` | D1–D36: every design decision, alternatives, rationale. Check before reversing anything. |
 | `QUESTION_LOG.md` | Q1–Q47: the user's answers that the spec is built from. |
 | `RESEARCH_NOTES.md` | KSP API findings, precedents, compatibility concerns, open gaps. |
 
@@ -59,5 +59,5 @@ Authoritative design record, in `notes\finished\2026-07-29_DesignSpec_DearImGuiK
 - Compatibility with **Deferred** is a hard requirement; must also not break TUFX, Scatterer, Parallax, Cinematic Shaders, Cinematic Recorder, or IMGUI mods (D5, D16).
 - Failure handling: unrecoverable startup failure → session-permanent self-disable, one plain-language `PopupDialog` at main menu, technical detail in the log under `[DearImGuiKSP]` only (§5.4, §7 of the spec).
 - Library persists only its own global config (`GameData\DearImGuiKSP\settings.cfg`); consumer window state belongs to consumers.
-- Versioning: SemVer, managed+native DLLs released in lockstep, consumers guided to `KSPAssemblyDependencyEqualMajor` (D17, spec §10.5).
+- Versioning: SemVer `major.minor.patch` (major = breaking/finalized, minor = features, patch = fixes; components are integers with trailing reset, e.g. 1.3.12 is valid), managed+native DLLs released in lockstep, consumers guided to `KSPAssemblyDependencyEqualMajor` (D17, D36, spec §10.5). First public release is **1.0.0** — the 1.0+ stability policy applies from day one.
 - Demo/example mod ships as a separate install (`GameData\DearImGuiKSPDemo\`), never inside the dependency package (D7).

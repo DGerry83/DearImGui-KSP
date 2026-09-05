@@ -297,7 +297,7 @@ None identified in the game dump — zero existing native-plugin render integrat
 ### 10.5 Update Path
 
 - SemVer `major.minor.patch`, mirrored identically in the `KSPAssembly` version, assembly `FileVersion`, and the version file in `GameData/DearImGuiKSP/`. Managed and native DLLs always release together in lockstep (the version-mismatch failure mode enforces this).
-- **0.x phase**: minor bumps may break the consumer API; breakage announced prominently in the changelog.
+- **Released at 1.0.0** (D36): there is no public 0.x phase — the 1.0+ policy below applies from the first release. Components are integers, not digits: bumping one resets all later components to zero (1.1.0 → 2.0.0; 1.3.12 is valid).
 - **1.0+**: no breaking changes within a major. Minor = backward-compatible additions; patch = fixes. Deprecated APIs carry `[Obsolete]` with migration guidance for at least one full minor cycle before removal at the next major.
 - **Consumers must declare `KSPAssemblyDependencyEqualMajor`**, not plain `KSPAssemblyDependency`: KSP's loader treats any higher major as satisfying a dependency, so a plain declaration would let a breaking 2.0 silently load under a consumer built for 1.x. This guidance goes in the consumer README.
 - Updates are safe mid-save; old settings configs migrate forward via the ConfigNode format version.
@@ -342,3 +342,4 @@ None identified in the game dump — zero existing native-plugin render integrat
 | 2026-07-29 | Agent + User | Initial specification (Q1–Q47 answered across 7 phases; decisions D1–D18) |
 | 2026-09-03 | Agent + User | Post-MVP amendments: uGUI pointer blocker + IMGUI input suppression (D22, D23); opt-out viewport clamp setting (D21) |
 | 2026-09-03 | Agent + User | Pre-release feature wave spec confirmed (KSP default theme, bundled IBM Plex Sans, extension integrations, telemetry showcase, modder docs; D24–D34): `notes/finished/2026-09-03_DesignSpec_Theming_Extensions_Showcase/DESIGN_SPEC.md`. D24 narrows D18's Unity-free Application rule to permit UnityEngine.CoreModule math structs in public signatures. |
+| 2026-09-05 | Agent + User | Release versioning (D36): first public release is **1.0.0** — no public 0.x phase, so the §10.5 1.0+ stability policy applies from the first release; component semantics recorded (major = breaking, minor = features, patch = fixes; integers, trailing reset). OpenGL post-release (D35). |

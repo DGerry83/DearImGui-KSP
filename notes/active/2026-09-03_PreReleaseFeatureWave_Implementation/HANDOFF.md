@@ -1,11 +1,13 @@
 # Handoff: Pre-Release Feature Wave Implementation — C25 packaged, M8 gate pending
 ## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-05 (C25 done: 0.2.0.0 zips built+verified, D35 recorded; M8 in-game gate pending user)
+## Written: 2026-09-05 (C25 done: **1.0.0** zips built+verified, D35/D36 recorded; M8 in-game gate pending user)
 
 ## Where we are
 
 M1–M7 **VERIFIED**; wave polish C26–C36 all Done with all gates PASSED;
-**C25 (M8 packaging) is Done in code**: version bumped to **0.2.0.0**,
+**C25 (M8 packaging) is Done in code**: version set to **1.0.0** (user's
+call — D36 records the paradigm: major = breaking, minor = features,
+patch = fixes, integers with trailing reset),
 `package_release.bat` produces both zips in `dist/` (verified: manifests,
 versions, no PDBs, License.txt + Docs + CHANGELOG included), user's MIT
 `LICENSE.txt` committed and wired to ship as `GameData/.../License.txt`,
@@ -81,10 +83,12 @@ DearImGuiKSP) in the full D16 environment (Deferred, TUFX, Scatterer,
 Parallax, Cinematic Shaders, Cinematic Recorder, IMGUI mods) → game loads,
 toolbar button + settings panel work, demo windows render, plots auto-fit,
 KSP.log clean. On PASS: mark M8 VERIFIED in PROGRESS_LOG/GATES and the wave
-is complete — release publishing (GitHub release) is the user's own step.
-Also open for user veto: the version went **0.1.0.0 → 0.2.0.0** (minor bump
-for the feature wave, 0.x per D17) — speak up before publishing if a
-different number was wanted.
+is complete — release publishing (GitHub release) is the user's own step
+(recommendation delivered: one release carrying both zips, tag +
+`gh release create --notes-from-tag`; full CI build rejected — proprietary
+KSP reference assemblies + pinned cimgui sibling clone can't live on a
+runner). The user is preparing a stripped-down GL-capable KSP install
+before the next session — that unblocks the D35 OpenGL work post-release.
 
 ## How this session runs (conventions the next agent must keep)
 
