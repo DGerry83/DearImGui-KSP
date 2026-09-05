@@ -395,6 +395,75 @@ int main()
                         countColoredVerts(scrollWindow, sbActiveCol));
         }
 
+        // C35: the two C34-audit findings the flip to an inclusion filter
+        // targets — interaction-state chrome merging into command 0 that the
+        // old exclusion list did not cover:
+        //   title-button hover background: hovering the collapse/close button
+        //     fills a FontSize² rect with ButtonHovered (held: ButtonActive)
+        //     — imgui_widgets.cpp:928-930, 948-951. Shaded, the hover
+        //     feedback becomes the gradient top-stop color and vanishes
+        //     against the title bar. The fill is a plain AddRectFilled
+        //     (white-pixel UV), so it really was a gradient casualty.
+        //   resize-border highlight: hovering a resize edge strokes the border
+        //     with SeparatorHovered (held: SeparatorActive) — imgui.cpp:
+        //     7578-7583. At integer thickness (here ImMax(2, 1) = 2) imgui
+        //     renders thick lines through the atlas baked-lines TEXTURE path
+        //     (imgui_draw.cpp:852, 946-950: UVs are TexUvLines, not the white
+        //     pixel), so the pass's white-UV gate already skipped it — but at
+        //     fractional thickness (UI scale) the same stroke is white-UV
+        //     geometry and WAS a casualty. The inclusion filter covers both.
+        // In both cases a vert still carrying the exact state color after
+        // the pass IS the survival proof (the harness gradient is red->blue
+        // alpha 255, never a state color).
+        {
+            // Collapse button rect (imgui.cpp:7764-7801 layout +
+            // imgui_widgets.cpp:938 CollapseButton): title-bar Min +
+            // WindowBorderSize + FramePadding, size FontSize. grad-test has
+            // no close button (p_open == null) but always has the collapse
+            // button (stock WindowMenuButtonPosition == Left).
+            const ImGuiStyle& style = ImGui::GetStyle();
+            const ImVec2 btnCenter(
+                testWindow->Pos.x + testWindow->WindowBorderSize + style.FramePadding.x + ImGui::GetFontSize() * 0.5f,
+                testWindow->Pos.y + style.FramePadding.y + ImGui::GetFontSize() * 0.5f);
+            // Neutral frame first: the previous check left the scrollbar grab
+            // as ActiveId with the button held; while any other id is active
+            // ItemHoverable rejects the collapse-button hover. Release and
+            // clear before hovering.
+            submitStateFrame(0.0f, 0.0f, 0);
+            submitStateFrame(btnCenter.x, btnCenter.y, 0);
+            const int btnCount = countColoredVerts(testWindow, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
+            if (btnCount == 0)
+                return Fail("hovered title-button background absent/recolored in command 0", 60);
+            std::printf("Hovered title-button bg verts survived the pass unchanged: %d\n", btnCount);
+        }
+
+        {
+            // Hover the right resize edge mid-height. The border hover is
+            // gated on HoveredIdTimer > WINDOWS_RESIZE_FROM_EDGES_FEEDBACK_TIMER
+            // (0.04 s — imgui.cpp:1375, 7426-7427), so hold the position for
+            // a few frames before reading the draw list; mid-height avoids
+            // the bottom-right grip's hover region. The stroke verts use the
+            // baked-lines texture UVs, so count by color only, no UV gate.
+            const ImVec2 edgeMid(testWindow->Pos.x + testWindow->Size.x - 2.0f,
+                                 testWindow->Pos.y + testWindow->Size.y * 0.5f);
+            for (int i = 0; i < 6; ++i)
+                submitStateFrame(edgeMid.x, edgeMid.y, 0);
+            const ImDrawList* bdl = testWindow->DrawList;
+            const ImDrawCmd& bc = bdl->CmdBuffer[0];
+            int bend = 0;
+            for (unsigned int n = 0; n < bc.ElemCount; ++n)
+                if ((int)bdl->IdxBuffer.Data[bc.IdxOffset + n] + 1 > bend)
+                    bend = (int)bdl->IdxBuffer.Data[bc.IdxOffset + n] + 1;
+            const ImU32 sepHoverCol = ImGui::GetColorU32(ImGuiCol_SeparatorHovered);
+            int sepCount = 0;
+            for (int i = (int)bc.VtxOffset; i < (int)bc.VtxOffset + bend; ++i)
+                if (bdl->VtxBuffer.Data[i].col == sepHoverCol)
+                    sepCount++;
+            if (sepCount == 0)
+                return Fail("hovered resize-border highlight absent/recolored in command 0", 61);
+            std::printf("Hovered resize-border highlight verts survived the pass unchanged: %d\n", sepCount);
+        }
+
         // Settle: release the button and move the mouse away so the resize id
         // clears and the grip returns to its idle color; the disable-pass
         // byte-exact check below then runs in the same state as the reference.

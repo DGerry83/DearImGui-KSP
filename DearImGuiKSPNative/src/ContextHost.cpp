@@ -323,28 +323,27 @@ static void ApplyWindowBgGradient()
 
     ImGuiContext& g = *s_Context;
     const ImGuiStyle& style = g.Style;
-    // ISSUES #008: full 32-bit compare (RGB+alpha) so low-alpha chrome with a
-    // white RGB still shades as before.
-    const ImU32 textCol = ImGui::GetColorU32(ImGuiCol_Text);
-    // C32: the resize grip is a solid-fill PathFillConvex drawn into command 0
-    // during Begin (imgui.cpp:7728-7743) and would otherwise be repainted to
-    // the gradient bottom stop — which at the bottom-right corner is exactly
-    // the window bg color there, making the grip invisible by construction
-    // (same failure class as the Text-colored collapse arrow, ISSUES #008).
-    // Skip all three grip interaction-state colors, cached once per pass.
-    const ImU32 gripCol        = ImGui::GetColorU32(ImGuiCol_ResizeGrip);
-    const ImU32 gripHoveredCol = ImGui::GetColorU32(ImGuiCol_ResizeGripHovered);
-    const ImU32 gripActiveCol  = ImGui::GetColorU32(ImGuiCol_ResizeGripActive);
-    // C34: the vertical scrollbar is the same kind of merged solid-fill prim
-    // (RenderWindowDecorations -> Scrollbar, imgui.cpp:7721-7725; colors
-    // imgui_widgets.cpp:1126-1134: bg always, grab in Grab/Hovered/Active by
-    // interaction state). Repainted to the window gradient, bg and grab become
-    // the bg color at their y-position and the scrollbar is invisible
-    // (ISSUES #014). Skip all four scrollbar colors, cached once per pass.
-    const ImU32 sbBgCol      = ImGui::GetColorU32(ImGuiCol_ScrollbarBg);
-    const ImU32 sbGrabCol    = ImGui::GetColorU32(ImGuiCol_ScrollbarGrab);
-    const ImU32 sbHoverCol   = ImGui::GetColorU32(ImGuiCol_ScrollbarGrabHovered);
-    const ImU32 sbActiveCol  = ImGui::GetColorU32(ImGuiCol_ScrollbarGrabActive);
+    // C35 (ISSUES #014 audit follow-up): the filter is now INCLUSION, not
+    // exclusion. Begin merges every decoration fill into command 0 (see the
+    // per-window comment below), and the pre-C35 exclusion filter (Text /
+    // grips / scrollbars) needed three patches (#008/C27, C32, C34) and still
+    // leaked two more decoration classes (title-button hover/held background,
+    // resize-border highlight — the C34 audit findings). The M3-approved
+    // shaded set is exactly the solid fills imgui paints as window chrome:
+    // the resolved window bg, the title bar (either focus state), the menu
+    // bar, and the border. Those are cached once per pass; a vert is shaded
+    // only if its full RGBA (RGB+alpha) equals one of them, so every other
+    // primitive — interaction-state chrome especially — keeps its theme color
+    // BY CONSTRUCTION. The exclusion-era casualty list is closed.
+    //   BorderShadow is deliberately absent: the pinned 1.92.9 window border
+    // path (RenderWindowOuterBorders, imgui.cpp:7565-7587) emits only
+    // ImGuiCol_Border; BorderShadow is used by the widget-frame helpers
+    // (RenderFrame/RenderFrameBorder, imgui.cpp:4103-4126), which render
+    // after the content clip push and never merge into command 0.
+    const ImU32 titleBgCol       = ImGui::GetColorU32(ImGuiCol_TitleBg);
+    const ImU32 titleBgActiveCol = ImGui::GetColorU32(ImGuiCol_TitleBgActive);
+    const ImU32 menuBarBgCol     = ImGui::GetColorU32(ImGuiCol_MenuBarBg);
+    const ImU32 borderCol        = ImGui::GetColorU32(ImGuiCol_Border);
     for (int i = 0; i < g.Windows.Size; ++i)
     {
         ImGuiWindow* window = g.Windows[i];
@@ -358,13 +357,23 @@ static void ApplyWindowBgGradient()
         if (window->DockIsActive)
             continue; // docked bgs are emitted into the host window's draw list
 
-        // Replicate GetWindowBgColorIdx (imgui.cpp:7226-7232): ImGui skips the
-        // bg fill entirely when the resulting alpha is 0 (imgui.cpp:7660), and
-        // the first command would then be some other geometry — don't shade it.
-        const ImVec4& bgColor = (window->Flags & ImGuiWindowFlags_ChildWindow)
-            ? style.Colors[ImGuiCol_ChildBg] : style.Colors[ImGuiCol_WindowBg];
+        // Replicate GetWindowBgColorIdx (imgui.cpp:7226-7234) so the inclusion
+        // test uses the bg color THIS window actually filled with: popups and
+        // tooltips fill with PopupBg, child windows with ChildBg, everything
+        // else with WindowBg (pre-C35 the pass resolved only ChildBg/WindowBg;
+        // popup bg verts were still shaded only because the filter was
+        // exclusionary). ImGui skips the bg fill entirely when the resolved
+        // color's alpha is 0 (imgui.cpp:7660), and the first command would
+        // then be some other geometry — don't shade it.
+        ImGuiCol bgIdx = ImGuiCol_WindowBg;
+        if (window->Flags & (ImGuiWindowFlags_Tooltip | ImGuiWindowFlags_Popup))
+            bgIdx = ImGuiCol_PopupBg;
+        else if (window->Flags & ImGuiWindowFlags_ChildWindow)
+            bgIdx = ImGuiCol_ChildBg;
+        const ImVec4& bgColor = style.Colors[bgIdx];
         if (bgColor.w * style.Alpha <= 0.0f)
             continue;
+        const ImU32 bgCol = ImGui::GetColorU32(bgIdx);
 
         // The bg fill is the first geometry in window->DrawList (Begin,
         // imgui.cpp:7621-7680). It is an indexed draw, so the vertex range is
@@ -378,24 +387,21 @@ static void ApplyWindowBgGradient()
         // Glyph verts share the font-atlas texture with the bg fill, so text
         // (e.g. scroll-region list rows) merges into this same first command.
         // Only solid-fill verts — the ones sampling the atlas white pixel —
-        // are shaded; recoloring glyph verts tints item text toward the
+        // are ever shaded; recoloring glyph verts tints item text toward the
         // gradient and rows "disappear" into it (M3 in-game fix).
         //
-        // Everything Begin emits before the content clip push merges into this
-        // command (verified against imgui.cpp 1.92.9: bg fill, title/menu-bar
-        // fills, scrollbars, resize grips, borders, then the title-bar collapse
-        // arrow and close cross) — and ALL of those fills have been
-        // gradient-shaded since C9 as part of the M3-approved look. The one
-        // exception is title-bar foreground primitives, which ImGui draws with
-        // ImGuiCol_Text: shading them paints them the gradient top stop and the
-        // collapse arrow vanishes against the title bar (ISSUES #008); the
-        // resize grip, whose three state colors must survive so the grip keeps
-        // its preset color (C32); and the scrollbar bg/grab in its four colors
-        // (C34, ISSUES #014). So the filter is exclusion, not inclusion:
-        // leave Text-, grip- and scrollbar-colored verts untouched; the
-        // bg/title/menu-bar/border fills keep shading exactly as approved. An
-        // inclusion list of fill colors would have un-shaded the borders and
-        // visibly changed the M3 look.
+        // Everything Begin emits before the content clip push merges into
+        // this command (verified against imgui.cpp 1.92.9: bg fill, title/menu-
+        // bar fills, scrollbars, resize grips, borders, then the title-bar
+        // collapse arrow and close cross). Since C9 the M3-approved shaded
+        // look covers exactly the window chrome fills; the C34 decoration
+        // audit enumerated every other merged primitive (Text foreground,
+        // grip states, scrollbar states, title-button hover/held background,
+        // resize-border highlight, dock tab triangle, NavCursor) and none of
+        // them is a window fill — they must keep their theme colors. The
+        // inclusion filter above is exactly that split, and unlike the old
+        // exclusion list it cannot leak: a fill not in the set keeps its
+        // color by construction.
         ImDrawList* drawList = window->DrawList;
         if (drawList->CmdBuffer.Size == 0)
             continue;
@@ -419,13 +425,15 @@ static void ApplyWindowBgGradient()
         {
             ImDrawVert& vert = verts[n];
             if (vert.uv.x != whiteUv.x || vert.uv.y != whiteUv.y)
-                continue; // glyph vert — leave text colors untouched
-            if (vert.col == textCol)
-                continue; // title-bar foreground primitive (collapse arrow, close cross)
-            if (vert.col == gripCol || vert.col == gripHoveredCol || vert.col == gripActiveCol)
-                continue; // resize grip in one of its three interaction states
-            if (vert.col == sbBgCol || vert.col == sbGrabCol || vert.col == sbHoverCol || vert.col == sbActiveCol)
-                continue; // scrollbar bg / grab in one of its interaction states (C34)
+                continue; // glyph vert — never a fill
+            // C35 inclusion filter: shade only verts whose full RGBA is one of
+            // the window chrome fills (resolved bg, title bar either focus
+            // state, menu bar, border). Every other solid fill — Text
+            // foreground, grip/scrollbar states, title-button hover/held
+            // background, resize-border highlight — keeps its theme color.
+            if (vert.col != bgCol && vert.col != titleBgCol && vert.col != titleBgActiveCol
+                && vert.col != menuBarBgCol && vert.col != borderCol)
+                continue;
             float t = gradientHeight > 0.0f ? (vert.pos.y - gradientP0.y) / gradientHeight : 0.0f;
             t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
             const float invT = 1.0f - t;
