@@ -1,12 +1,13 @@
-# Handoff: Pre-Release Feature Wave Implementation — M7 gate pending
+# Handoff: Pre-Release Feature Wave Implementation — M1–M7 VERIFIED, M8 remains
 ## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-04 (paused for user M7 docs dry-run gate)
+## Written: 2026-09-04 (M7 docs gate PASSED via sandboxed dry run)
 
 ## Where we are
 
-M1–M6 **VERIFIED**; M7 chunks C22–C24 all **Done and committed** — waiting on the
-user's modder-from-zero docs dry run (M7 gate). Only M8 (C25: packaging + D33)
-remains. NOTE: ISSUES #004 (UI flicker) is now **P0** — investigate before M8.
+M1–M7 **VERIFIED** (M7 gate: modder-from-zero dry run by an agent sandboxed to
+`docs/` + KSP KB only — PASS, zero API misuses on post-hoc audit). Only M8
+(C25: packaging + D33) remains. NOTE: ISSUES #004 (UI flicker) is now **P0** —
+investigate before M8.
 Full state lives in this folder — read `PROGRESS_LOG.md` first, then
 `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
 
@@ -53,19 +54,18 @@ Full state lives in this folder — read `PROGRESS_LOG.md` first, then
   fixed 520x360, hover readout is a text line not a floating tooltip, spinner
   aesthetics (#006).
 
-## What's next — M7 gate, then M8 (C25)
+## What's next — M8 (C25), preceded by #004 P0 investigation
 
-**Now**: waiting on the user's M7 gate — a modder-from-zero dry run following
-`docs/` alone (start `docs/00-getting-started.md`) to a working themed window
-with a plot, without opening the demo source. Then **M8 = C25** (release
-packaging + D33 OpenGL decision point; gate: zip installs into a clean KSP in
-the full D16 environment, D33 recorded in DECISION_LOG). C25 follow-ups already
-assigned: vendor upstream cimplot's MIT LICENSE into `vendor/cimplot/`
-(C24 found none ships there); version is 0.1.0.0 from the csproj `<Version>`.
-**Before M8 ships**: investigate ISSUES **#004 (P0)** flicker — worse in flight,
+**Before packaging**: investigate ISSUES **#004 (P0)** flicker — worse in flight,
 especially under time warp, no reliable repro; suspects listed in the issue
 file (gradient pass window filtering, render-event pump timing vs game frame,
-deltaTime source under warp).
+deltaTime source under warp). Also: user has friction points about demo-consumer
+ergonomics / docs browsing to triage (raised at the M7 gate, details pending).
+Then **M8 = C25** (release packaging + D33 OpenGL decision point; gate: zip
+installs into a clean KSP in the full D16 environment, D33 recorded in
+DECISION_LOG). C25 follow-ups already assigned: vendor upstream cimplot's MIT
+LICENSE into `vendor/cimplot/` (C24 found none ships there); version is 0.1.0.0
+from the csproj `<Version>`.
 
 ## How this session runs (conventions the next agent must keep)
 
@@ -117,10 +117,9 @@ deltaTime source under warp).
 
 ## First action on resume
 
-If the user reports the **M7 docs dry-run gate PASS**: mark M7 VERIFIED in
-PROGRESS_LOG.md, update this handoff, commit, then (only on the user's
-"proceed") write `CHUNK_C25_CONTRACT.md` (read spec §10 + the plan's M8 row
+M7 is VERIFIED. Next work, in order: (1) triage the user's friction points
+(demo-consumer ergonomics / docs browsing — details pending from the user);
+(2) investigate ISSUES #004 (P0 flicker) before packaging; (3) on the user's
+"proceed", write `CHUNK_C25_CONTRACT.md` (read spec §10 + the plan's M8 row
 first; DECISION_LOG entry format per
 `notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DECISION_LOG.md`).
-If the gate found defects: file per `ISSUES/README.md` (Next ID: #008), fix
-forward in a patch chunk, re-verify.
