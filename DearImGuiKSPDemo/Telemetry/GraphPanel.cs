@@ -45,6 +45,13 @@ namespace DearImGuiKSPDemo.Telemetry
         private static readonly Vector2 GridSize = new Vector2(520f, 360f);
         private static readonly Vector2 IgnoredCellSize = Vector2.zero;
 
+        // Rolling plot window (ISSUES #007): plotting the full 10k-sample ring let
+        // per-frame cost grow with total recorded data (~7 ms by late flight); a
+        // 1200-sample window (~20 s at 60 Hz sampling) keeps ImPlot's segment
+        // submission and the scratch copy constant-cost, and keeps auto-fit cheap
+        // and readable. History depth is unaffected — the full ring stays recorded.
+        private const int WindowSamples = 1200;
+
         private readonly TelemetrySampler _sampler;
 
         public GraphPanel(TelemetrySampler sampler)
@@ -93,7 +100,7 @@ namespace DearImGuiKSPDemo.Telemetry
                 {
                     return;
                 }
-                DearImGuiKSP.ImGuiPlot.PlotLine(label, ring.OldestFirst);
+                DearImGuiKSP.ImGuiPlot.PlotLine(label, ring.LatestOldestFirst(WindowSamples));
                 if (ring.Count > 0 && DearImGuiKSP.ImGuiPlot.IsPlotHovered())
                 {
                     Vector2 pos = DearImGuiKSP.ImGuiPlot.GetPlotMousePos();
