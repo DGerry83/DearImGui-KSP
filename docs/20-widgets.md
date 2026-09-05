@@ -1,6 +1,5 @@
 # Widget Catalog
 
-> Authored in milestone M7 of the pre-release feature wave (spec §8.2, D31).
 > Every widget below shows its real signature (from `DearImGuiKSP/Application/
 > DearImGuiKSP.cs` and `DearImGuiKSP/Application/Api/*.cs`) and one minimal
 > working example. All widget calls are only valid inside a registered
@@ -269,8 +268,8 @@ build enables only these at compile time):
 **ID rule:** the default is a unique invisible per-type ID, so one spinner of
 each type per window works with no extra arguments. Two spinners of the same
 type in one window must be given distinct `id` values (standard `"##"`
-semantics; never pass an empty string — that is library issue #005, an empty
-ID at window root trips an ImGui assert):
+semantics; never pass an empty string — an empty ID at window root trips an
+ImGui assert):
 
 ```csharp
 // different types: no ids needed
@@ -287,8 +286,8 @@ DearImGuiKSP.DearImGuiKSP.Spinner(
     DearImGuiKSP.Application.KspPalette.GreenLight);
 ```
 
-**Known tint quirks** (library issue #006, confirmed upstream-inherent, open
-as a known limitation):
+**Known tint quirks** (confirmed upstream behavior of the vendored spinner
+library, not binding bugs):
 
 - `RainbowMix` derives its hue from the tint's HSV saturation. The default
   white tint has saturation 0, so the arc renders grey/white — pass a

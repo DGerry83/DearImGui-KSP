@@ -1,7 +1,5 @@
 # Animation with Tweens
 
-> Authored in milestone M7 of the pre-release feature wave (spec §8.2, D31).
-
 The `Tween` static class animates float and `UnityEngine.Color` values over time: you give it a setter, a from/to pair, a duration, and an easing curve, and the library's frame loop invokes the setter with the eased value each frame. Tweens are fire-and-forget — you do not tick them yourself — with an optional handle for cancellation and status. The engine is pure C# (no native interop) and allocates nothing per frame.
 
 Prerequisites: [Getting Started](00-getting-started.md) and [API Fundamentals](10-api-fundamentals.md). For coloring animated output, see [Theming](30-theming.md).

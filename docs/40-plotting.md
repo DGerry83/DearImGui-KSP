@@ -1,7 +1,5 @@
 # Plotting with ImPlot
 
-> Authored in milestone M7 of the pre-release feature wave (spec §8.2, D31).
-
 DearImGui-KSP ships a line-plot wrapper over a vendored [ImPlot](https://github.com/epezent/implot) (pinned at the v1.0 tag). The wrapper follows the same immediate-mode discipline as every other widget: you declare the plot and its line series **each frame**, inside a registered callback. All calls are in the `DearImGuiKSP` namespace and are safe to leave in your code when the library is unavailable — they no-op.
 
 Prerequisites: you already know how to register a per-frame callback and open a window — see [Getting Started](00-getting-started.md) and [API Fundamentals](10-api-fundamentals.md). The `Vector2` in the signatures below is `UnityEngine.Vector2`.
@@ -198,7 +196,7 @@ For a fuller implementation, look at the demo's telemetry ring (`DearImGuiKSPDem
 
 ## Performance: plot cost scales with point count
 
-Per-frame plot cost grows with the number of points you submit — both the scratch-copy pass in your ring and ImPlot's line segment submission are O(point count). The demo's telemetry tab learned this the hard way (ISSUES #007): plotting the full 10,000-sample ring every frame grew frame cost to about 7 ms late in a flight and shrank back to zero on revert. The fix shipped in the demo: **plot a rolling window**, not the whole history.
+Per-frame plot cost grows with the number of points you submit — both the scratch-copy pass in your ring and ImPlot's line segment submission are O(point count). The demo's telemetry tab learned this the hard way: plotting the full 10,000-sample ring every frame grew frame cost to about 7 ms late in a flight and shrank back to zero on revert. The fix shipped in the demo: **plot a rolling window**, not the whole history.
 
 Rules of thumb:
 

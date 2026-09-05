@@ -1,6 +1,5 @@
 # API Fundamentals
 
-> Authored in milestone M7 of the pre-release feature wave (spec §8.2, D31).
 > This is the reference for the programming model: registration, the frame
 > callback, scopes, public types, availability rules, and the settings file.
 
@@ -74,7 +73,7 @@ Every Begin/End and Push/Pop pair in the API has an exception-safe scope
 guard in `ImGuiEx`. The factory begins immediately and returns a `readonly
 struct` implementing `IDisposable`; `using` calls Dispose on every exit
 path, including exceptions, so the ImGui stacks never leak even when your
-code throws (the exception then reaches the fault barrier, §7).
+code throws (the exception then reaches the fault barrier, section 7 below).
 
 | Factory | Scope type | `Visible` semantics | Dispose behavior |
 |---|---|---|---|
@@ -124,8 +123,10 @@ so you do not have to remember which is which — prefer them.
 The facade uses the Unity types you already know:
 
 - `Vector2` = `UnityEngine.Vector2` (sizes, positions, cursor moves).
-- `Color` = `UnityEngine.Color` (float RGBA components, 0-1 range).
-- `Color32` = `UnityEngine.Color32` (byte sRGB components, 0-255 range).
+- `Color` = `UnityEngine.Color` (float RGBA — red, green, blue, alpha —
+  components, 0-1 range).
+- `Color32` = `UnityEngine.Color32` (byte components in the standard sRGB
+  color space, 0-255 range).
 
 Which one a member takes is deliberate and documented per member:
 
@@ -178,9 +179,9 @@ identify a widget, so:
   is invisible in the UI but hashed. Use it for duplicate visible labels
   (`"Throttle##eng1"`, `"Throttle##eng2"`).
 - **An invisible ID is `"##name"`, never `""`.** An empty string at window
-  root hashes to the window's own ID and trips an ImGui assert (library
-  issue #005, found at the M5 gate: `Spinner` originally passed an empty
-  label and asserted on window open). Every library widget guards this for
+  root hashes to the window's own ID and trips an ImGui assert (the library's
+  own spinner bindings hit exactly this during development — an empty label
+  asserted on window open). Every library widget guards this for
   you — but the rule applies to any API taking an `id`: give it a real,
   non-empty, unique-per-location string.
 

@@ -1,21 +1,21 @@
 # Getting Started with DearImGui-KSP
 
-> Authored in milestone M7 of the pre-release feature wave (spec §8.2, D31).
 > Audience: a KSP modder writing their first DearImGui-KSP window. No prior
 > Dear ImGui experience is assumed.
 
 DearImGui-KSP is a shared UI library: it renders your mod's windows with
-Dear ImGui (vendored, native) styled to match KSP, instead of Unity IMGUI.
-Your mod declares its UI once per frame through a C# callback; the library
-handles rendering, input, and KSP integration.
+Dear ImGui (a bundled native library) styled to match KSP, instead of Unity
+IMGUI. Your mod declares its UI once per frame through a C# callback; the
+library handles rendering, input, and KSP integration.
 
 Next: [API Fundamentals](10-api-fundamentals.md) -
 [Widget Catalog](20-widgets.md) - [Theming](30-theming.md)
 
 ## 1. Install
 
-The library ships as its own mod folder. Copy `GameData/DearImGuiKSP` from the
-release zip into your KSP install's `GameData/`:
+The library ships as its own mod folder, in its own release zip, separate
+from any mod that uses it. Players copy `GameData/DearImGuiKSP` from the
+library's release zip into their KSP install's `GameData/`:
 
 ```
 GameData/
@@ -26,9 +26,9 @@ GameData/
     Fonts/
       IBMPlexSans-Regular.ttf   Default font (IBM Plex Sans, OFL)
       IBMPlexSans-Medium.ttf
-      OFL.txt                   Font license (required by the OFL)
+      OFL.txt                   Font license (the SIL Open Font License requires shipping it)
     Plugins/
-      DearImGuiKSP.dll          Managed assembly - the API you compile against
+      DearImGuiKSP.dll          Managed assembly - the programming interface you compile against
     PluginData/
       DearImGuiKSPNative.dll    Native DLL (Dear ImGui core + backends)
     settings.cfg                Library config (created/read at runtime)
@@ -40,11 +40,21 @@ Two rules:
   assemblies from `Plugins/`, and the library deliberately keeps the native
   DLL out of that folder so KSP never tries to load it directly; the library
   loads it itself from `PluginData/`.
-- The managed and native DLLs are released **in lockstep** (design decision
-  D17). A version mismatch at runtime is a startup failure. Never mix DLLs
-  from different releases.
+- The managed and native DLLs are released **in lockstep** — always together,
+  as a matched pair. A version mismatch at runtime is a startup failure.
+  Never mix DLLs from different releases.
 
-Your players install this folder once; many mods can depend on the same copy.
+**Who installs this:** your players, from the library's own release — not
+you, from your mod's download. DearImGui-KSP is a shared library: players
+install this folder once, and every mod that depends on the library uses that
+same single copy.
+
+Do **not** copy `DearImGuiKSP.dll` or `DearImGuiKSPNative.dll` into your own
+mod's download, and do not ask players to drop those DLLs in by hand. Declare
+the dependency (next section) and point players at the library's release
+instead. Bundled copies drift out of sync and then fail the startup version
+check; one shared copy keeps every mod on the same, lockstep-managed version
+of the managed and native pair.
 
 ## 2. Declare the dependency
 
@@ -60,8 +70,8 @@ The current library version is **0.1.0.0**, so the dependency reads
 "major 0, minor 1". `KSPAssemblyDependencyEqualMajor` pins the major and minor:
 KSP will not load your mod against an incompatible major. When the library
 ships a new major version, bump this attribute in a matching release of your
-mod (see the versioning rule, D17: managed and native DLLs always release
-together, and consumers are expected to track the major version this way).
+mod. Managed and native DLLs always release together; this attribute is how
+your mod tracks the library's major version.
 
 Because of this attribute, the `IsAvailable` check below is a safety net for
 edge cases (library self-disabled at startup, scene transitions), not the

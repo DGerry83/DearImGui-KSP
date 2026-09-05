@@ -1,7 +1,5 @@
 # Troubleshooting
 
-> Authored in milestone M7 of the pre-release feature wave (spec §8.2, D31).
-
 Symptom-first fixes for the failure modes a modder or player is likely to hit. For API usage questions, start with [API Fundamentals](10-api-fundamentals.md); for install and dependency declaration, [Getting Started](00-getting-started.md).
 
 ## Reading the log
@@ -10,23 +8,27 @@ Every library log line is written to `KSP.log` (KSP's standard log at the instal
 
 ## "DearImGui-KSP — Startup Failed" popup at the main menu
 
-The library hit an unrecoverable startup failure. This is **session-permanent by design** (spec §5.4): the library self-disables, shows exactly one plain-language popup, and puts the technical detail in the log. Restarting KSP retries from scratch; there is no in-session recovery. The popup body tells you which of the four failure kinds it was, and the matching log line just above it has the specifics:
+The library hit an unrecoverable startup failure. This is **session-permanent by design**: the library self-disables, shows exactly one plain-language popup, and puts the technical detail in the log. Restarting KSP retries from scratch; there is no in-session recovery. The popup body tells you which of the four failure kinds it was, and the matching log line just above it has the specifics:
 
 | Popup body says | Failure kind | Log shows | Fix |
 |---|---|---|---|
 | "native component is missing or corrupt" | `NativeComponent` | LoadLibrary/Win32 errors, missing exports, context/texture init codes | Reinstall the library package intact: `DearImGuiKSP/Plugins/DearImGuiKSP.dll` and `DearImGuiKSP/PluginData/DearImGuiKSPNative.dll` must both be present |
 | "components are from different versions" | `VersionMismatch` | handshake line (below) | Reinstall **both** DLLs from one release — see next section |
-| "this graphics API is not supported" | `GraphicsApi` | the detected `GraphicsDeviceType` | The library currently requires D3D11. OpenGL support is a deferred decision point (D33), not shipped yet |
+| "this graphics API is not supported" | `GraphicsApi` | the detected `GraphicsDeviceType` | The library currently requires D3D11. OpenGL support is not shipped yet; it may come in a later release |
 | (same as native component) | `RenderHook` | "GetRenderEventFunc returned a null pointer" | Treat as native component: reinstall; report if it persists |
 
 Your mod is unaffected code-wise: `DearImGuiKSP.IsAvailable` is false, your `Register` call is ignored with a warning, and any IMGUI fallback you built (see [Migration](60-migration-from-imgui.md)) takes over.
 
 ## Version mismatch between the DLLs
 
-Managed and native DLLs release only in lockstep (D17), enforced at startup by a version handshake (currently expected version **5** on the managed side). A stale or partially copied native DLL fails the handshake before anything else runs, with this log line:
+Managed and native DLLs always release together in lockstep — never mix DLLs
+from different releases. A startup version handshake enforces this
+(currently expected version **5** on the managed side). A stale or partially
+copied native DLL fails the handshake before anything else runs, with this
+log line:
 
 ```
-[DearImGuiKSP] Native/managed handshake mismatch: expected version 5, DearImGuiKSPNative reported <n> (spec §5.4).
+[DearImGuiKSP] Native/managed handshake mismatch: expected version 5, DearImGuiKSPNative reported <n>.
 ```
 
 Fix: copy both DLLs from the same release zip. `DearImGuiKSPNative.dll` belongs in `GameData/DearImGuiKSP/PluginData/` (not next to the managed DLL); a missing native DLL is the `NativeComponent` failure instead. Consumers: declaring `KSPAssemblyDependencyEqualMajor("DearImGuiKSP", x, y)` keeps KSP's loader from mixing a different managed major with your build (see [Getting Started](00-getting-started.md)).
@@ -66,7 +68,7 @@ Your callback threw. The fault barrier catches it, logs it, and skips only your 
 
 ## Empty-ID assert: "Cannot have an empty ID at the root of a window"
 
-Any ImGui item needs a non-empty ID; at window root an empty label resolves to the window's own ID and trips an ItemAdd assert. The library's own spinner bindings hit this (ISSUES #005) and now ship per-type invisible default IDs — the lesson generalizes to you:
+Any ImGui item needs a non-empty ID; at window root an empty label resolves to the window's own ID and trips an ItemAdd assert. The library's own spinner bindings hit this during development and now ship per-type invisible default IDs — the lesson generalizes to you:
 
 - "Invisible ID" means a `##` prefix (`"##my_section"`), never an empty string.
 - Widget labels double as IDs; rename a label and you get a new identity (lost state such as scroll positions is expected).
@@ -74,9 +76,9 @@ Any ImGui item needs a non-empty ID; at window root an empty label resolves to t
 
 Build nuance: a **debug** native build (`build.bat`) shows the assert dialog when this fires; the shipped **release** DLL (`build_release.bat`, `/DNDEBUG`) compiles asserts out, so the same bug degrades silently into wrong identity/behavior instead of a clear stop. Develop against the debug build so you see asserts; never treat release silence as correctness.
 
-## The 16-bit index limit (D32)
+## The 16-bit index limit
 
-Dear ImGui indexes draw-list vertices with a 16-bit type, so **one draw list may hold at most 65,535 vertices**; exceeding it asserts (debug builds) or renders corrupted geometry. There is no escape hatch in this library — `RendererHasVtxOffset`/32-bit indices were evaluated and deliberately deferred (D32) until a demonstrated need.
+Dear ImGui indexes draw-list vertices with a 16-bit type, so **one draw list may hold at most 65,535 vertices**; exceeding it asserts (debug builds) or renders corrupted geometry. There is no escape hatch in this library — 32-bit indices (`RendererHasVtxOffset`) were evaluated and deliberately deferred until a demonstrated need.
 
 For context: a 10,000-point line is about 20k vertices — far under the limit. What approaches it is one window/region stuffed with very dense content. Remedies, in order of preference:
 
@@ -86,18 +88,18 @@ For context: a 10,000-point line is about 20k vertices — far under the limit. 
 
 ## Performance
 
-- **Plots cost per point.** Per-frame plot cost scales with submitted point count; the demo's full-buffer telemetry graphs grew to ~7 ms/frame late in flight (ISSUES #007) before the rolling-window fix (1200 samples, ~20 s at 60 Hz, plotted per cell). Keep your plotted windows bounded; auto-fit is cheap at those sizes.
+- **Plots cost per point.** Per-frame plot cost scales with submitted point count; the demo's full-buffer telemetry graphs grew to ~7 ms/frame late in flight before the rolling-window fix (1200 samples, ~20 s at 60 Hz, plotted per cell). Keep your plotted windows bounded; auto-fit is cheap at those sizes.
 - **Hover readouts allocate on hover.** A `string.Format` readout under a hovered plot is the demo's one sanctioned per-frame allocation — user-driven, bounded to one hovered cell. Do not format strings on the unhovered path; pass label literals.
 - **The benchmark window is the regression instrument.** The demo mod ships a naive-vs-virtualized 1000-item benchmark window (`BenchmarkUI`) used as the standing performance gate. If you suspect your UI is slow, reproduce with it and compare; the library targets no measurable FPS impact with a few typical windows and under 1 ms managed frame cost.
 - **Window count and scopes.** A few windows from one registered callback is the intended pattern (the demo draws three from one registration). Scopes are structs — `using` them costs nothing; do not pool or cache them across frames.
 
 ## Known limitations (honest list)
 
-- **Intermittent whole-UI flicker** (ISSUES #004, open, P0): rarely the entire library UI flickers or disappears for a frame or two — reported worse in flight and especially under time warp; no reliable repro yet. Under active investigation; when it is understood this list will be updated.
-- **Spinner tints are partially upstream-inherent** (ISSUES #006): `SpinnerType.RainbowMix` derives its hue from the tint's saturation — with the default white tint it renders grey and never cycles; pass a saturated `Color` as the tint to get the rainbow. `SpinnerType.Atom` hardcodes its electron dots to red/green/blue; the tint colors only the ellipses. Both are vendor behavior, not binding bugs; a broader aesthetic pass is deferred.
-- **No OpenGL**: D3D11 only; OpenGL support is a post-release decision point (D33).
+- **Intermittent whole-UI flicker** (known open issue): rarely the entire library UI flickers or disappears for a frame or two — reported worse in flight and especially under time warp; no reliable repro yet. Under active investigation; when it is understood this list will be updated.
+- **Spinner tints are partially upstream-inherent**: `SpinnerType.RainbowMix` derives its hue from the tint's saturation — with the default white tint it renders grey and never cycles; pass a saturated `Color` as the tint to get the rainbow. `SpinnerType.Atom` hardcodes its electron dots to red/green/blue; the tint colors only the ellipses. Both are vendor behavior, not binding bugs; spinner rendering is under review before release.
+- **No OpenGL**: D3D11 only; OpenGL support may come in a later release.
 - **Text input modifiers**: navigation/edit keys and Ctrl only — Ctrl+A works; Shift+Arrow / Shift+Home/End selection does not.
-- **No public horizontal layout helper** (SameLine et al.): layout is vertical-first for now; a public layout surface is a post-wave consideration. Use `SetCursorY`/`Dummy` for spacing (see [Migration](60-migration-from-imgui.md)).
+- **No public horizontal layout helper** (SameLine et al.): layout is vertical-first for now; a public layout surface is a possible later addition. Use `SetCursorY`/`Dummy` for spacing (see [Migration](60-migration-from-imgui.md)).
 - **Library-owned settings only**: the library persists its own `settings.cfg` (and deliberately writes no imgui.ini); per-consumer window positions and state are yours to keep.
 
 ## Next

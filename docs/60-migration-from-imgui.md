@@ -1,7 +1,5 @@
 # Migrating from Unity IMGUI
 
-> Authored in milestone M7 of the pre-release feature wave (spec §8.2, D31).
-
 If your mod draws windows with `OnGUI`/`GUILayout`, this page maps each IMGUI concept to its DearImGui-KSP equivalent and ports one small window end to end. The two models differ in one fundamental way: IMGUI runs your `OnGUI` for every **event** (layout, repaint, input) and you branch on `Event.current`; DearImGui-KSP calls your registered callback **once per frame**, unconditionally, and you declare the whole UI every time. No event handling, no `Repaint()` calls.
 
 Prerequisites: [Getting Started](00-getting-started.md) for installation and dependency declaration, [API Fundamentals](10-api-fundamentals.md) for the registration/callback model.
@@ -113,7 +111,7 @@ If the library is unavailable, `Register` logs a warning and ignores the call; t
 
 ## Layout: vertical-first, with a known gap
 
-Widgets stack vertically by default — each call places its item below the previous one. There is **no public horizontal-layout helper yet**: `SameLine` exists only as an internal implementation detail (used by `InputText`), and the decision record notes a public layout-helper surface (SameLine et al.) as a post-wave consideration. Until it lands:
+Widgets stack vertically by default — each call places its item below the previous one. There is **no public horizontal-layout helper yet**: `SameLine` exists only as an internal implementation detail (used by `InputText`), and a public layout-helper surface (SameLine et al.) may come in a later release. Until it lands:
 
 - Put each logically-grouped control on its own line — the immediate-mode style reads fine that way, and it is what the demo does (its widget showcase stacks one labelled control per line).
 - Use `DearImGuiKSP.SetCursorY(float y)` to add vertical space, and `DearImGuiKSP.Dummy(width, height)` where you need an explicit invisible spacer that grows the content bounds (required after a `SetCursorY` that extends a scroll region's range — ImGui asserts on a bare cursor move that grows parent boundaries). The manual-list-virtualization pattern built on these two calls (`GetScrollY` -> visible row range -> `SetCursorY` -> draw visible rows -> `SetCursorY(rowCount * rowHeight)` + `Dummy`) is documented on `BeginScrollRegion` in [API Fundamentals](10-api-fundamentals.md).
@@ -122,7 +120,7 @@ Do not try to fake columns with spaces in labels; wait for the layout helpers or
 
 ## Input: delete your event handling
 
-Nothing to port. While a DearImGui-KSP window captures the mouse (hover) the library automatically locks camera/click-through controls and suppresses both Unity UI stacks beneath it — an invisible uGUI raycast blocker absorbs clicks, and an early-ordered OnGUI component grabs IMGUI hotControl so IMGUI windows below receive no input. An active text input additionally locks keyboard controls. Both mechanisms are inert when not capturing, so IMGUI mods are unaffected the rest of the time. This is the ISSUES #001/#003 machinery; you get it for free and there is no consumer-facing API for it. One known edge case carried over from the investigation: an IMGUI drag started outside an ImGui window keeps its hotControl until the mouse is released.
+Nothing to port. While a DearImGui-KSP window captures the mouse (hover) the library automatically locks camera/click-through controls and suppresses both Unity UI stacks beneath it — an invisible uGUI raycast blocker absorbs clicks, and an early-ordered OnGUI component grabs IMGUI hotControl so IMGUI windows below receive no input. An active text input additionally locks keyboard controls. Both mechanisms are inert when not capturing, so IMGUI mods are unaffected the rest of the time. You get all of this for free — there is no consumer-facing API for it. One known edge case: an IMGUI drag started outside an ImGui window keeps its hotControl until the mouse is released.
 
 One text-editing limitation to know before you promise parity (recorded scope note): the library feeds navigation/edit keys and Ctrl only — no Shift/Alt modifiers. Ctrl+A works in input fields; Shift+Arrow and Shift+Home/End selection do not.
 

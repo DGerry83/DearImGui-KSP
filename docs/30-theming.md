@@ -1,6 +1,5 @@
 # Theming
 
-> Authored in milestone M7 of the pre-release feature wave (spec §8.2, D31).
 > Sources: `DearImGuiKSP/Application/Theming/{ThemePresets,KspPalette,
 > ThemeEngine}.cs`. How the library styles your UI, and how to restyle it.
 
@@ -153,8 +152,6 @@ overload) still uses the KSP constants because both are explicit drawing
 paths, not theme slots.
 
 ## 7. Accessibility
-
-Per the design spec (§6.4):
 
 - **Never encode meaning in color alone.** The KSP green/orange accents
   always pair with a text label — keep that rule in your own UI: an accent
