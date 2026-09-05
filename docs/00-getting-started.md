@@ -79,11 +79,11 @@ version of it) is missing, via an assembly attribute in your mod — typically
 next to your `[KSPAddon]` class or in any one of your source files:
 
 ```csharp
-[assembly: KSPAssemblyDependencyEqualMajor("DearImGuiKSP", 0, 1)]
+[assembly: KSPAssemblyDependencyEqualMajor("DearImGuiKSP", 0, 2)]
 ```
 
-The current library version is **0.1.0.0**, so the dependency reads
-"major 0, minor 1". `KSPAssemblyDependencyEqualMajor` pins the major and minor:
+The current library version is **0.2.0.0**, so the dependency reads
+"major 0, minor 2". `KSPAssemblyDependencyEqualMajor` pins the major and minor:
 KSP will not load your mod against an incompatible major. When the library
 ships a new major version, bump this attribute in a matching release of your
 mod. Managed and native DLLs always release together; this attribute is how

@@ -13,6 +13,7 @@ GameData/**/Plugins/*.pdb
 GameData/**/PluginData/*.dll
 GameData/**/*.version
 GameData/**/Readme.txt
+GameData/**/License.txt
 
 # OS noise
 Thumbs.db
@@ -20,6 +21,9 @@ Desktop.ini
 
 # Issue tracker (local-only; evidence files must never touch history)
 /ISSUES/
+
+# Release artifacts (built by package_release.bat)
+/dist/
 
 # Local visual reference material (being folded into formal docs; not for history)
 /VisualReferenceMaterial/

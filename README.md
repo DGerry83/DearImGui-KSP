@@ -2,7 +2,7 @@
 
 A shared KSP mod library providing a modern, high-performance UI framework as a drop-in replacement for Unity IMGUI. Other mods hard-depend on it and get a clean C# ImGui-style API; players get snappy, non-IMGUI mod UIs with no measurable framerate cost.
 
-**Status: feature-complete and verified in-game** (2026-09-03). All milestones M1–M6 pass their acceptance criteria in a heavily modded environment (Deferred, TUFX, Scatterer, Parallax, Cinematic Shaders, Cinematic Recorder, IMGUI mods). Post-MVP follow-ups landed 2026-09-03: uGUI and IMGUI click bleed-through fixes, viewport clamp on resolution change (`clampWindowsToViewport` setting), and the xUnit Application test suite. OpenGL support is deferred (D3D11 only for now). The confirmed design spec lives at
+**Status: 0.2.0.0 — first public release** (2026-09-05). The pre-release feature wave is complete: theming (KSP default theme + bundled IBM Plex Sans), the extension widget set (ImPlot plotting, toggles, knobs, wheels, spinners, gradients), C# tween animation, the telemetry showcase demo, and the full modder docs in `docs/`. All milestones M1–M7 plus the post-MVP polish chunks pass their acceptance criteria in a heavily modded environment (Deferred, TUFX, Scatterer, Parallax, Cinematic Shaders, Cinematic Recorder, IMGUI mods); the xUnit Application test suite is green. OpenGL support is deferred to a post-release update (D3D11 only for now — see the decision log). The confirmed design spec lives at
 [`notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md`](notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md);
 the implementation record and final audit at
 [`notes/finished/2026-07-29_DearImGuiKSP_PlanImplementation/FINAL_AUDIT.md`](notes/finished/2026-07-29_DearImGuiKSP_PlanImplementation/FINAL_AUDIT.md).
@@ -50,6 +50,10 @@ Extract the release zip into the KSP root so `GameData\DearImGuiKSP\` sits along
 - `notes/` — FlyByWire workflow artifacts: design spec, decision/question logs, plans (see AGENTS.md)
 
 ## Credits and licenses
+
+DearImGui-KSP itself is released under the MIT License (Copyright (c) 2026
+DGerry83) — see [`LICENSE.txt`](LICENSE.txt); a copy ships in the mod folder
+as `License.txt`.
 
 The shipped binaries are built on, and bundle, the following third-party work
 (exact pins in [`DearImGuiKSPNative/vendor/PIN_RECORD.md`](DearImGuiKSPNative/vendor/PIN_RECORD.md)):
