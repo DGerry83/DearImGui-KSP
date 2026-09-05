@@ -1,16 +1,17 @@
-# Handoff: Pre-Release Feature Wave Implementation — all chunks done, M8 remains
+# Handoff: Pre-Release Feature Wave Implementation — C25 packaged, M8 gate pending
 ## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-05 (C33–C35 gates PASS, #014 closed; C36 in-line tweaks done; verboseLogging run + M8 remain)
+## Written: 2026-09-05 (C25 done: 0.2.0.0 zips built+verified, D35 recorded; M8 in-game gate pending user)
 
 ## Where we are
 
-M1–M7 **VERIFIED**. Wave-polish chunks C26–C36 all **Done and committed**;
-all gates through C35 PASSED in-game (user 2026-09-04/05), and **ISSUES #014
-(scrollbar) is Resolved + archived**. C36 (user-requested in-line tweaks:
-all six demo plots auto-fit both axes by default via new public
-`ImGuiPlot.SetupAxesAutoFit()`; settings-panel scale rows fixed at 180/60 px)
-awaits the user's quick in-game look, foldable into the verboseLogging
-run-through. Only M8 (C25: packaging + D33) remains.
+M1–M7 **VERIFIED**; wave polish C26–C36 all Done with all gates PASSED;
+**C25 (M8 packaging) is Done in code**: version bumped to **0.2.0.0**,
+`package_release.bat` produces both zips in `dist/` (verified: manifests,
+versions, no PDBs, License.txt + Docs + CHANGELOG included), user's MIT
+`LICENSE.txt` committed and wired to ship as `GameData/.../License.txt`,
+cimplot's upstream MIT LICENSE vendored, and **D35 (OpenGL ships
+post-release) recorded** in the design DECISION_LOG. Remaining: the M8
+user gate — install both zips into a clean KSP in the D16 environment.
 Full state lives in this folder — read `PROGRESS_LOG.md` first, then
 `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
 
@@ -51,6 +52,9 @@ Full state lives in this folder — read `PROGRESS_LOG.md` first, then
 | `472db3a` | C35: gradient pass flipped to **inclusion filter** (bg/title/menu/border only) — decoration casualty class closed; harness checks 60/61 |
 | `46f249b` | C32 gate PASS + C33–C35 logged done |
 | `723c3fd` | C33–C35 gates PASS (user); **#014 resolved+archived**; C36: plot auto-fit default (6 demo plots, new public `SetupAxesAutoFit()`) + settings-panel fixed widths |
+| `cf5e3d2` | C36 follow-up: uiScale hint split to two lines; verboseLogging KSP.log inspected — clean |
+| `a8bbdb7` | C25 contract: release packaging + D35 OpenGL record |
+| `92f35ec` | C25: 0.2.0.0 bump, `package_release.bat`, both zips built+verified, CHANGELOG, user's MIT LICENSE.txt wired to ship, cimplot LICENSE vendored, D35 recorded |
 
 ### Verified state
 - `dotnet build DearImGui-KSP.slnx` 0/0; `dotnet test` **99/99**; native
@@ -70,19 +74,17 @@ Full state lives in this folder — read `PROGRESS_LOG.md` first, then
   style metrics + font rendering); sliders get explicit type-in boxes
   (C32); resize grip exclusion (C32) made grips visible again.
 
-## What's next — verboseLogging run-through, then M8 (C25)
+## What's next — M8 in-game gate (the last gate)
 
-**User task (pre-release, assigned at the C27 gate)**: one full run-through
-with `verboseLogging = true` (toggleable from the control panel), inspecting
-KSP.log for silent background failures. Same session doubles as the C36
-spot-check: six demo plots auto-fit both axes from first frame; settings
-panel scale rows are compact (180 px slider + 60 px type-in).
-
-**M8 = C25** (release packaging + D33 OpenGL decision point; gate: zip
-installs into a clean KSP in the full D16 environment, D33 recorded in
-DECISION_LOG). C25 assigned follow-ups: vendor upstream cimplot's MIT
-LICENSE into `vendor/cimplot/`; version is 0.1.0.0 from the csproj
-`<Version>`.
+**User gate**: install BOTH zips from `dist\` into a **clean KSP** (no prior
+DearImGuiKSP) in the full D16 environment (Deferred, TUFX, Scatterer,
+Parallax, Cinematic Shaders, Cinematic Recorder, IMGUI mods) → game loads,
+toolbar button + settings panel work, demo windows render, plots auto-fit,
+KSP.log clean. On PASS: mark M8 VERIFIED in PROGRESS_LOG/GATES and the wave
+is complete — release publishing (GitHub release) is the user's own step.
+Also open for user veto: the version went **0.1.0.0 → 0.2.0.0** (minor bump
+for the feature wave, 0.x per D17) — speak up before publishing if a
+different number was wanted.
 
 ## How this session runs (conventions the next agent must keep)
 
@@ -145,9 +147,8 @@ LICENSE into `vendor/cimplot/`; version is 0.1.0.0 from the csproj
 
 ## First action on resume
 
-Wait for the user's verboseLogging run-through verdict (+ C36 spot-check:
-auto-fit plots, compact settings rows). Then write `CHUNK_C25_CONTRACT.md`
-on the user's "proceed" — first read spec §10
-(`notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md`),
-the plan's M8 row, and `DECISION_LOG.md` in the same folder for the D33
-entry format (not yet established).
+Wait for the user's M8 gate verdict (clean-KSP zip install in the D16
+environment — see "What's next"). On PASS: mark M8 VERIFIED in
+PROGRESS_LOG.md (Milestone Status table) and GATES.md, move this session
+folder to `notes/finished/`, and the wave is complete. Publishing the
+GitHub release is the user's own step.
