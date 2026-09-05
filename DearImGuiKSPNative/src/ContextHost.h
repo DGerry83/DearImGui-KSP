@@ -42,6 +42,21 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_GetIoCaptureState(int* wantMouse
 // a null-terminated UTF-8 string (may be null). No-op before ContextInit.
 DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_FeedFrameInput(float mouseX, float mouseY, float wheel, int mouseButtons, int keyBits, const char* utf8Chars);
 
+// Cross-thread frame guard (ISSUES #004). The game thread builds each frame
+// (NewFrame -> widgets -> EndFrame/Render) while the render thread draws the
+// PREVIOUS frame's draw data from the render event; ImGui invalidates the draw
+// data at NewFrame (imgui.cpp:5831-5834) and reuses the same ImDrawList
+// objects in place (Begin -> _ResetForNewFrame, imgui.cpp:8137), so without a
+// guard the render thread can observe a null/torn draw data and the whole UI
+// skips or glitches for a frame. DearImGuiKSPNative_BeginFrame takes the lock
+// (exclusive) and DearImGuiKSPNative_EndFrame releases it; the D3D11 backend
+// takes the same lock around RenderDrawData. Uncontended cost is one SRWLOCK
+// pair per frame; when the render thread is a frame behind, the game thread
+// waits for the sub-millisecond UI draw instead of tearing. Not part of the
+// exported C ABI.
+void ContextHost_LockFrame(void);
+void ContextHost_UnlockFrame(void);
+
 // Clamps every visible, active window of the current context fully into
 // the PASSED viewport size (ISSUES #002): pos = clamp(pos, 0, max(0,
 // viewport - size)). width/height are the live new-viewport values; never

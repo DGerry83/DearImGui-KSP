@@ -7,6 +7,8 @@
 
 #include "ContextHost.h"
 
+#include <windows.h> // SRWLOCK (ISSUES #004 frame guard)
+
 #include "imgui.h"
 #include "imgui_internal.h" // ImGuiContext::Windows / ImGuiWindow (ISSUES #002 clamp)
 #include "implot.h"
@@ -22,6 +24,29 @@ static ImPlotContext* s_PlotContext = nullptr;
 // texture protocol), after which AddFontFromFileTTF would assert on the
 // locked atlas — font loads are legal only before this flips (spec §4.2).
 static bool s_FramesBegun = false;
+
+// ---- ISSUES #004 frame guard ----
+//
+// The render event draws the previous frame's draw data on Unity's render
+// thread while the game thread is free to enter the next frame's NewFrame.
+// ImGui::NewFrame marks every viewport's DrawData invalid
+// (imgui.cpp:5831-5834, so GetDrawData() returns null and our render callback
+// would skip the draw — one blank UI frame) and Begin reuses the same
+// ImDrawList objects in place (_ResetForNewFrame, imgui.cpp:8137) that the
+// render thread may still be walking. The lock serializes the two sides: held
+// by the game thread from BeginFrame to EndFrame, taken by the render thread
+// for the duration of RenderDrawData. SRWLOCK_INIT needs no teardown.
+static SRWLOCK s_FrameLock = SRWLOCK_INIT;
+
+void ContextHost_LockFrame(void)
+{
+    AcquireSRWLockExclusive(&s_FrameLock);
+}
+
+void ContextHost_UnlockFrame(void)
+{
+    ReleaseSRWLockExclusive(&s_FrameLock);
+}
 
 // Lower clamp for frame delta so NewFrame never sees a zero/negative dt.
 static const float kMinDeltaSeconds = 1.0f / 240.0f;
@@ -101,6 +126,8 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_BeginFrame(float width, float he
     if (s_Context == nullptr)
         return;
 
+    ContextHost_LockFrame(); // ISSUES #004: held until EndFrame
+
     ImGuiIO& io   = ImGui::GetIO();
     io.DisplaySize = ImVec2(width, height);
     io.DeltaTime   = deltaSeconds > kMinDeltaSeconds ? deltaSeconds : kMinDeltaSeconds;
@@ -112,7 +139,7 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_BeginFrame(float width, float he
 DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_EndFrame(void)
 {
     if (s_Context == nullptr)
-        return;
+        return; // BeginFrame did not lock either; the pair stays balanced
     // Explicit EndFrame first: it finalizes every window's draw list, which
     // the gradient pass below shades. Both EndFrame and Render are idempotent
     // (imgui.cpp:6329-6336, imgui.cpp:6443-6451), so the previously observed
@@ -120,6 +147,7 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_EndFrame(void)
     ImGui::EndFrame();
     ApplyWindowBgGradient();
     ImGui::Render();
+    ContextHost_UnlockFrame(); // ISSUES #004: draw data stable for the render thread
 }
 
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetFontAtlasPixels(unsigned char** outPixels, int* outWidth, int* outHeight)
@@ -295,6 +323,9 @@ static void ApplyWindowBgGradient()
 
     ImGuiContext& g = *s_Context;
     const ImGuiStyle& style = g.Style;
+    // ISSUES #008: full 32-bit compare (RGB+alpha) so low-alpha chrome with a
+    // white RGB (e.g. stock resize grips) still shades as before.
+    const ImU32 textCol = ImGui::GetColorU32(ImGuiCol_Text);
     for (int i = 0; i < g.Windows.Size; ++i)
     {
         ImGuiWindow* window = g.Windows[i];
@@ -330,6 +361,19 @@ static void ApplyWindowBgGradient()
         // Only solid-fill verts — the ones sampling the atlas white pixel —
         // are shaded; recoloring glyph verts tints item text toward the
         // gradient and rows "disappear" into it (M3 in-game fix).
+        //
+        // Everything Begin emits before the content clip push merges into this
+        // command (verified against imgui.cpp 1.92.9: bg fill, title/menu-bar
+        // fills, scrollbars, resize grips, borders, then the title-bar collapse
+        // arrow and close cross) — and ALL of those fills have been
+        // gradient-shaded since C9 as part of the M3-approved look. The one
+        // exception is title-bar foreground primitives, which ImGui draws with
+        // ImGuiCol_Text: shading them paints them the gradient top stop and the
+        // collapse arrow vanishes against the title bar (ISSUES #008). So the
+        // filter is exclusion, not inclusion: leave Text-colored verts
+        // untouched; the bg/title/scrollbar/border fills keep shading exactly
+        // as approved. An inclusion list of fill colors would have un-shaded
+        // the borders and scrollbars and visibly changed the M3 look.
         ImDrawList* drawList = window->DrawList;
         if (drawList->CmdBuffer.Size == 0)
             continue;
@@ -354,6 +398,8 @@ static void ApplyWindowBgGradient()
             ImDrawVert& vert = verts[n];
             if (vert.uv.x != whiteUv.x || vert.uv.y != whiteUv.y)
                 continue; // glyph vert — leave text colors untouched
+            if (vert.col == textCol)
+                continue; // title-bar foreground primitive (collapse arrow, close cross)
             float t = gradientHeight > 0.0f ? (vert.pos.y - gradientP0.y) / gradientHeight : 0.0f;
             t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
             const float invT = 1.0f - t;

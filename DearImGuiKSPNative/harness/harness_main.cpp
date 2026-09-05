@@ -165,6 +165,30 @@ int main()
         }
         if (!anyChanged || !topChanged || !bottomOk)
             return Fail("gradient stops not applied", 15);
+
+        // ISSUES #008: the title-bar collapse arrow is a Text-colored solid-fill
+        // primitive (white-pixel UV) that merges into command 0; the gradient
+        // pass must leave it (and any other Text-colored primitive vert)
+        // exactly as the stock frame had it, or it repaints to the gradient top
+        // stop and vanishes against the title bar. The reference frame is stock
+        // dark, where Text is opaque white — no other command-0 solid fill in a
+        // bare window shares that color.
+        const ImU32 textCol = ImGui::GetColorU32(ImGuiCol_Text);
+        int textVertCount = 0;
+        for (int i = 0; i < vertEnd; ++i)
+        {
+            const ImDrawVert& v = dl->VtxBuffer.Data[i];
+            if (v.uv.x != whiteUv.x || v.uv.y != whiteUv.y)
+                continue;
+            if (refCols[i] != textCol)
+                continue;
+            textVertCount++;
+            if (v.col != refCols[i])
+                return Fail("text-colored solid-fill primitive recolored", 21);
+        }
+        if (textVertCount == 0)
+            return Fail("text-colored solid-fill primitive absent from command 0", 20);
+        std::printf("Text-colored primitive verts survived the pass unchanged: %d\n", textVertCount);
     }
     std::printf("Gradient enabled: stops applied to bg range, alpha preserved\n");
 

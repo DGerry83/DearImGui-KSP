@@ -13,6 +13,7 @@
 
 #include <d3d11.h>
 
+#include "ContextHost.h" // ContextHost_LockFrame/UnlockFrame (ISSUES #004)
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 
@@ -97,16 +98,24 @@ void BackendD3D11_Shutdown(void)
 
 void BackendD3D11_Render(void)
 {
+    // ISSUES #004: the whole body runs on Unity's render thread against draw
+    // data the game thread may be rebuilding (NewFrame invalidates it and
+    // resets the shared ImDrawList objects in place). The frame guard blocks
+    // the game thread's next BeginFrame until this draw completes, so the
+    // draw data here is always a complete, stable frame — previously the
+    // overlap could blank the entire UI for a frame or read torn buffers.
+    ContextHost_LockFrame();
+
     TryInitBackend();
     if (!s_BackendUp || ImGui::GetCurrentContext() == nullptr)
+    {
+        ContextHost_UnlockFrame();
         return;
+    }
 
-    // Draw-data lifetime caveat: the draw data is produced by ContextHost on
-    // the game thread (BeginFrame/EndFrame) and consumed here on the render
-    // thread. ImGui guarantees it stays valid until the next ImGui::NewFrame,
-    // which is adequate for the PoC; if tearing ever shows up, double-
-    // buffering the draw data is later hardening work, not a C4 blocker.
     ImDrawData* drawData = ImGui::GetDrawData();
     if (drawData != nullptr)
         ImGui_ImplDX11_RenderDrawData(drawData);
+
+    ContextHost_UnlockFrame();
 }
