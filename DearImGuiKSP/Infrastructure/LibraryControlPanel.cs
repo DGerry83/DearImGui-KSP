@@ -32,7 +32,8 @@ namespace DearImGuiKSP.Infrastructure
         private const string DarkRadioLabel = "dark (stock ImGui dark)";
         private const string UiScaleSliderLabel = "UI scale";
         private const string UiScaleTypeInLabel = "##uiscale";
-        private const string UiScaleHint = "Scales spacing, sizing and text live. Widgets a mod sized in pixels (spinners, knobs, plots) keep their pixel size.";
+        private const string UiScaleHint = "Scales spacing, sizing and text live.";
+        private const string UiScaleHint2 = "Widgets a mod sized in pixels (spinners, knobs, plots) keep their pixel size.";
         private const string FontHeading = "Font";
         private const string PlexRadioLabel = "IBM Plex Sans";
         private const string ProggyRadioLabel = "ProggyClean (embedded)";
@@ -115,6 +116,7 @@ namespace DearImGuiKSP.Infrastructure
                 _settings.UiScale = typedUiScale; // same live-apply path as the slider
             }
             ImGuiInternal.Text(UiScaleHint);
+            ImGuiInternal.Text(UiScaleHint2);
         }
 
         private void DrawFontSection()
