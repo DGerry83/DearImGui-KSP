@@ -1,13 +1,16 @@
-# Handoff: Pre-Release Feature Wave Implementation — M1–M7 VERIFIED, M8 remains
+# Handoff: Pre-Release Feature Wave Implementation — wave polish done, M8 remains
 ## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-04 (M7 docs gate PASSED via sandboxed dry run)
+## Written: 2026-09-04 (C26–C30 landed; user in-game gates pending for C28–C30)
 
 ## Where we are
 
-M1–M7 **VERIFIED** (M7 gate: modder-from-zero dry run by an agent sandboxed to
-`docs/` + KSP KB only — PASS, zero API misuses on post-hoc audit). Only M8
-(C25: packaging + D33) remains. NOTE: ISSUES #004 (UI flicker) is now **P0** —
-investigate before M8.
+M1–M7 **VERIFIED**. Wave-polish chunks C26–C30 all **Done and committed**;
+C27's gate PASSED in-game (user 2026-09-04: #004 flicker gone, #008 arrow
+fixed, #009 z-order works — #004/#008 resolved+archived, #009 closed
+not-a-defect with polish spin-off #012). C28 (CollapsingHeader), C29 (throttle
+dial), C30 (spinner investigation: upstream small-size behavior, sizing
+guidance, no trim/cut — #006 open pending visual gate) await the user's
+in-game spot-check. Only M8 (C25: packaging + D33) remains.
 Full state lives in this folder — read `PROGRESS_LOG.md` first, then
 `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
 
@@ -54,27 +57,21 @@ Full state lives in this folder — read `PROGRESS_LOG.md` first, then
   fixed 520x360, hover readout is a text line not a floating tooltip, spinner
   aesthetics (#006).
 
-## What's next — wave polish (C26–C30), then M8 (C25)
+## What's next — user spot-check of C28–C30, then M8 (C25)
 
-User-confirmed 2026-09-04 sequence, each chunk per the per-chunk loop:
-1. **C26** docs polish: strip "Authored in milestone…" headers; installation
-   sections must say players install DearImGuiKSP separately (consumers never
-   redistribute); purge spec/process refs ("see D17") from user-facing docs;
-   plain-language skim for human modders.
-2. **C27**: fix ISSUES #008 (root cause known — gradient pass repaints
-   collapse-arrow verts, `ContextHost.cpp:291-366`); investigate #004 (P0);
-   first look at #009 z-order (no forcing flag exists — needs in-game
-   characterization, user will test rigorously next session).
-3. **C28**: public CollapsingHeader scope (in compiled cimgui already,
-   unwrapped) + demo usage + `docs/20-widgets.md`.
-4. **C29**: throttle dial demo — wiper-style knob (user's pick, NOT a slider)
-   writing `FlightInputHandler.state.mainThrottle` in flight + docs example.
-5. **C30**: #006 spinner geometry investigation — demo renders spinners larger
-   for zoomed screenshots; then fix / trim curated set / cut from 0.1.0.
-Then **M8 = C25** (release packaging + D33 OpenGL decision point; gate: zip
-installs into a clean KSP in the full D16 environment, D33 recorded in
-DECISION_LOG). C25 follow-ups already assigned: vendor upstream cimplot's MIT
-LICENSE into `vendor/cimplot/`; version is 0.1.0.0 from the csproj `<Version>`.
+**User in-game gate (one session)**: (1) ThemeDemo has two collapsible sections
+("Spinners", "Knobs and wheels", default open); (2) Graphs tab throttle dial —
+drag changes the vessel's real throttle, Z/X keys move the dial; (3) "Spinners
+(large)" header — zoomed screenshots of Atom electrons (should be round at
+r=48) and Clock hands (should read as hands at t=r/6). On PASS: close #006 as
+documented known limitation; then C25 on the user's "proceed".
+
+**M8 = C25** (release packaging + D33 OpenGL decision point; gate: zip installs
+into a clean KSP in the full D16 environment, D33 recorded in DECISION_LOG).
+C25 assigned follow-ups: vendor upstream cimplot's MIT LICENSE into
+`vendor/cimplot/`; version is 0.1.0.0 from the csproj `<Version>`; **user task
+2026-09-04: one full run-through with `verboseLogging = true` inspecting
+KSP.log for silent background failures before release.**
 
 ## How this session runs (conventions the next agent must keep)
 
