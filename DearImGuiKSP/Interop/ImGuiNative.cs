@@ -322,6 +322,18 @@ namespace DearImGuiKSP.Interop
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         private static extern void igEndTabItem();
 
+        // ---- Collapsing header (chunk C28) ----
+        // Verified against the pinned cimgui.h (sibling clone, imgui 1.92.9).
+
+        // CIMGUI_API bool igCollapsingHeader_TreeNodeFlags(const char* label,ImGuiTreeNodeFlags flags); (cimgui.h:4336)
+        // Not a Begin/End pair: returns whether the section is open and the
+        // caller draws the content inside an if. Only the flags subset the
+        // wrapper exposes is forwarded (ImGuiTreeNodeFlags_None = 0,
+        // cimgui.h:362; ImGuiTreeNodeFlags_DefaultOpen = 1 << 5, cimgui.h:368).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igCollapsingHeader_TreeNodeFlags([In] byte[] label, int flags);
+
         // ---- Native theme exports (chunk C8) ----
         // Own DearImGuiKSPNative_* ABI (ContextHost.h), not cimgui: cimgui exports
         // no per-field style setters, so the DLL provides these pass-throughs over
@@ -594,6 +606,14 @@ namespace DearImGuiKSP.Interop
         internal static void EndTabItem()
         {
             igEndTabItem();
+        }
+
+        // Collapsing header (C28). Flags subset only: None (cimgui.h:362) or
+        // DefaultOpen = 1 << 5 (cimgui.h:368); no other ImGuiTreeNodeFlags.
+
+        internal static bool CollapsingHeader(byte[] labelUtf8, bool defaultOpen)
+        {
+            return igCollapsingHeader_TreeNodeFlags(labelUtf8, defaultOpen ? 1 << 5 : 0);
         }
 
         // Window-bg gradient descriptor (C9). <paramref name="enabled"/> != 0

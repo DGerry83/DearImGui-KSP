@@ -18,6 +18,8 @@ namespace DearImGuiKSPDemo
     internal sealed class ThemeDemo
     {
         private const string SectionHeaderText = "Widget showcase";
+        private const string SpinnerSectionLabel = "Spinners";
+        private const string KnobWheelSectionLabel = "Knobs and wheels";
         private const string SpinnerCaptionText = "Spinners (animated by the native ImGui clock):";
         private const string SpinnerRainbowLabel = "RainbowMix";
         private const string SpinnerAng8Label = "Ang8";
@@ -93,9 +95,20 @@ namespace DearImGuiKSPDemo
             DearImGuiKSP.DearImGuiKSP.TextColored(
                 DearImGuiKSP.Application.KspPalette.OrangeLight, SectionHeaderText);
 
-            DrawSpinnerRow();
-            DrawKnobs();
-            DrawWheels();
+            // The spinner and knob/wheel groups sit inside CollapsingHeader
+            // sections (defaultOpen so the M5-verified visuals still greet the
+            // user open); the tween demo stays outside as a flat block.
+            if (DearImGuiKSP.DearImGuiKSP.CollapsingHeader(
+                SpinnerSectionLabel, defaultOpen: true))
+            {
+                DrawSpinnerRow();
+            }
+            if (DearImGuiKSP.DearImGuiKSP.CollapsingHeader(
+                KnobWheelSectionLabel, defaultOpen: true))
+            {
+                DrawKnobs();
+                DrawWheels();
+            }
             DrawTweenDemo();
         }
 

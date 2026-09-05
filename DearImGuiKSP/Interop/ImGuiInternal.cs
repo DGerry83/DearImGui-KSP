@@ -558,6 +558,19 @@ namespace DearImGuiKSP.Interop
         }
 
         /// <summary>
+        /// Draws a collapsible section header. Wraps cimgui
+        /// <c>igCollapsingHeader_TreeNodeFlags</c> with the flags subset None /
+        /// DefaultOpen (cimgui.h:362, 368). Not a Begin/End pair: the caller
+        /// gates the section's content on the return value. Null
+        /// <paramref name="label"/> renders as an empty label.
+        /// </summary>
+        /// <returns>True while the section is open (draw its content this frame).</returns>
+        internal static bool CollapsingHeader(string label, bool defaultOpen)
+        {
+            return ImGuiNative.CollapsingHeader(ToUtf8(label), defaultOpen);
+        }
+
+        /// <summary>
         /// Sets the native two-stop vertical window-background gradient
         /// descriptor (C9, spec §6.1). <paramref name="enabled"/> != 0 turns on
         /// the per-frame EndFrame shading pass; 0 disables it so the pass is a

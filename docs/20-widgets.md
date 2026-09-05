@@ -295,6 +295,31 @@ library, not binding bugs):
 - `Atom` hardcodes its electron dots to red/green/blue upstream; the tint
   colors only the orbit ellipses.
 
+## CollapsingHeader
+
+```csharp
+public static bool CollapsingHeader(string label, bool defaultOpen = false)
+```
+
+A collapsible section header inside a window — the group-level equivalent of
+minimizing a whole window. Returns true while the section is open; draw the
+section's content inside the `if`:
+
+```csharp
+if (DearImGuiKSP.DearImGuiKSP.CollapsingHeader("Guidance", defaultOpen: true))
+{
+    DearImGuiKSP.DearImGuiKSP.SliderFloat("Gain", ref _gain, 0f, 2f);
+    DearImGuiKSP.DearImGuiKSP.Button("Calibrate");
+}
+```
+
+This is a single call, not a Begin/End pair — there is no scope to dispose.
+`defaultOpen` is only consulted when the header has no stored state yet:
+section open/closed state lives per window, keyed by the label's ID (the
+usual `"##"` disambiguation rules apply), and it is **not** persisted across
+sessions. Every launch starts from `defaultOpen` again — the same contract as
+window positions.
+
 ## Tabs: TabBar / TabItem
 
 Use the `ImGuiEx` scopes (see [API Fundamentals](10-api-fundamentals.md#3-scopes-imguiex)):
