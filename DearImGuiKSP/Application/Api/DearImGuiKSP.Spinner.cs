@@ -34,6 +34,10 @@ namespace DearImGuiKSP
         /// <summary>
         /// A clock face with a sweeping hand over a dim ring (imspinner.h:484,
         /// <c>SpinnerClock</c>). Constants: background half-white, speed 2.8f.
+        /// The hands are butt-capped lines drawn at twice the given thickness,
+        /// so keep the thickness at or below about one sixth of the radius —
+        /// at thickness = radius/4 the short hand is a square rotating in the
+        /// center at any size.
         /// </summary>
         Clock = 2,
 
@@ -47,7 +51,11 @@ namespace DearImGuiKSP
 
         /// <summary>
         /// An atom with orbiting electrons (imspinner.h:2535, <c>SpinnerAtom</c>).
-        /// Constants: speed 2.8f, 3 ellipses.
+        /// Constants: speed 2.8f, 3 ellipses. The electron dots are filled
+        /// circles whose segment count is derived from the overall radius, so
+        /// at small radii they render as coarse polygons (five-sided at
+        /// radius 12); they read as round from roughly 32px radius up, with
+        /// the thickness at about one sixth of the radius.
         /// </summary>
         Atom = 4,
 
@@ -163,8 +171,22 @@ namespace DearImGuiKSP
         /// inside a registered callback.
         /// </summary>
         /// <param name="type">Which spinner to draw; see <see cref="SpinnerType"/>.</param>
-        /// <param name="radius">Widget radius in pixels (the FadeBars type uses it as row width).</param>
-        /// <param name="thickness">Line thickness in pixels (unused by FadeBars).</param>
+        /// <param name="radius">
+        /// Widget radius in pixels (the FadeBars type uses it as row width).
+        /// Small radii produce visibly coarse circles: ImGui reduces the
+        /// segment count of circles and arcs as they shrink (an upstream
+        /// design decision), and some spinner types derive sub-shapes from
+        /// that count — at radius 12, Atom's electron dots render as
+        /// five-sided polygons. Prefer about 20px or more for dot/arc-heavy
+        /// types; sizes are forwarded verbatim (no clamping).
+        /// </param>
+        /// <param name="thickness">
+        /// Line thickness in pixels (unused by FadeBars). Keep this at or
+        /// below about one sixth of the radius for hand- and arc-heavy
+        /// types: Clock's hands are butt-capped lines drawn at twice this
+        /// width, so a thickness of radius/4 makes the short hand read as a
+        /// rotating square.
+        /// </param>
         /// <param name="tint">
         /// Optional color override; null uses the spinner's upstream default
         /// (white for most types, half-white for Clock and Pulsar backgrounds —

@@ -5,7 +5,8 @@ namespace DearImGuiKSPDemo
 {
     /// <summary>
     /// M5 widget showcase section (C17), folded into the existing demo window
-    /// (spec §6.2): a row of animated spinners (C16), two rotary knobs of
+    /// (spec §6.2): a row of animated spinners (C16) plus a large-size
+    /// spinner pass for zoomed geometry checks, two rotary knobs of
     /// different variants (C15), horizontal + vertical rolling wheels (C15),
     /// and a tween demo (C14) — a float tween driving the Tick knob and a
     /// Color tween driving a TextColored header, both cancellable through
@@ -19,12 +20,22 @@ namespace DearImGuiKSPDemo
     {
         private const string SectionHeaderText = "Widget showcase";
         private const string SpinnerSectionLabel = "Spinners";
+        private const string SpinnerLargeSectionLabel = "Spinners (large)";
         private const string KnobWheelSectionLabel = "Knobs and wheels";
         private const string SpinnerCaptionText = "Spinners (animated by the native ImGui clock):";
+        private const string SpinnerLargeCaptionText = "Same four types at 4x radius (zoomed geometry check):";
         private const string SpinnerRainbowLabel = "RainbowMix";
         private const string SpinnerAng8Label = "Ang8";
         private const string SpinnerClockLabel = "Clock";
         private const string SpinnerAtomLabel = "Atom (tinted)";
+
+        // Invisible IDs for the large-size pass: same spinner types already
+        // render at the small size above, and the facade requires distinct
+        // ids when one type appears twice in a window.
+        private const string SpinnerLargeRainbowId = "##spin_lg_rainbow";
+        private const string SpinnerLargeAng8Id = "##spin_lg_ang8";
+        private const string SpinnerLargeClockId = "##spin_lg_clock";
+        private const string SpinnerLargeAtomId = "##spin_lg_atom";
         private const string TweenKnobLabel = "Tween-driven (Tick)";
         private const string WiperKnobLabel = "Draggable (WiperOnly)";
         private const string HorizontalWheelLabel = "Horizontal wheel";
@@ -37,6 +48,13 @@ namespace DearImGuiKSPDemo
 
         private const float SpinnerRadius = 12f;
         private const float SpinnerThickness = 3f;
+        private const float SpinnerLargeRadius = 48f;
+        // radius/6, deliberately NOT the small row's radius/4: Clock's hands
+        // are butt-capped lines of twice the thickness, so thickness =
+        // radius/4 makes the short hand a rotating square at any size, and
+        // Atom's electron dots need the larger radius for a round segment
+        // count (see docs/20-widgets.md sizing guidance).
+        private const float SpinnerLargeThickness = 8f;
         private const float KnobMin = 0f;
         private const float KnobMax = 100f;
         private const float WheelMin = 0f;
@@ -104,6 +122,11 @@ namespace DearImGuiKSPDemo
                 DrawSpinnerRow();
             }
             if (DearImGuiKSP.DearImGuiKSP.CollapsingHeader(
+                SpinnerLargeSectionLabel, defaultOpen: true))
+            {
+                DrawSpinnerRowLarge();
+            }
+            if (DearImGuiKSP.DearImGuiKSP.CollapsingHeader(
                 KnobWheelSectionLabel, defaultOpen: true))
             {
                 DrawKnobs();
@@ -133,6 +156,29 @@ namespace DearImGuiKSPDemo
             DearImGuiKSP.DearImGuiKSP.Text(SpinnerAtomLabel);
             DearImGuiKSP.DearImGuiKSP.Spinner(
                 DearImGuiKSP.SpinnerType.Atom, SpinnerRadius, SpinnerThickness, SpinnerTint);
+        }
+
+        // Large-size pass of the same four types, for zoomed screenshots
+        // examining the geometry up close (radius 4x, thickness radius/6).
+        private void DrawSpinnerRowLarge()
+        {
+            DearImGuiKSP.DearImGuiKSP.Text(SpinnerLargeCaptionText);
+            DearImGuiKSP.DearImGuiKSP.Text(SpinnerRainbowLabel);
+            DearImGuiKSP.DearImGuiKSP.Spinner(
+                DearImGuiKSP.SpinnerType.RainbowMix, SpinnerLargeRadius,
+                SpinnerLargeThickness, id: SpinnerLargeRainbowId);
+            DearImGuiKSP.DearImGuiKSP.Text(SpinnerAng8Label);
+            DearImGuiKSP.DearImGuiKSP.Spinner(
+                DearImGuiKSP.SpinnerType.Ang8, SpinnerLargeRadius,
+                SpinnerLargeThickness, id: SpinnerLargeAng8Id);
+            DearImGuiKSP.DearImGuiKSP.Text(SpinnerClockLabel);
+            DearImGuiKSP.DearImGuiKSP.Spinner(
+                DearImGuiKSP.SpinnerType.Clock, SpinnerLargeRadius,
+                SpinnerLargeThickness, id: SpinnerLargeClockId);
+            DearImGuiKSP.DearImGuiKSP.Text(SpinnerAtomLabel);
+            DearImGuiKSP.DearImGuiKSP.Spinner(
+                DearImGuiKSP.SpinnerType.Atom, SpinnerLargeRadius,
+                SpinnerLargeThickness, SpinnerTint, SpinnerLargeAtomId);
         }
 
         private void DrawKnobs()

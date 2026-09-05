@@ -324,6 +324,17 @@ library, not binding bugs):
 - `Atom` hardcodes its electron dots to red/green/blue upstream; the tint
   colors only the orbit ellipses.
 
+**Sizing guidance:** ImGui deliberately reduces the segment count of circles
+and arcs as they shrink, so very small spinners render as coarse polygons by
+design — at radius 12, `Atom`'s electron dots are five-sided, not round.
+There is no enforced minimum (sizes are forwarded verbatim), but for
+dot- and arc-heavy types (`Atom`, `Ang8`, `Pulsar`, `DotsToBar`) prefer a
+radius of about 20px or more; `Atom`'s electrons read as round from roughly
+32px up. Also keep `thickness` at or below about one sixth of the radius:
+`Clock`'s hands are butt-capped lines drawn at twice the given thickness, so
+a thickness of radius/4 makes the short hand a square rotating in the center
+at any size.
+
 ## CollapsingHeader
 
 ```csharp
