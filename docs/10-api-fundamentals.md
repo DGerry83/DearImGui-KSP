@@ -1,4 +1,254 @@
 # API Fundamentals
 
 > Authored in milestone M7 of the pre-release feature wave (spec §8.2, D31).
-> Planned contents: registration, the frame callback, `IDisposable` scopes, types (`Vector2`/`Color`/`Color32`), availability and `IsAvailable`.
+> This is the reference for the programming model: registration, the frame
+> callback, scopes, public types, availability rules, and the settings file.
+
+Previous: [Getting Started](00-getting-started.md) -
+Next: [Widget Catalog](20-widgets.md) - [Theming](30-theming.md)
+
+Everything documented here is a member of the static class
+`DearImGuiKSP.DearImGuiKSP` (namespace `DearImGuiKSP`), the `ImGuiEx` scope
+factory class, or the `ImGuiDraw` / `ImGuiGradients` helper classes — unless
+a different type is named explicitly. All examples compile against C# 7.3
+(Unity 2019.4 / KSP 1.12.x).
+
+## 1. Registration and the frame callback
+
+```csharp
+public static void Register(string id, Action callback)
+public static bool Unregister(string id)
+```
+
+`Register` adds your per-frame callback; `Unregister` removes it. Callbacks
+run **once per frame, in registration order** — that order is also the
+z-order of overlapping windows, so register earlier if you want your windows
+behind other mods' windows.
+
+**Widget calls are valid ONLY inside a callback invoked by the frame loop.**
+Calling `Text`, `Button`, `ImGuiEx.Window`, style pushes, or any other
+facade member from `Update`, `OnGUI`, a thread, or a delegate runs outside
+the declaration phase and is a no-op (or returns false/0) — never an
+exception. Declare everything inside the registered callback.
+
+Multiple windows in one consumer are fine: one `Register` call, several
+`ImGuiEx.Window` scopes in the callback, gated on your own visibility flags.
+
+## 2. Availability: `IsAvailable`
+
+```csharp
+public static bool IsAvailable { get; }
+```
+
+`IsAvailable` is true when the library is initialized and either **Running**
+or **Suspended**. It is false while Uninitialized/Initializing and
+permanently false after an unrecoverable startup failure.
+
+**Suspended is a pause, not a failure.** The library suspends itself on F2
+(hiding the UI overlay) and during loading screens. When suspended:
+
+- Your callback simply stops being invoked for a while.
+- Do NOT tear down your UI, unregister, or null your state — the frame loop
+  resumes automatically when the pause ends.
+
+The only null-argument errors that throw are `Register(null, ...)` /
+`Register(id, null)` (`ArgumentNullException`). Every other availability
+race is warn-and-ignore:
+
+- `Register` while unavailable (or with a duplicate id): a warning line in
+  the log, call ignored.
+- `Unregister` while unavailable: warning, ignored, returns false.
+- Any widget call while unavailable: silent no-op / false / zero.
+
+So the pattern is: check `IsAvailable` once at `Start`, and never write
+defensive availability checks around individual widget calls inside your
+callback — the callback only runs while available anyway.
+
+If the library hits an unrecoverable startup failure, it self-disables for
+the session and shows one plain-language popup at the main menu; technical
+detail goes to the log under the `[DearImGuiKSP]` prefix.
+
+## 3. Scopes: `ImGuiEx`
+
+Every Begin/End and Push/Pop pair in the API has an exception-safe scope
+guard in `ImGuiEx`. The factory begins immediately and returns a `readonly
+struct` implementing `IDisposable`; `using` calls Dispose on every exit
+path, including exceptions, so the ImGui stacks never leak even when your
+code throws (the exception then reaches the fault barrier, §7).
+
+| Factory | Scope type | `Visible` semantics | Dispose behavior |
+|---|---|---|---|
+| `Window(string name)` | `WindowScope` | false = window collapsed/clipped this frame | **Always** ends the window |
+| `ScrollRegion(string id, float height)` | `ScrollRegionScope` | false = region clipped this frame | **Always** ends the region |
+| `ScrollRegion(string id, Vector2 size)` | `ScrollRegionScope` | same; `size.x = 0` stretches to available width | Always ends the region |
+| `TabBar(string id)` | `TabBarScope` | false = tab bar clipped | Ends the tab bar **only when visible** (ImGui requires End only after a successful Begin) |
+| `TabItem(string label)` | `TabItemScope` | true = tab selected (draw its content) | Ends the tab **only when visible** |
+| `StyleColor(ImGuiCol col, Color value)` | `StyleColorScope` | — | Pops exactly one style color |
+| `StyleColor(ImGuiCol col, Color32 value)` | `StyleColorScope` | — | Pops exactly one style color |
+| `StyleVar(ImGuiStyleVar var, float value)` | `StyleVarScope` | — | Pops exactly one style var |
+| `StyleVar(ImGuiStyleVar var, Vector2 value)` | `StyleVarScope` | — | Pops exactly one style var |
+
+Usage:
+
+```csharp
+using (var window = ImGuiEx.Window("MyMod"))
+{
+    if (window.Visible)
+    {
+        using (ImGuiEx.StyleColor(ImGuiCol.Text, new Color32(255, 198, 0, 255)))
+        {
+            DearImGuiKSP.DearImGuiKSP.Text("orange while inside this block");
+        }
+    }
+}
+```
+
+Two rules:
+
+- **The immediate-mode rule:** a scope must be disposed within the same
+  frame/callback that created it. Never store a scope in a field or let it
+  survive the callback — an unclosed window at end of frame trips ImGui's
+  end-of-frame assert.
+- **Only dispose what a factory returned.** Do not `new` up scope structs
+  yourself; a default `TabBarScope`/`TabItemScope` ends nothing.
+
+For raw Begin/End pairs (`BeginWindow`/`EndWindow`,
+`BeginScrollRegion`/`EndScrollRegion`, `BeginTabBar`/`EndTabBar`,
+`BeginTabItem`/`EndTabItem`) the same pairing rules apply and you must honor
+them manually: `EndWindow`/`EndScrollRegion` always after their Begin, but
+`EndTabBar`/`EndTabItem` only when the Begin returned true. The scopes exist
+so you do not have to remember which is which — prefer them.
+
+## 4. Public types
+
+The facade uses the Unity types you already know:
+
+- `Vector2` = `UnityEngine.Vector2` (sizes, positions, cursor moves).
+- `Color` = `UnityEngine.Color` (float RGBA components, 0-1 range).
+- `Color32` = `UnityEngine.Color32` (byte sRGB components, 0-255 range).
+
+Which one a member takes is deliberate and documented per member:
+
+- `PushStyleColor(ImGuiCol, Color)` takes **linear 0-1 floats**;
+  `PushStyleColor(ImGuiCol, Color32)` takes **sRGB bytes** (normalized
+  internally). Both work; `Color32` is usually the convenient one.
+- `Spinner(..., Color? tint, ...)` takes a **nullable `Color`** (0-1 floats).
+- `ImGuiDraw` primitives and `ImGuiGradients` take **`Color32`**.
+- `TextColored(Color32 color, string text)` takes **`Color32`**.
+
+There is an implicit conversion from `Color32` to `Color` in Unity, so a
+`KspPalette` constant (a `Color32`) works anywhere a `Color` is wanted.
+
+## 5. Style push/pop and the style enums
+
+```csharp
+public static void PushStyleColor(ImGuiCol col, Color value)
+public static void PushStyleColor(ImGuiCol col, Color32 value)
+public static void PopStyleColor(int count = 1)
+public static void PushStyleVar(ImGuiStyleVar var, float value)
+public static void PushStyleVar(ImGuiStyleVar var, Vector2 value)
+public static void PopStyleVar(int count = 1)
+```
+
+These override one style slot for everything drawn after the push, until the
+matching pop — typically the end of your `using` block. Every push must be
+paired with exactly one pop **before the end of the frame**; the
+`ImGuiEx.StyleColor`/`StyleVar` scopes do the pairing for you. Use raw
+push/pop only in shapes where `using` is awkward; never push inside a
+conditional and pop outside it.
+
+`ImGuiCol` is the full Dear ImGui color-slot table (`Text`, `WindowBg`,
+`FrameBg`, `Button`, `CheckMark`, `PlotLines`, ... through `COUNT`) and
+`ImGuiStyleVar` is the full style-variable table (`Alpha`,
+`WindowRounding`, `FrameRounding`, `ItemSpacing`, ... through `COUNT`).
+Whether a given `ImGuiStyleVar` takes a `float` or a `Vector2` is fixed by
+ImGui (e.g. `FrameRounding` is a float, `ItemSpacing` is a Vector2);
+passing the wrong type triggers a native assert, not a managed exception.
+The members you will reach for most: `ImGuiCol.Text`, `ImGuiCol.FrameBg`,
+`ImGuiCol.Button`, `ImGuiCol.CheckMark`, and `ImGuiStyleVar.FrameRounding`.
+
+## 6. Immediate-mode IDs: labels, `##`, and the spinner `id` rule
+
+Labels double as widget identity. Dear ImGui hashes the label string to
+identify a widget, so:
+
+- **Change a label and you get a new widget** — its state (scroll position,
+  edit buffer, selection) resets. Keep labels stable across frames.
+- **`"Label##id"` splits display text from identity:** the part after `##`
+  is invisible in the UI but hashed. Use it for duplicate visible labels
+  (`"Throttle##eng1"`, `"Throttle##eng2"`).
+- **An invisible ID is `"##name"`, never `""`.** An empty string at window
+  root hashes to the window's own ID and trips an ImGui assert (library
+  issue #005, found at the M5 gate: `Spinner` originally passed an empty
+  label and asserted on window open). Every library widget guards this for
+  you — but the rule applies to any API taking an `id`: give it a real,
+  non-empty, unique-per-location string.
+
+`Spinner` specifically: the default is a unique invisible per-type id, so
+one spinner of each type per window "just works". Two spinners of the **same
+type** in one window must be given distinct `id` arguments:
+
+```csharp
+DearImGuiKSP.DearImGuiKSP.Spinner(SpinnerType.Clock, 12f, 3f, id: "##clock_a");
+DearImGuiKSP.DearImGuiKSP.Spinner(SpinnerType.Clock, 12f, 3f, id: "##clock_b");
+```
+
+## 7. The fault barrier
+
+Your callback runs inside a per-consumer fault barrier
+(`Application/FaultBarrier.cs`). If it throws:
+
+- The exception is caught, logged as an error under `[DearImGuiKSP]` with
+  your consumer id, and the frame continues.
+- A consecutive-throw counter increments; a clean frame resets it to zero.
+- At **5 consecutive throwing frames** the consumer is **auto-disabled for
+  the rest of the session** (logged as an error) and its callback is no
+  longer invoked.
+
+This protects every other mod's UI (and the game) from a broken consumer.
+During development, watch for the repeated error lines; in release, one
+exceptional frame is survivable but five in a row means your UI is gone
+until the next game restart.
+
+## 8. settings.cfg
+
+The library persists **only its own** global config at
+`GameData/DearImGuiKSP/settings.cfg`. Consumer window state (positions,
+visibility, values) belongs to consumers — persist it in your own config.
+
+The file is a KSP `ConfigNode`:
+
+```
+DEARIMGUIKSP_SETTINGS
+{
+	formatVersion = 1
+	uiScale = 1.0
+	fontScale = 1.0
+	theme = ksp
+	font = IBMPlexSans
+	verboseLogging = false
+	enabled = true
+	clampWindowsToViewport = true
+}
+```
+
+Keys (with defaults from the library's config constants):
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `uiScale` | float | 1.0 | UI scale, clamped to 0.5-2.0 |
+| `fontScale` | float | 1.0 | Font size scale, clamped to 0.5-2.0 |
+| `theme` | string | `ksp` | Theme preset: `ksp` or `dark`; any other value falls back to `ksp` with one log line |
+| `font` | string | `IBMPlexSans` | Font: `IBMPlexSans`, `ProggyClean`, or a `.ttf` filename placed in `GameData/DearImGuiKSP/Fonts/` (unknown names fall back to ProggyClean with a log line) |
+| `verboseLogging` | bool | false | Extra library logging |
+| `enabled` | bool | true | Master library enable switch |
+| `clampWindowsToViewport` | bool | true | Keep windows inside the screen on resolution changes |
+| `formatVersion` | int | 1 | Internal file-format marker; migrated forward on read |
+
+These are user-facing options, not a per-mod API: your mod does not write
+them. A settings change made while the game runs (by a user or a tool)
+applies cleanly — a theme change takes effect at the start of the next UI
+frame.
+
+Next: [Widget Catalog](20-widgets.md) — every widget with real signatures
+and minimal examples.
