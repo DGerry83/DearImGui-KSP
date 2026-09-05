@@ -34,7 +34,8 @@
 | C27 | #008 collapse-arrow fix + #004 P0 flicker investigation + #009 first look | Bugfix | `src/ContextHost.cpp` (gradient pass), investigation notes | Med | Wave polish | Pending |
 | C28 | CollapsingHeader public scope + demo usage + docs | Vertical slice | `Interop`, `ImGuiEx.cs`, demo, `docs/20-widgets.md` | Low | Wave polish | Pending |
 | C29 | Throttle dial demo (input direction showcase) | Consumer | `DearImGuiKSPDemo/Telemetry/*`, docs example | Low | Wave polish | Pending |
-| C30 | Spinner investigation: large-size demo rendering + #006 fix/trim/cut | Bugfix | demo ThemeDemo, possibly `Interop/ImSpinnerNative.cs`, docs | Med | Wave polish | Pending |
+| C30 | Spinner investigation: large-size demo rendering + #006 fix/trim/cut | Bugfix | demo ThemeDemo, possibly `Interop/ImSpinnerNative.cs`, docs | Med | Wave polish | Done |
+| C31 | Library control panel + live uiScale + resize-grip visibility | Vertical slice | `ThemePresets.cs`, native `ContextHost` (+SetUiScale, handshake v6), `ThemeEngine.cs`, Infrastructure panel/toolbar, docs 00/70 | Med | Wave polish | Pending |
 
 ### Dependency Graph
 ```
@@ -46,7 +47,7 @@ M5:  C14 (independent within M5)   C15, C16 (independent of each other)
      C9, C10, C14, C15, C16 ──► C17
 M6:  C18 ──► C19 (needs C13)     C18 ──► C20, C21 (C20/C21 parallel-safe)
 M7:  C22, C23 (parallel-safe) ──► C24
-Wave polish (post-M7, pre-M8): C26 ──► C27 ──► C28 ──► C29 ──► C30 (sequential; all must pass user in-game check before M8)
+Wave polish (post-M7, pre-M8): C26 ──► C27 ──► C28 ──► C29 ──► C30 ──► C31 (sequential; all must pass user in-game check before M8)
 M8:  C25 (needs M1–M7 verified + wave polish chunks done)
 ```
 - Arrow = hard dependency ("must be completed before").
@@ -75,7 +76,7 @@ M8:  C25 (needs M1–M7 verified + wave polish chunks done)
 | M5 Widgets+tween | C14, C15, C16, C17 | Tween tests green; widgets animate in demo; suspension pauses tweens |
 | M6 Showcase | C18, C19, C20, C21 | In-flight D16 acceptance: 60 Hz graphs, stage/Δv, orbit radar; zero-alloc hot path; placeholders outside flight |
 | M7 Docs | C22, C23, C24 | Modder-from-zero dry run; XML docs complete; LICENSE aggregates MIT/0BSD/OFL |
-| Wave polish | C26–C30 | Per-chunk build/test green; user in-game spot-check of C27 (arrow + flicker), C28, C29, C30 outcome before M8 |
+| Wave polish | C26–C31 | Per-chunk build/test green; user in-game spot-check of C27 (arrow + flicker), C28, C29, C30 outcome, C31 (panel, live uiScale, grip) before M8 |
 | M8 Packaging | C25 | Clean-KSP install of zip; D33 decision recorded |
 
 ### Cross-Cutting Concerns
