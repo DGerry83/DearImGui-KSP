@@ -1,15 +1,18 @@
 # Handoff: Pre-Release Feature Wave Implementation — all chunks done, M8 remains
 ## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-05 (C33–C35 landed; user in-game gates for C33/C34/C35 pending)
+## Written: 2026-09-05 (C33–C35 gates PASS, #014 closed; C36 in-line tweaks done; verboseLogging run + M8 remain)
 
 ## Where we are
 
-M1–M7 **VERIFIED**. Wave-polish chunks C26–C35 all **Done and committed**;
-gates through C32 PASSED in-game (user 2026-09-04/05). C33 (window
-auto-resize option) and C34/C35 (scrollbar fix #014 + gradient inclusion
-flip) await the user's in-game spot-check. Only M8 (C25: packaging + D33)
-remains. Full state lives in this folder — read `PROGRESS_LOG.md` first,
-then `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
+M1–M7 **VERIFIED**. Wave-polish chunks C26–C36 all **Done and committed**;
+all gates through C35 PASSED in-game (user 2026-09-04/05), and **ISSUES #014
+(scrollbar) is Resolved + archived**. C36 (user-requested in-line tweaks:
+all six demo plots auto-fit both axes by default via new public
+`ImGuiPlot.SetupAxesAutoFit()`; settings-panel scale rows fixed at 180/60 px)
+awaits the user's quick in-game look, foldable into the verboseLogging
+run-through. Only M8 (C25: packaging + D33) remains.
+Full state lives in this folder — read `PROGRESS_LOG.md` first, then
+`CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
 
 ### Commits (on `main`; user pushes to remote themselves)
 | Commit | Content |
@@ -47,6 +50,7 @@ then `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
 | `3120803` | C34: scrollbar-color exclusion (#014); command-0 decoration audit (2 more casualties found → inclusion flip recommended) |
 | `472db3a` | C35: gradient pass flipped to **inclusion filter** (bg/title/menu/border only) — decoration casualty class closed; harness checks 60/61 |
 | `46f249b` | C32 gate PASS + C33–C35 logged done |
+| `723c3fd` | C33–C35 gates PASS (user); **#014 resolved+archived**; C36: plot auto-fit default (6 demo plots, new public `SetupAxesAutoFit()`) + settings-panel fixed widths |
 
 ### Verified state
 - `dotnet build DearImGui-KSP.slnx` 0/0; `dotnet test` **99/99**; native
@@ -66,28 +70,19 @@ then `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
   style metrics + font rendering); sliders get explicit type-in boxes
   (C32); resize grip exclusion (C32) made grips visible again.
 
-## What's next — user spot-check of C33 + C34/C35, then M8 (C25)
+## What's next — verboseLogging run-through, then M8 (C25)
 
-**User in-game gate (one session)**:
-- C33: main demo/telemetry/panel windows auto-fit content (collapse a
-  section → window shrinks; uiScale slider → reflow); benchmark/plot
-  windows show "Auto-sizing off — drag the corner or edge to resize." note
-  and still resize manually.
-- C34/C35: full theme eyeball; benchmark window 1000-item list shows a
-  scrollbar (idle grey grab, hover, drag); collapse arrow + its hover bg;
-  grip hover/drag; edge-resize border highlight; list text and button
-  gradients unchanged; dark preset still stock.
-- On PASS: close **#014** (Resolved; archive row: root cause = gradient
-  pass repainted scrollbar verts; fix = C34 exclusion then C35 inclusion
-  flip; user-confirmed).
+**User task (pre-release, assigned at the C27 gate)**: one full run-through
+with `verboseLogging = true` (toggleable from the control panel), inspecting
+KSP.log for silent background failures. Same session doubles as the C36
+spot-check: six demo plots auto-fit both axes from first frame; settings
+panel scale rows are compact (180 px slider + 60 px type-in).
 
 **M8 = C25** (release packaging + D33 OpenGL decision point; gate: zip
 installs into a clean KSP in the full D16 environment, D33 recorded in
 DECISION_LOG). C25 assigned follow-ups: vendor upstream cimplot's MIT
 LICENSE into `vendor/cimplot/`; version is 0.1.0.0 from the csproj
-`<Version>`; **user task: one full run-through with `verboseLogging =
-true` (toggleable from the control panel) inspecting KSP.log for silent
-background failures before release.**
+`<Version>`.
 
 ## How this session runs (conventions the next agent must keep)
 
@@ -110,21 +105,22 @@ background failures before release.**
 5. **Never commit** `notes/plans/2026-09-03_DearImGui-KSP_Fix_Backlog.md`
    (untracked, belongs to another session).
 6. ISSUES tracker is gitignored — `ISSUES/TRACKER.md` Next ID: **#015**
-   (resolved+archived: #004 P0 flicker, #005, #007, #008, #009 not-a-defect;
-   open: #006 P3 spinner aesthetics, #010 P3 plot auto-fit, #011 P3 docking,
-   #012 P3 focus highlight, #013 P3 live font atlas rebuild,
-   #014 P1 scrollbar — fixed in code by C34/C35, Open pending user gate).
+   (resolved+archived: #004 P0 flicker, #005, #007, #008, #009 not-a-defect,
+   #014 P1 scrollbar; open: #006 P3 spinner aesthetics, #010 P3 plot
+   auto-fit, #011 P3 docking, #012 P3 focus highlight, #013 P3 live font
+   atlas rebuild).
 
 ## Active gotchas / open threads
 
-- **ISSUES #014** (P1): fixed in code — C34 patched the gradient pass, then
+- **ISSUES #014** (P1): **RESOLVED + archived 2026-09-05** (user gate PASS).
+  C34 patched the gradient pass, then
   the C34 audit found 2 more casualties of the same class (title-bar button
   hover bg, edge-resize highlight), so C35 flipped the pass to an
   **inclusion filter**: shades only verts matching resolved bg
   (WindowBg/ChildBg/PopupBg), TitleBg/TitleBgActive, MenuBarBg, Border;
   everything else keeps theme colors. Audit finding #13 corrected by the
   agent (integer-thickness border highlight uses baked textured lines,
-  already UV-gated). Closes the whole exclusion whack-a-mole class.
+  already UV-gated). The whole exclusion whack-a-mole class is closed.
 - **ISSUES #006** (KNOWNLIMIT, P3): spinner aesthetics — RainbowMix hue comes from
   the tint's HSV (white tint → grey arc, no rainbow); Atom's electron dots are
   hardcoded RGB upstream. Geometry was explained as upstream small-size
@@ -149,9 +145,9 @@ background failures before release.**
 
 ## First action on resume
 
-C33/C34/C35 in-game gates pending user (checklist in "What's next"). On
-PASS: close #014 per the tracker convention. Then write
-`CHUNK_C25_CONTRACT.md` on the user's "proceed" — first read spec §10
+Wait for the user's verboseLogging run-through verdict (+ C36 spot-check:
+auto-fit plots, compact settings rows). Then write `CHUNK_C25_CONTRACT.md`
+on the user's "proceed" — first read spec §10
 (`notes/finished/2026-07-29_DesignSpec_DearImGuiKSP_UI_Library/DESIGN_SPEC.md`),
 the plan's M8 row, and `DECISION_LOG.md` in the same folder for the D33
 entry format (not yet established).
