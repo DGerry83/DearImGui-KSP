@@ -48,8 +48,17 @@ Two rules:
 every scene). It opens the "DearImGui-KSP Settings" window, where the theme
 (ksp / dark) and the overall UI scale change immediately, verbose logging
 toggles on the spot, and the font plus font scale are saved but only take
-effect on the next KSP start. The button uses `Textures/toolbar.png` from
-this folder when present and a generated placeholder until the icon ships.
+effect on the next KSP start. Each scale slider has a small type-in box
+beside it for entering an exact value. The button uses `Textures/toolbar.png`
+from this folder when present and a generated placeholder until the icon
+ships.
+
+**What the UI scale covers:** it scales the library's style-driven metrics
+(window and frame padding, item spacing, rounding) and font rendering. It
+deliberately does **not** rescale sizes a mod passes to widgets in pixels —
+spinner radius and thickness, knob or wheel size, explicit plot or button
+sizes keep exactly the pixels asked for. A mod that wants those to follow the
+player's scale can read the configured value and multiply them itself.
 
 **Who installs this:** your players, from the library's own release — not
 you, from your mod's download. DearImGui-KSP is a shared library: players

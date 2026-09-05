@@ -15,7 +15,10 @@ namespace DearImGuiKSP.Infrastructure
     /// setters. Theme and UI scale apply live (the ThemeEngine dirty path
     /// re-applies at the next frame start); font and font scale are read only
     /// at startup (atlas rebuild), so the panel states plainly that they apply
-    /// on the next KSP start. Steady state with the window hidden is one bool
+    /// on the next KSP start. Both scale sliders sit beside a numeric type-in
+    /// box (hidden "##" labels): typing applies through the same
+    /// <see cref="SettingsModel"/> setters, so uiScale stays live and fontScale
+    /// persists for restart. Steady state with the window hidden is one bool
     /// check and zero allocation (the early return in <see cref="OnFrame"/>);
     /// while open, widget labels are constants and only the ImGui UTF-8
     /// encodings allocate — user-driven, per the demo consumer's convention.
@@ -28,11 +31,13 @@ namespace DearImGuiKSP.Infrastructure
         private const string KspRadioLabel = "ksp (KSP styling)";
         private const string DarkRadioLabel = "dark (stock ImGui dark)";
         private const string UiScaleSliderLabel = "UI scale";
-        private const string UiScaleHint = "Scales the whole interface live; font scale below refines text only.";
+        private const string UiScaleTypeInLabel = "##uiscale";
+        private const string UiScaleHint = "Scales spacing, sizing and text live. Widgets a mod sized in pixels (spinners, knobs, plots) keep their pixel size.";
         private const string FontHeading = "Font";
         private const string PlexRadioLabel = "IBM Plex Sans";
         private const string ProggyRadioLabel = "ProggyClean (embedded)";
         private const string FontScaleSliderLabel = "Font scale";
+        private const string FontScaleTypeInLabel = "##fontscale";
         private const string FontRestartNote = "Font changes apply on next KSP start.";
         private const string VerboseToggleLabel = "Verbose logging";
         private const string VerboseHint = "Writes extra [DearImGuiKSP] diagnostics to KSP.log.";
@@ -93,6 +98,14 @@ namespace DearImGuiKSP.Infrastructure
             {
                 _settings.UiScale = uiScale; // persists; ThemeEngine forwards it to the native side live
             }
+            ImGuiInternal.SameLine();
+            float typedUiScale = _settings.UiScale;
+            if (ImGuiInternal.InputFloat(UiScaleTypeInLabel, ref typedUiScale))
+            {
+                // Two-way: typing applies here (the setter clamps 0.5–2.0), and
+                // a slider drag reseeds the box from the setting next frame.
+                _settings.UiScale = typedUiScale; // same live-apply path as the slider
+            }
             ImGuiInternal.Text(UiScaleHint);
         }
 
@@ -116,6 +129,14 @@ namespace DearImGuiKSP.Infrastructure
             if (ImGuiInternal.SliderFloat(FontScaleSliderLabel, ref fontScale, LibraryConfig.MinScale, LibraryConfig.MaxScale))
             {
                 _settings.FontScale = fontScale;
+            }
+            ImGuiInternal.SameLine();
+            float typedFontScale = _settings.FontScale;
+            if (ImGuiInternal.InputFloat(FontScaleTypeInLabel, ref typedFontScale))
+            {
+                // Same semantics as the slider (saved now, applied on next KSP
+                // start), just a second input path.
+                _settings.FontScale = typedFontScale;
             }
             ImGuiInternal.Text(FontRestartNote);
         }

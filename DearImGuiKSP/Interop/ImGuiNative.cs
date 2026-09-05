@@ -135,6 +135,15 @@ namespace DearImGuiKSP.Interop
         [return: MarshalAs(UnmanagedType.I1)]
         private static extern bool igSliderFloat([In] byte[] label, ref float v, float v_min, float v_max, IntPtr format, int flags);
 
+        // CIMGUI_API bool igInputFloat(const char* label,float* v,float step,float step_fast,const char* format,ImGuiInputTextFlags flags); (cimgui.h:4294)
+        // step/step_fast are 0: ImGui::InputFloat passes a NULL step pointer
+        // unless step > 0, so no step buttons render (imgui.cpp). format is
+        // NULL: InputScalar substitutes the float default "%.3f"
+        // (imgui_widgets.cpp:3814-3815).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igInputFloat([In] byte[] label, ref float v, float step, float step_fast, IntPtr format, int flags);
+
         // CIMGUI_API bool igInputText(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data);
         // callback/user_data are NULL in MVP; buf round-trips edited text via [In, Out].
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
@@ -407,6 +416,11 @@ namespace DearImGuiKSP.Interop
         internal static bool InputText(byte[] labelUtf8, byte[] buffer, ImGuiInputTextFlags flags)
         {
             return igInputText(labelUtf8, buffer, (UIntPtr)buffer.Length, (int)flags, IntPtr.Zero, IntPtr.Zero);
+        }
+
+        internal static bool InputFloat(byte[] labelUtf8, ref float value)
+        {
+            return igInputFloat(labelUtf8, ref value, 0f, 0f, IntPtr.Zero, (int)ImGuiInputTextFlags.None);
         }
 
         // Style-color/style-variable identifiers are the public DearImGuiKSP.ImGuiCol /

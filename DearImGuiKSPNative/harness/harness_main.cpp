@@ -189,6 +189,108 @@ int main()
         if (textVertCount == 0)
             return Fail("text-colored solid-fill primitive absent from command 0", 20);
         std::printf("Text-colored primitive verts survived the pass unchanged: %d\n", textVertCount);
+
+        // C32: the resize grip is the same kind of merged solid-fill primitive,
+        // drawn by Begin into command 0 with one of three state colors
+        // (imgui.cpp:7406, 7728-7743). The gradient pass must leave all three
+        // byte-unchanged, otherwise the grip repaints to the bottom stop — the
+        // window bg color at the bottom-right corner — and is invisible.
+        //   idle:    grip 0 of a top-level window is always drawn (imgui.cpp:7405)
+        //   hovered: mouse over the bottom-right corner, button up
+        //   active:  same mouse, button held (resize engaged)
+        // Existence of a post-pass vert with the exact state color IS the
+        // byte-survival proof: a shaded vert would carry a gradient stop color
+        // (the harness gradient is red->blue alpha 255, never a grip color).
+        const ImU32 gripIdleCol    = ImGui::GetColorU32(ImGuiCol_ResizeGrip);
+        const ImU32 gripHoveredCol = ImGui::GetColorU32(ImGuiCol_ResizeGripHovered);
+        const ImU32 gripActiveCol  = ImGui::GetColorU32(ImGuiCol_ResizeGripActive);
+
+        // Count solid-fill verts inside command 0's referenced range that carry
+        // exactly <col> after EndFrame's gradient pass.
+        auto countGripColoredVerts = [&](ImU32 col) -> int
+        {
+            const ImDrawList* dl = testWindow->DrawList;
+            if (dl->CmdBuffer.Size == 0)
+                return 0;
+            const ImDrawCmd& c = dl->CmdBuffer[0];
+            int end = 0;
+            for (unsigned int n = 0; n < c.ElemCount; ++n)
+                if ((int)dl->IdxBuffer.Data[c.IdxOffset + n] + 1 > end)
+                    end = (int)dl->IdxBuffer.Data[c.IdxOffset + n] + 1;
+            const ImVec2 uv = dl->_Data->TexUvWhitePixel;
+            int count = 0;
+            for (int i = (int)c.VtxOffset; i < (int)c.VtxOffset + end; ++i)
+            {
+                const ImDrawVert& v = dl->VtxBuffer.Data[i];
+                if (v.uv.x == uv.x && v.uv.y == uv.y && v.col == col)
+                    count++;
+            }
+            return count;
+        };
+        // Submit one frame with the given input state (gradient descriptor
+        // still enabled); FeedFrameInput queues the events NewFrame consumes.
+        auto submitStateFrame = [](float mouseX, float mouseY, int buttons)
+        {
+            DearImGuiKSPNative_FeedFrameInput(mouseX, mouseY, 0.0f, buttons, 0, nullptr);
+            DearImGuiKSPNative_BeginFrame(1920.0f, 1080.0f, 1.0f / 60.0f);
+            igBegin("grad-test", nullptr, 0);
+            igEnd();
+            DearImGuiKSPNative_EndFrame();
+        };
+
+        // Idle state: the enabled frame above ran with the mouse never fed
+        // (io.MousePos unset), so grip 0 was drawn in ResizeGrip. Strong check
+        // against the stock reference: every vert that WAS grip-colored must
+        // still be exactly that color.
+        {
+            const ImDrawList* dl = testWindow->DrawList;
+            const ImDrawCmd& c = dl->CmdBuffer[0];
+            int end = 0;
+            for (unsigned int n = 0; n < c.ElemCount; ++n)
+                if ((int)dl->IdxBuffer.Data[c.IdxOffset + n] + 1 > end)
+                    end = (int)dl->IdxBuffer.Data[c.IdxOffset + n] + 1;
+            const ImVec2 uv = dl->_Data->TexUvWhitePixel;
+            int idleCount = 0;
+            for (int i = 0; i < end; ++i)
+            {
+                const ImDrawVert& v = dl->VtxBuffer.Data[i];
+                if (v.uv.x != uv.x || v.uv.y != uv.y || refCols[i] != gripIdleCol)
+                    continue;
+                idleCount++;
+                if (v.col != refCols[i])
+                    return Fail("idle resize grip recolored by the gradient pass", 43);
+            }
+            if (idleCount == 0)
+                return Fail("idle resize grip absent from command 0", 40);
+            std::printf("Idle grip verts survived the pass unchanged: %d\n", idleCount);
+        }
+
+        // Hovered state: mouse just inside the bottom-right corner, button up.
+        {
+            const ImVec2 corner(testWindow->Pos.x + testWindow->Size.x,
+                                testWindow->Pos.y + testWindow->Size.y);
+            submitStateFrame(corner.x - 3.0f, corner.y - 3.0f, 0);
+            if (countGripColoredVerts(gripHoveredCol) == 0)
+                return Fail("hovered resize grip absent/recolored in command 0", 41);
+            std::printf("Hovered grip verts survived the pass unchanged: %d\n",
+                        countGripColoredVerts(gripHoveredCol));
+        }
+
+        // Active state: same mouse, left button held (resize engaged).
+        {
+            const ImVec2 corner(testWindow->Pos.x + testWindow->Size.x,
+                                testWindow->Pos.y + testWindow->Size.y);
+            submitStateFrame(corner.x - 3.0f, corner.y - 3.0f, 1);
+            if (countGripColoredVerts(gripActiveCol) == 0)
+                return Fail("active resize grip absent/recolored in command 0", 42);
+            std::printf("Active grip verts survived the pass unchanged: %d\n",
+                        countGripColoredVerts(gripActiveCol));
+        }
+
+        // Settle: release the button and move the mouse away so the resize id
+        // clears and the grip returns to its idle color; the disable-pass
+        // byte-exact check below then runs in the same state as the reference.
+        submitStateFrame(0.0f, 0.0f, 0);
     }
     std::printf("Gradient enabled: stops applied to bg range, alpha preserved\n");
 

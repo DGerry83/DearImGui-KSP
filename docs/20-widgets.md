@@ -335,6 +335,11 @@ radius of about 20px or more; `Atom`'s electrons read as round from roughly
 a thickness of radius/4 makes the short hand a square rotating in the center
 at any size.
 
+All of these sizes are consumer-passed pixels: the library's UI scale setting
+does not change them (it covers style metrics and font rendering only — see
+[Getting Started](00-getting-started.md)). Multiply by the configured scale
+yourself if a widget should follow it.
+
 ## CollapsingHeader
 
 ```csharp

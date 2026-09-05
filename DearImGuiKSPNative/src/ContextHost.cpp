@@ -324,8 +324,17 @@ static void ApplyWindowBgGradient()
     ImGuiContext& g = *s_Context;
     const ImGuiStyle& style = g.Style;
     // ISSUES #008: full 32-bit compare (RGB+alpha) so low-alpha chrome with a
-    // white RGB (e.g. stock resize grips) still shades as before.
+    // white RGB still shades as before.
     const ImU32 textCol = ImGui::GetColorU32(ImGuiCol_Text);
+    // C32: the resize grip is a solid-fill PathFillConvex drawn into command 0
+    // during Begin (imgui.cpp:7728-7743) and would otherwise be repainted to
+    // the gradient bottom stop — which at the bottom-right corner is exactly
+    // the window bg color there, making the grip invisible by construction
+    // (same failure class as the Text-colored collapse arrow, ISSUES #008).
+    // Skip all three grip interaction-state colors, cached once per pass.
+    const ImU32 gripCol        = ImGui::GetColorU32(ImGuiCol_ResizeGrip);
+    const ImU32 gripHoveredCol = ImGui::GetColorU32(ImGuiCol_ResizeGripHovered);
+    const ImU32 gripActiveCol  = ImGui::GetColorU32(ImGuiCol_ResizeGripActive);
     for (int i = 0; i < g.Windows.Size; ++i)
     {
         ImGuiWindow* window = g.Windows[i];
@@ -369,11 +378,13 @@ static void ApplyWindowBgGradient()
         // gradient-shaded since C9 as part of the M3-approved look. The one
         // exception is title-bar foreground primitives, which ImGui draws with
         // ImGuiCol_Text: shading them paints them the gradient top stop and the
-        // collapse arrow vanishes against the title bar (ISSUES #008). So the
-        // filter is exclusion, not inclusion: leave Text-colored verts
-        // untouched; the bg/title/scrollbar/border fills keep shading exactly
-        // as approved. An inclusion list of fill colors would have un-shaded
-        // the borders and scrollbars and visibly changed the M3 look.
+        // collapse arrow vanishes against the title bar (ISSUES #008); and the
+        // resize grip, whose three state colors must survive so the grip keeps
+        // its preset color (C32). So the filter is exclusion, not inclusion:
+        // leave Text- and grip-colored verts untouched; the bg/title/scrollbar/
+        // border fills keep shading exactly as approved. An inclusion list of
+        // fill colors would have un-shaded the borders and scrollbars and
+        // visibly changed the M3 look.
         ImDrawList* drawList = window->DrawList;
         if (drawList->CmdBuffer.Size == 0)
             continue;
@@ -400,6 +411,8 @@ static void ApplyWindowBgGradient()
                 continue; // glyph vert — leave text colors untouched
             if (vert.col == textCol)
                 continue; // title-bar foreground primitive (collapse arrow, close cross)
+            if (vert.col == gripCol || vert.col == gripHoveredCol || vert.col == gripActiveCol)
+                continue; // resize grip in one of its three interaction states
             float t = gradientHeight > 0.0f ? (vert.pos.y - gradientP0.y) / gradientHeight : 0.0f;
             t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
             const float invT = 1.0f - t;

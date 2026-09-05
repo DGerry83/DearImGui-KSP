@@ -69,6 +69,22 @@ namespace DearImGuiKSP.Interop
         }
 
         /// <summary>
+        /// Draws a numeric type-in field bound to a float. Wraps cimgui
+        /// <c>igInputFloat</c> with step = step_fast = 0 (no step buttons) and
+        /// format = NULL (the float default "%.3f" applies). A "##" prefix in
+        /// <paramref name="label"/> hides the label text inside the field while
+        /// the label still anchors the widget's ID. Seeding <paramref name="value"/>
+        /// from the backing setting each frame gives two-way sync: typing applies
+        /// edits in place (return true), and an external change (e.g. a slider
+        /// drag) shows up the moment the field is not being edited.
+        /// </summary>
+        /// <returns>True when a typed value was applied this frame; <paramref name="value"/> is updated in place.</returns>
+        internal static bool InputFloat(string label, ref float value)
+        {
+            return ImGuiNative.InputFloat(ToUtf8(label), ref value);
+        }
+
+        /// <summary>
         /// Draws a single-line text input. Wraps cimgui <c>igInputText</c> with null
         /// callback/user_data (no callbacks in MVP) and no EnterReturnsTrue flag —
         /// returns true on every edit, not just Enter.
