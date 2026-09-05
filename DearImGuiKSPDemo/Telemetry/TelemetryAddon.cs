@@ -8,7 +8,7 @@ namespace DearImGuiKSPDemo.Telemetry
     /// KSPAddon from DemoConsumer, with its own ApplicationLauncher toolbar button
     /// (blue placeholder icon), its own consumer registration id, and one window
     /// ("DearImGui-KSP Telemetry") hosting a tab bar with the Graphs panel (C19),
-    /// the Stages panel (C20), and one placeholder tab (Orbit — replaced by C21). Sampling runs
+    /// the Stages panel (C20), and the Orbit panel (C21). Sampling runs
     /// before the visibility check so history stays warm while the window is closed.
     /// All ImGui calls go through the library's public API only; every label/title is
     /// a constant, so the per-frame path allocates no managed memory (the Graphs
@@ -24,12 +24,12 @@ namespace DearImGuiKSPDemo.Telemetry
         private const string StagesTab = "Stages";
         private const string OrbitTab = "Orbit";
         private const string NoVesselText = "No active vessel.";
-        private const string OrbitPlaceholder = "Orbit panel placeholder (C21).";
 
         private readonly TelemetrySampler _sampler = new TelemetrySampler();
         private readonly StageAnalyzer _stageAnalyzer = new StageAnalyzer();
         private readonly GraphPanel _graphPanel;
         private readonly StagePanel _stagePanel;
+        private readonly OrbitPanel _orbitPanel;
 
         private ApplicationLauncherButton _toolbarButton;
         private bool _windowVisible;
@@ -38,6 +38,7 @@ namespace DearImGuiKSPDemo.Telemetry
         {
             _graphPanel = new GraphPanel(_sampler);
             _stagePanel = new StagePanel(_stageAnalyzer);
+            _orbitPanel = new OrbitPanel();
         }
 
         private void Start()
@@ -163,23 +164,18 @@ namespace DearImGuiKSPDemo.Telemetry
                     {
                         if (tab.Visible)
                         {
-                            DrawPlaceholder(OrbitPlaceholder);
+                            if (FlightGlobals.ActiveVessel == null)
+                            {
+                                DearImGuiKSP.DearImGuiKSP.Text(NoVesselText);
+                            }
+                            else
+                            {
+                                _orbitPanel.DrawImGui();
+                            }
                         }
                     }
                 }
             }
-        }
-
-        // Shared no-data degradation for the placeholder tabs: the sampler already
-        // gates on the active vessel, so this covers the no-sample case.
-        private static void DrawPlaceholder(string placeholder)
-        {
-            if (FlightGlobals.ActiveVessel == null)
-            {
-                DearImGuiKSP.DearImGuiKSP.Text(NoVesselText);
-                return;
-            }
-            DearImGuiKSP.DearImGuiKSP.Text(placeholder);
         }
     }
 }
