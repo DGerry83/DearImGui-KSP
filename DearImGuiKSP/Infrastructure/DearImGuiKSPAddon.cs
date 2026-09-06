@@ -46,6 +46,9 @@ namespace DearImGuiKSP.Infrastructure
                 // barrier covers it, and the toolbar button addon toggles it.
                 Composition.Registry.TryRegister(LibraryConfig.ModName, Composition.ControlPanel.OnFrame);
                 Composition.StateMachine.MarkRunning();
+                // C31/ISSUES #015: toolbar button registers once the library is
+                // Running; the launcher persists across scenes, so one-shot.
+                Composition.PanelToolbar.Initialize();
                 Composition.Logger.Info("Native bridge up; frame loop running.");
             }
             else
@@ -65,6 +68,9 @@ namespace DearImGuiKSP.Infrastructure
             // the once-addon (session end). The panel never holds input locks
             // or hooks, so nothing else needs tearing down here.
             Composition.Registry.Unregister(LibraryConfig.ModName);
+            // ISSUES #015: the toolbar button lives for the whole session;
+            // it comes down only here, never on scene change.
+            Composition.PanelToolbar.Shutdown();
         }
 
         private void Update()

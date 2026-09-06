@@ -6,31 +6,32 @@ namespace DearImGuiKSP.Infrastructure
 {
     /// <summary>
     /// ApplicationLauncher toolbar button for the library's own settings window
-    /// (chunk C31). Follows the DearImGuiKSPDemo consumer pattern: an
-    /// EveryScene addon that adds the button when the launcher is ready, in all
-    /// scenes where the launcher exists (AppScenes.ALWAYS), and removes it in
-    /// OnDestroy. When the library self-disabled at startup (failure, or
-    /// enabled = false in settings.cfg) the state machine never reaches
-    /// Running, so no button appears — that falls out naturally from the
-    /// IsRunning gate in Start. The button toggles
-    /// <see cref="LibraryControlPanel.Visible"/> on the shared panel instance.
+    /// (chunk C31; ISSUES #015 rework). Plain class owned by Composition, driven
+    /// by DearImGuiKSPAddon: <see cref="Initialize"/> runs once after the state
+    /// machine reaches Running (so failure / enabled = false → no button), and
+    /// <see cref="Shutdown"/> runs only when the once-addon is destroyed at
+    /// session end. The launcher itself is persistent and carries mod buttons
+    /// across scene loads, so the button is registered once per launcher-ready
+    /// and never removed per scene — the earlier EveryScene addon add/remove
+    /// cycle left the button missing outside the main menu (#015). The button
+    /// toggles <see cref="LibraryControlPanel.Visible"/> on the shared panel
+    /// instance.
     /// Icon: GameData/DearImGuiKSP/Textures/toolbar.png (38x38) via the
     /// GameDatabase when present; a runtime-generated grey placeholder
     /// otherwise, so the feature works before the art lands (no binary
     /// placeholder is committed).
     /// </summary>
-    [KSPAddon(KSPAddon.Startup.EveryScene, false)]
-    public sealed class LibraryPanelToolbar : MonoBehaviour
+    internal sealed class LibraryPanelToolbar
     {
         private ApplicationLauncherButton _toolbarButton;
 
-        private void Start()
+        /// <summary>
+        /// Subscribes to the launcher-ready event and adds the button
+        /// immediately when the launcher is already up. Idempotent.
+        /// </summary>
+        internal void Initialize()
         {
-            if (!Composition.StateMachine.IsRunning)
-            {
-                return; // library dormant or failed: no button, no panel
-            }
-
+            GameEvents.onGUIApplicationLauncherReady.Remove(OnLauncherReady);
             GameEvents.onGUIApplicationLauncherReady.Add(OnLauncherReady);
             if (ApplicationLauncher.Ready)
             {
@@ -38,7 +39,11 @@ namespace DearImGuiKSP.Infrastructure
             }
         }
 
-        private void OnDestroy()
+        /// <summary>
+        /// Unsubscribes and removes the button. Called at session end only —
+        /// never on scene change, since the launcher persists across scenes.
+        /// </summary>
+        internal void Shutdown()
         {
             GameEvents.onGUIApplicationLauncherReady.Remove(OnLauncherReady);
             if (_toolbarButton != null && ApplicationLauncher.Instance != null)

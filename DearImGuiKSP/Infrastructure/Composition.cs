@@ -29,6 +29,7 @@ namespace DearImGuiKSP.Infrastructure
         private static LifecycleStateMachine _stateMachine;
         private static ThemeEngine _themeEngine;
         private static LibraryControlPanel _controlPanel;
+        private static LibraryPanelToolbar _panelToolbar;
         private static TweenEngine _tweenEngine;
         private static GameEventHooks _gameEventHooks;
         private static FailureNotifier _failureNotifier;
@@ -118,11 +119,20 @@ namespace DearImGuiKSP.Infrastructure
         /// <summary>
         /// The library's own control panel singleton (C31): the "DearImGui-KSP
         /// Settings" window. Registered as a regular consumer from
-        /// DearImGuiKSPAddon.Start; the toolbar button addon
+        /// DearImGuiKSPAddon.Start; the toolbar button
         /// (<see cref="LibraryPanelToolbar"/>) toggles its visibility.
         /// </summary>
         internal static LibraryControlPanel ControlPanel =>
             _controlPanel ?? (_controlPanel = new LibraryControlPanel(Settings));
+
+        /// <summary>
+        /// The library settings toolbar button singleton (C31; ISSUES #015
+        /// rework): a plain class initialized once by DearImGuiKSPAddon after
+        /// the state machine reaches Running, and shut down at session end.
+        /// The launcher persists across scenes, so registration is one-shot.
+        /// </summary>
+        internal static LibraryPanelToolbar PanelToolbar =>
+            _panelToolbar ?? (_panelToolbar = new LibraryPanelToolbar());
 
         /// <summary>
         /// The tween engine singleton (C14): advanced once per frame by the

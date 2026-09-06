@@ -4,4 +4,4 @@
 // Hard dependency on DearImGui-KSP (spec §10.5). EqualMajor is REQUIRED consumer guidance:
 // KSP's loader treats any higher major as satisfying a plain KSPAssemblyDependency,
 // which would let a breaking DearImGuiKSP 2.0 silently load under a consumer built for 0.x/1.x.
-[assembly: KSPAssemblyDependencyEqualMajor("DearImGuiKSP", 0, 1)]
+[assembly: KSPAssemblyDependencyEqualMajor("DearImGuiKSP", 1, 0)]

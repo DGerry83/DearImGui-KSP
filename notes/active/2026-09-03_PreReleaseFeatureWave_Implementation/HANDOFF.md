@@ -1,6 +1,6 @@
-# Handoff: Pre-Release Feature Wave Implementation — C25 packaged, M8 gate pending
+# Handoff: Pre-Release Feature Wave Implementation — 1.0.0 gate fixes applied, M8 gate retry pending
 ## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-05 (C25 done: **1.0.0** zips built+verified, D35/D36 recorded; M8 in-game gate pending user)
+## Written: 2026-09-05 (M8-FIX done: #015 toolbar persistence + #016 demo EqualMajor fixed, zips repackaged; M8 in-game gate retry pending user)
 
 ## Where we are
 
@@ -12,10 +12,16 @@ patch = fixes, integers with trailing reset),
 versions, no PDBs, License.txt + Docs + CHANGELOG included), user's MIT
 `LICENSE.txt` committed and wired to ship as `GameData/.../License.txt`,
 cimplot's upstream MIT LICENSE vendored, and **D35 (OpenGL ships
-post-release) recorded** in the design DECISION_LOG. Remaining: the M8
-user gate — install both zips into a clean KSP in the D16 environment.
-Full state lives in this folder — read `PROGRESS_LOG.md` first, then
-`CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
+post-release) recorded** in the design DECISION_LOG. The first M8 gate
+attempt surfaced two release-blocking defects — **#015** (library toolbar
+button main-menu-only; fixed by converting `LibraryPanelToolbar` to a
+Composition-owned plain class with one-shot persistent registration) and
+**#016** (demo refused to load: its `KSPAssemblyDependencyEqualMajor` was
+still `(0, 1)` after the major bump — D17 working as designed; bumped to
+`(1, 0)`). Both fixed (M8-FIX), zips repackaged and re-verified.
+Remaining: the M8 user gate retry — install both fixed zips into a clean
+KSP in the D16 environment. Full state lives in this folder — read
+`PROGRESS_LOG.md` first, then `CHUNK_MAP.md` and `INTEGRATION_CONTRACT.md`.
 
 ### Commits (on `main`; user pushes to remote themselves)
 | Commit | Content |
@@ -57,6 +63,8 @@ Full state lives in this folder — read `PROGRESS_LOG.md` first, then
 | `cf5e3d2` | C36 follow-up: uiScale hint split to two lines; verboseLogging KSP.log inspected — clean |
 | `a8bbdb7` | C25 contract: release packaging + D35 OpenGL record |
 | `92f35ec` | C25: 0.2.0.0 bump, `package_release.bat`, both zips built+verified, CHANGELOG, user's MIT LICENSE.txt wired to ship, cimplot LICENSE vendored, D35 recorded |
+| `2f70586` | C25: **1.0.0** everywhere (D36), zips repackaged + re-verified |
+| `cf187d1` | M8-FIX: #016 demo EqualMajor(0,1)→(1,0); #015 toolbar → persistent one-shot registration; zips repackaged (tests 99/99) |
 
 ### Verified state
 - `dotnet build DearImGui-KSP.slnx` 0/0; `dotnet test` **99/99**; native
@@ -76,19 +84,27 @@ Full state lives in this folder — read `PROGRESS_LOG.md` first, then
   style metrics + font rendering); sliders get explicit type-in boxes
   (C32); resize grip exclusion (C32) made grips visible again.
 
-## What's next — M8 in-game gate (the last gate)
+## What's next — M8 in-game gate, retry (the last gate)
 
-**User gate**: install BOTH zips from `dist\` into a **clean KSP** (no prior
-DearImGuiKSP) in the full D16 environment (Deferred, TUFX, Scatterer,
-Parallax, Cinematic Shaders, Cinematic Recorder, IMGUI mods) → game loads,
-toolbar button + settings panel work, demo windows render, plots auto-fit,
-KSP.log clean. On PASS: mark M8 VERIFIED in PROGRESS_LOG/GATES and the wave
-is complete — release publishing (GitHub release) is the user's own step
-(recommendation delivered: one release carrying both zips, tag +
+**User gate, retry**: install BOTH fixed zips from `dist\` into a **clean
+KSP** (no prior DearImGuiKSP) in the full D16 environment (Deferred, TUFX,
+Scatterer, Parallax, Cinematic Shaders, Cinematic Recorder, IMGUI mods) →
+game loads, **library toolbar icon visible in ALL scenes** (main menu,
+space center, flight, VAB/SPH, tracking station — #015 check), settings
+panel works, **demo loads** (toolbar button + windows render — #016
+check), plots auto-fit, KSP.log clean. On PASS: resolve+archive #015/#016,
+mark M8 VERIFIED in PROGRESS_LOG/GATES and the wave is complete — release
+publishing (GitHub release) is the user's own step (recommendation
+delivered: one release carrying both zips, tag +
 `gh release create --notes-from-tag`; full CI build rejected — proprietary
 KSP reference assemblies + pinned cimgui sibling clone can't live on a
 runner). The user is preparing a stripped-down GL-capable KSP install
 before the next session — that unblocks the D35 OpenGL work post-release.
+If the demo loads but ITS toolbar button shows the same scene-persistence
+failure, apply the #015 rework pattern to `DemoConsumer.cs` /
+`TelemetryAddon.cs`. Process follow-up: the demo's EqualMajor attribute is
+a release stepping-stone — bump it with every future library major
+(packaging-checklist note candidate).
 
 ## How this session runs (conventions the next agent must keep)
 
@@ -110,11 +126,13 @@ before the next session — that unblocks the D35 OpenGL work post-release.
    PowerShell PE-export parser (`DearImGuiKSPNative/build/c*_verify.ps1`).
 5. **Never commit** `notes/plans/2026-09-03_DearImGui-KSP_Fix_Backlog.md`
    (untracked, belongs to another session).
-6. ISSUES tracker is gitignored — `ISSUES/TRACKER.md` Next ID: **#015**
+6. ISSUES tracker is gitignored — `ISSUES/TRACKER.md` Next ID: **#017**
    (resolved+archived: #004 P0 flicker, #005, #007, #008, #009 not-a-defect,
    #014 P1 scrollbar; open: #006 P3 spinner aesthetics, #010 P3 plot
    auto-fit, #011 P3 docking, #012 P3 focus highlight, #013 P3 live font
-   atlas rebuild).
+   atlas rebuild; **In Progress pending M8 gate retry: #015 P1 toolbar scene
+   persistence, #016 P1 demo EqualMajor block** — both fixed in code,
+   resolve only on user confirmation).
 
 ## Active gotchas / open threads
 
@@ -151,8 +169,8 @@ before the next session — that unblocks the D35 OpenGL work post-release.
 
 ## First action on resume
 
-Wait for the user's M8 gate verdict (clean-KSP zip install in the D16
-environment — see "What's next"). On PASS: mark M8 VERIFIED in
-PROGRESS_LOG.md (Milestone Status table) and GATES.md, move this session
-folder to `notes/finished/`, and the wave is complete. Publishing the
-GitHub release is the user's own step.
+Wait for the user's M8 gate retry verdict (fixed-zip install in the D16
+environment — see "What's next"). On PASS: resolve+archive ISSUES #015/#016,
+mark M8 VERIFIED in PROGRESS_LOG.md (Milestone Status table) and GATES.md,
+move this session folder to `notes/finished/`, and the wave is complete.
+Publishing the GitHub release is the user's own step.
