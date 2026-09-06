@@ -10,6 +10,37 @@ even for large UI's that update every frame.
 **Status: 1.0.0 — first public release** (2026-09-05). KSP 1.12.x, Windows
 x64, D3D11. OpenGL support is planned for a post-release update.
 
+## Screenshots
+
+<table>
+  <tr>
+    <!-- Left Column: The Tall Panel -->
+    <td rowspan="3" valign="top">
+    <strong>Demo Panel</strong><br>
+      <img src="media/UIDemo.png" alt="Demo Panel" width="258">
+    </td>
+    <!-- Right Column: Settings Window (Top) -->
+    <td valign="top">
+    <strong>Settings Panel</strong><br>
+      <img src="media/settingsPanel.png" alt="Settings Window" width="400">
+    </td>
+  </tr>
+  <tr>
+    <!-- Right Column: Telemetry Graphs (Middle) -->
+    <td valign="top">
+    <strong>Telemetry Plot Demo</strong><br>
+      <img src="media/telemetryDemo.png" alt="Telemetry Graphs" width="400">
+    </td>
+  </tr>
+  <tr>
+    <!-- Right Column: Collapsed Windows (Bottom) -->
+    <td valign="top">
+    <strong>Collapsed Windows</strong><br>
+      <img src="media/collapsedWindows.png" alt="Collapsed Windows" width="400">
+    </td>
+  </tr>
+</table>
+
 ## Why should I use this?
 
 If the stock Unity IMGUI gives you everything you need at a performance
