@@ -1,8 +1,5 @@
 # Getting Started with DearImGui-KSP
 
-> Audience: a KSP modder writing their first DearImGui-KSP window. No prior
-> Dear ImGui experience is assumed.
-
 DearImGui-KSP is a shared UI library: it renders your mod's windows with
 Dear ImGui (a bundled native library) styled to match KSP, instead of Unity
 IMGUI. Your mod declares its UI once per frame through a C# callback; the
