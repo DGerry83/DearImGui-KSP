@@ -1,6 +1,6 @@
-# Handoff: Pre-Release Feature Wave Implementation — 1.0.0 gate fixes applied, M8 gate retry pending
-## Session: `notes/active/2026-09-03_PreReleaseFeatureWave_Implementation/`
-## Written: 2026-09-05 (M8-FIX done: #015 toolbar persistence + #016 demo EqualMajor fixed, zips repackaged; M8 in-game gate retry pending user)
+# Handoff: Pre-Release Feature Wave Implementation — WAVE COMPLETE (M1–M8 VERIFIED)
+## Session: `notes/finished/2026-09-03_PreReleaseFeatureWave_Implementation/` (moved from active on completion)
+## Written: 2026-09-05, final update 2026-09-05 (M8 gate retry PASS — #015/#016 resolved; README rewritten user-facing per user; 1.0.0 zips final; GitHub publishing is the user's own step)
 
 ## Where we are
 
@@ -84,27 +84,22 @@ KSP in the D16 environment. Full state lives in this folder — read
   style metrics + font rendering); sliders get explicit type-in boxes
   (C32); resize grip exclusion (C32) made grips visible again.
 
-## What's next — M8 in-game gate, retry (the last gate)
+## What's next — nothing in this wave; it is COMPLETE
 
-**User gate, retry**: install BOTH fixed zips from `dist\` into a **clean
-KSP** (no prior DearImGuiKSP) in the full D16 environment (Deferred, TUFX,
-Scatterer, Parallax, Cinematic Shaders, Cinematic Recorder, IMGUI mods) →
-game loads, **library toolbar icon visible in ALL scenes** (main menu,
-space center, flight, VAB/SPH, tracking station — #015 check), settings
-panel works, **demo loads** (toolbar button + windows render — #016
-check), plots auto-fit, KSP.log clean. On PASS: resolve+archive #015/#016,
-mark M8 VERIFIED in PROGRESS_LOG/GATES and the wave is complete — release
-publishing (GitHub release) is the user's own step (recommendation
-delivered: one release carrying both zips, tag +
-`gh release create --notes-from-tag`; full CI build rejected — proprietary
-KSP reference assemblies + pinned cimgui sibling clone can't live on a
-runner). The user is preparing a stripped-down GL-capable KSP install
-before the next session — that unblocks the D35 OpenGL work post-release.
-If the demo loads but ITS toolbar button shows the same scene-persistence
-failure, apply the #015 rework pattern to `DemoConsumer.cs` /
-`TelemetryAddon.cs`. Process follow-up: the demo's EqualMajor attribute is
-a release stepping-stone — bump it with every future library major
-(packaging-checklist note candidate).
+M8 gate retry PASSED 2026-09-05 (user): library toolbar icon in all
+scenes, demo loads with button + windows everywhere, no regressions.
+#015/#016 resolved+archived. README rewritten user-facing (old dev-facing
+version archived in this folder as `README_archive_2026-09-05.md`);
+shipped `GameData/DearImGuiKSP/Readme.txt` rewritten to match. Final
+1.0.0 zips in `dist\`. Remaining is outside this session: **GitHub
+publishing is the user's own step** (recommendation delivered: one release
+carrying both zips, annotated tag + `gh release create --notes-from-tag`;
+full CI build rejected — proprietary KSP reference assemblies + pinned
+cimgui sibling clone can't live on a runner). Post-release threads (all
+recorded): the user's stripped-down GL-capable install unblocks D35
+OpenGL work; deferred backlog below. Process follow-up carried forward:
+the demo's EqualMajor attribute is a release stepping-stone — bump it with
+every future library major.
 
 ## How this session runs (conventions the next agent must keep)
 
@@ -169,8 +164,7 @@ a release stepping-stone — bump it with every future library major
 
 ## First action on resume
 
-Wait for the user's M8 gate retry verdict (fixed-zip install in the D16
-environment — see "What's next"). On PASS: resolve+archive ISSUES #015/#016,
-mark M8 VERIFIED in PROGRESS_LOG.md (Milestone Status table) and GATES.md,
-move this session folder to `notes/finished/`, and the wave is complete.
-Publishing the GitHub release is the user's own step.
+None — this session is complete (2026-09-05). This folder now lives under
+`notes/finished/` and stands as the wave's implementation record. For
+post-release work (D35 OpenGL, the deferred backlog in "Active gotchas /
+open threads"), start a new session per the FlyByWire Router.
