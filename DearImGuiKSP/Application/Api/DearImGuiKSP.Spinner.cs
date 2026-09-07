@@ -199,7 +199,7 @@ namespace DearImGuiKSP
         /// </param>
         public static void Spinner(SpinnerType type, float radius, float thickness, Color? tint = null, string id = null)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }

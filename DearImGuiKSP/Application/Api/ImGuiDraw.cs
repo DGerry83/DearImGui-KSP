@@ -29,7 +29,7 @@ namespace DearImGuiKSP
         /// <returns>The cursor position in screen coordinates; zero when unavailable.</returns>
         public static Vector2 GetCursorScreenPos()
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return Vector2.zero;
             }
@@ -46,7 +46,7 @@ namespace DearImGuiKSP
         /// <param name="thickness">Line thickness in pixels.</param>
         public static void AddLine(Vector2 p1, Vector2 p2, Color32 color, float thickness = 1f)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return;
             }
@@ -67,7 +67,7 @@ namespace DearImGuiKSP
         /// <param name="thickness">Outline thickness in pixels.</param>
         public static void AddCircle(Vector2 center, float radius, Color32 color, float thickness = 1f)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return;
             }
@@ -88,7 +88,7 @@ namespace DearImGuiKSP
         /// <param name="color">Fill color (sRGB bytes).</param>
         public static void AddCircleFilled(Vector2 center, float radius, Color32 color)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return;
             }
@@ -110,7 +110,7 @@ namespace DearImGuiKSP
         /// <param name="thickness">Outline thickness in pixels.</param>
         public static void AddEllipse(Vector2 center, Vector2 radii, Color32 color, float rotation = 0f, float thickness = 1f)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return;
             }
@@ -133,7 +133,7 @@ namespace DearImGuiKSP
         /// <param name="rotation">Rotation in radians.</param>
         public static void AddEllipseFilled(Vector2 center, Vector2 radii, Color32 color, float rotation = 0f)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return;
             }
@@ -155,7 +155,7 @@ namespace DearImGuiKSP
         /// <param name="rounding">Corner radius in pixels.</param>
         public static void AddRectFilled(Vector2 min, Vector2 max, Color32 color, float rounding = 0f)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return;
             }
@@ -183,7 +183,7 @@ namespace DearImGuiKSP
         /// </remarks>
         public static void AddText(Vector2 pos, Color32 color, string text)
         {
-            if (!DearImGuiKSP.IsAvailable || string.IsNullOrEmpty(text))
+            if (!DearImGuiKSP.CanDeclareUi || string.IsNullOrEmpty(text))
             {
                 return;
             }
@@ -205,7 +205,7 @@ namespace DearImGuiKSP
         /// <param name="height">Reserved height in pixels.</param>
         public static void Dummy(float width, float height)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return;
             }

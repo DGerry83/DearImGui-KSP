@@ -38,6 +38,11 @@ namespace DearImGuiKSP.Application
             }
             catch (Exception ex)
             {
+                // G2-05: a consumer that threw mid-scope must not leave ImGui's
+                // window/tab/style stacks unbalanced for the consumers that run
+                // after it this frame. No-op unless a frame is open.
+                DearImGuiKSP.UnwindOpenScopes();
+
                 consumer.ConsecutiveFailureCount++;
                 _log.Error("Consumer '" + consumer.Id + "' threw an exception: " + ex);
 

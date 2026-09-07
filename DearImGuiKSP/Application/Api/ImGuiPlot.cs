@@ -1,4 +1,5 @@
 using System;
+using DearImGuiKSP.Application;
 using DearImGuiKSP.Interop;
 using Vector2 = UnityEngine.Vector2;
 
@@ -44,11 +45,16 @@ namespace DearImGuiKSP
         /// </remarks>
         public static PlotScope Begin(string title, Vector2 size)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return default(PlotScope);
             }
             bool visible = ImPlotNative.BeginPlot(title, new ImVec2(size.x, size.y), ImPlotFlags.None);
+            if (visible)
+            {
+                // The scope ends the plot only when BeginPlot returned true.
+                OpenScopeTracker.Plots++;
+            }
             return new PlotScope(visible);
         }
 
@@ -78,11 +84,16 @@ namespace DearImGuiKSP
         /// </remarks>
         public static SubplotScope BeginSubplots(string title, int rows, int cols, Vector2 size)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return default(SubplotScope);
             }
             bool visible = ImPlotNative.BeginSubplots(title, rows, cols, new ImVec2(size.x, size.y), ImPlotSubplotFlags.None);
+            if (visible)
+            {
+                // The scope ends the grid only when BeginSubplots returned true.
+                OpenScopeTracker.Subplots++;
+            }
             return new SubplotScope(visible);
         }
 
@@ -94,7 +105,7 @@ namespace DearImGuiKSP
         /// </summary>
         public static bool IsPlotHovered()
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return false;
             }
@@ -111,7 +122,7 @@ namespace DearImGuiKSP
         /// </summary>
         public static Vector2 GetPlotMousePos()
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return Vector2.zero;
             }
@@ -131,7 +142,7 @@ namespace DearImGuiKSP
         /// </summary>
         public static void SetupAxesAutoFit()
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return;
             }
@@ -156,7 +167,7 @@ namespace DearImGuiKSP
         /// </remarks>
         public static unsafe void PlotLine(string label, ReadOnlySpan<float> values)
         {
-            if (!DearImGuiKSP.IsAvailable || values.IsEmpty)
+            if (!DearImGuiKSP.CanDeclareUi || values.IsEmpty)
             {
                 return;
             }
@@ -188,7 +199,7 @@ namespace DearImGuiKSP
         /// </remarks>
         public static unsafe void PlotLine(string label, ReadOnlySpan<double> values)
         {
-            if (!DearImGuiKSP.IsAvailable || values.IsEmpty)
+            if (!DearImGuiKSP.CanDeclareUi || values.IsEmpty)
             {
                 return;
             }
@@ -239,9 +250,10 @@ namespace DearImGuiKSP
             /// </summary>
             public void Dispose()
             {
-                if (_begun && DearImGuiKSP.IsAvailable)
+                if (_begun && DearImGuiKSP.CanDeclareUi)
                 {
                     ImPlotNative.EndPlot();
+                    OpenScopeTracker.Plots--;
                 }
             }
         }
@@ -285,9 +297,10 @@ namespace DearImGuiKSP
             /// </summary>
             public void Dispose()
             {
-                if (_begun && DearImGuiKSP.IsAvailable)
+                if (_begun && DearImGuiKSP.CanDeclareUi)
                 {
                     ImPlotNative.EndSubplots();
+                    OpenScopeTracker.Subplots--;
                 }
             }
         }

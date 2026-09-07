@@ -16,7 +16,7 @@ namespace DearImGuiKSP
         /// <returns>True on the frame the button is clicked; false when unavailable.</returns>
         public static bool RadioButton(string label, ref bool value)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
@@ -39,7 +39,7 @@ namespace DearImGuiKSP
         /// <returns>True on the frame the button is clicked; false when unavailable.</returns>
         public static bool RadioButton(string label, ref int value, int option)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }

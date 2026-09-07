@@ -34,7 +34,7 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool Wheel(string label, ref float value, float min, float max)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
@@ -69,7 +69,7 @@ namespace DearImGuiKSP
             string format = null,
             bool invertColors = false)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
@@ -89,7 +89,7 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool Wheel(string label, ref int value, int min, int max)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
@@ -119,7 +119,7 @@ namespace DearImGuiKSP
             string format = null,
             bool invertColors = false)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }

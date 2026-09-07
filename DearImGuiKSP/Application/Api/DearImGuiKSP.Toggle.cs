@@ -54,7 +54,7 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool Toggle(string label, ref bool value)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
@@ -73,7 +73,7 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool Toggle(string label, ref bool value, ToggleFlags flags)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }

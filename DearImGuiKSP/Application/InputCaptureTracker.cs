@@ -45,7 +45,7 @@ namespace DearImGuiKSP.Application
         {
             _enabledIds.Clear();
 
-            foreach (ConsumerRegistry.ConsumerRegistration consumer in _registry.Ordered)
+            foreach (ConsumerRegistry.ConsumerRegistration consumer in _registry.OrderedSnapshot)
             {
                 if (consumer.Enabled)
                 {

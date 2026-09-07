@@ -17,7 +17,7 @@ namespace DearImGuiKSP
         /// <param name="text">The text to draw.</param>
         public static void TextColored(Color32 color, string text)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }

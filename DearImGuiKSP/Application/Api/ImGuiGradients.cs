@@ -69,7 +69,7 @@ namespace DearImGuiKSP
         /// <param name="rounding">Corner radius in pixels (D28 keeps rounding).</param>
         public static void AddRectFilledGradientVertical(Vector2 min, Vector2 max, Color32 top, Color32 bottom, float rounding)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return;
             }
@@ -115,7 +115,7 @@ namespace DearImGuiKSP
         /// <returns>True on the frame the button is clicked; false when unavailable.</returns>
         public static bool GradientButton(string label, Color32 top, Color32 bottom, Vector2 size)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return false;
             }
@@ -201,7 +201,7 @@ namespace DearImGuiKSP
         /// </remarks>
         public static bool GradientButton(string label, Vector2 size, GradientButtonStyle style)
         {
-            if (!DearImGuiKSP.IsAvailable)
+            if (!DearImGuiKSP.CanDeclareUi)
             {
                 return false;
             }

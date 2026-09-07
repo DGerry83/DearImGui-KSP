@@ -109,11 +109,27 @@ namespace DearImGuiKSP.Application
             _captureTracker.Update(_bridge.GetIoSnapshot());
 
             _bridge.BeginUiFrame(width, height, deltaTime);
-            foreach (ConsumerRegistry.ConsumerRegistration consumer in _registry.Ordered)
+            DearImGuiKSP.FrameOpen = true;
+            OpenScopeTracker.Reset();
+            try
             {
-                _faultBarrier.Invoke(consumer);
+                // Snapshot iteration (S1): a consumer calling Register/Unregister
+                // from inside its callback mutates the live registry list; the
+                // snapshot keeps this loop from throwing mid-frame.
+                ConsumerRegistry.ConsumerRegistration[] snapshot = _registry.OrderedSnapshot;
+                for (int i = 0; i < snapshot.Length; i++)
+                {
+                    _faultBarrier.Invoke(snapshot[i]);
+                }
             }
-            _bridge.EndUiFrame();
+            finally
+            {
+                // EndUiFrame releases the native frame lock (SRWLOCK held from
+                // BeginFrame); skipping it on any exit path deadlocks the game
+                // and render threads (S1).
+                DearImGuiKSP.FrameOpen = false;
+                _bridge.EndUiFrame();
+            }
 
             _frameWatch.Stop();
             _frameMsSum += _frameWatch.Elapsed.TotalMilliseconds;

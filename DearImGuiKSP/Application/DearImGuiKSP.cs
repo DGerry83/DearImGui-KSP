@@ -13,7 +13,9 @@ namespace DearImGuiKSP
     /// Consumers check <see cref="IsAvailable"/> before registering their UI, then
     /// declare their ImGui widgets each frame inside a registered callback.
     /// Widget calls are only valid inside a callback invoked by the frame loop;
-    /// calling them from anywhere else is a no-op/undefined, never an exception.
+    /// calling them from anywhere else is a safe no-op, never an exception (the
+    /// frame-open gate, C01: widget guards require an open frame, not just an
+    /// available session).
     /// </summary>
     public static partial class DearImGuiKSP
     {
@@ -25,6 +27,35 @@ namespace DearImGuiKSP
         internal static ConsumerRegistry Registry { get; set; }
         internal static LifecycleStateMachine Lifecycle { get; set; }
         internal static Application.ThemeEngine ThemeEngine { get; set; }
+
+        /// <summary>
+        /// True only between the frame loop's BeginUiFrame and EndUiFrame — the
+        /// window in which widget calls reach native code (S2). Set by
+        /// FrameLoopOrchestrator; cleared in a finally so it can never latch.
+        /// </summary>
+        internal static bool FrameOpen { get; set; }
+
+        /// <summary>
+        /// Widget-call gate: the session is available AND a frame is currently open.
+        /// Widget calls outside a registered callback are safe no-ops as documented;
+        /// <see cref="IsAvailable"/> alone is a session predicate and must not be
+        /// used to gate native widget calls.
+        /// </summary>
+        internal static bool CanDeclareUi => IsAvailable && FrameOpen;
+
+        /// <summary>
+        /// Closes every facade scope the faulting consumer left open (G2-05), in
+        /// innermost-first order. Called by FaultBarrier from inside the frame;
+        /// no-op when no frame is open. Tests inject a recorder closer.
+        /// </summary>
+        internal static void UnwindOpenScopes(Application.IScopeCloser closer = null)
+        {
+            if (!FrameOpen)
+            {
+                return;
+            }
+            Application.OpenScopeTracker.Unwind(closer ?? Application.NativeScopeCloser.Instance);
+        }
 
         /// <summary>
         /// Name of the currently applied theme preset: "ksp" (the default) or
@@ -55,7 +86,9 @@ namespace DearImGuiKSP
         /// <remarks>
         /// A duplicate <paramref name="id"/> is logged as a warning and ignored.
         /// Calling while <see cref="IsAvailable"/> is false logs a warning and is
-        /// ignored — availability races never throw.
+        /// ignored — availability races never throw. Registration from inside a
+        /// consumer callback is allowed and applies from the next frame (the frame
+        /// loop iterates a snapshot, S1).
         /// </remarks>
         public static void Register(string id, Action callback)
         {
@@ -86,6 +119,8 @@ namespace DearImGuiKSP
         /// <remarks>
         /// Calling while <see cref="IsAvailable"/> is false logs a warning, is
         /// ignored, and returns false — availability races never throw.
+        /// Unregistering from inside a consumer callback is allowed and applies
+        /// from the next frame (the frame loop iterates a snapshot, S1).
         /// </remarks>
         public static bool Unregister(string id)
         {
@@ -114,12 +149,15 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool BeginWindow(string name, bool autoResize = false)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
-            return ImGuiInternal.BeginWindow(
+            // End is required even when Begin returns false, so count unconditionally.
+            bool visible = ImGuiInternal.BeginWindow(
                 name, autoResize ? ImGuiWindowFlags.AlwaysAutoResize : ImGuiWindowFlags.None);
+            OpenScopeTracker.Windows++;
+            return visible;
         }
 
         /// <summary>
@@ -128,11 +166,12 @@ namespace DearImGuiKSP
         /// </summary>
         public static void EndWindow()
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
             ImGuiInternal.EndWindow();
+            OpenScopeTracker.Windows--;
         }
 
         /// <summary>
@@ -141,7 +180,7 @@ namespace DearImGuiKSP
         /// </summary>
         public static void Text(string text)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
@@ -154,7 +193,7 @@ namespace DearImGuiKSP
         /// <returns>True on the frame the button is clicked; false when unavailable.</returns>
         public static bool Button(string label)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
@@ -170,7 +209,7 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool SliderFloat(string label, ref float value, float min, float max)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
@@ -198,7 +237,7 @@ namespace DearImGuiKSP
         /// </remarks>
         public static bool InputText(string label, ref string value, int capacity = 256)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
@@ -234,11 +273,14 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool BeginScrollRegion(string id, float height)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
-            return ImGuiInternal.BeginScrollRegion(id, height);
+            // End is required even when Begin returns false, so count unconditionally.
+            bool visible = ImGuiInternal.BeginScrollRegion(id, height);
+            OpenScopeTracker.ScrollRegions++;
+            return visible;
         }
 
         /// <summary>
@@ -248,11 +290,12 @@ namespace DearImGuiKSP
         /// </summary>
         public static void EndScrollRegion()
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
             ImGuiInternal.EndScrollRegion();
+            OpenScopeTracker.ScrollRegions--;
         }
 
         /// <summary>
@@ -262,7 +305,7 @@ namespace DearImGuiKSP
         /// <returns>The scroll offset; 0 when unavailable.</returns>
         public static float GetScrollY()
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return 0f;
             }
@@ -275,7 +318,7 @@ namespace DearImGuiKSP
         /// </summary>
         public static void SetCursorY(float y)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
@@ -290,7 +333,7 @@ namespace DearImGuiKSP
         /// </summary>
         public static void Dummy(float width, float height)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
@@ -305,7 +348,7 @@ namespace DearImGuiKSP
         /// </summary>
         public static void Dummy(Vector2 size)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
@@ -326,11 +369,14 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool BeginScrollRegion(string id, Vector2 size)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
-            return ImGuiInternal.BeginScrollRegion(id, new ImVec2(size.x, size.y));
+            // End is required even when Begin returns false, so count unconditionally.
+            bool visible = ImGuiInternal.BeginScrollRegion(id, new ImVec2(size.x, size.y));
+            OpenScopeTracker.ScrollRegions++;
+            return visible;
         }
 
         /// <summary>
@@ -344,11 +390,17 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool BeginTabBar(string id)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
-            return ImGuiInternal.BeginTabBar(id);
+            // End is paired only with a Begin that returned true (imgui.h:965).
+            bool open = ImGuiInternal.BeginTabBar(id);
+            if (open)
+            {
+                OpenScopeTracker.TabBars++;
+            }
+            return open;
         }
 
         /// <summary>
@@ -357,11 +409,12 @@ namespace DearImGuiKSP
         /// </summary>
         public static void EndTabBar()
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
             ImGuiInternal.EndTabBar();
+            OpenScopeTracker.TabBars--;
         }
 
         /// <summary>
@@ -377,11 +430,17 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool BeginTabItem(string label)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
-            return ImGuiInternal.BeginTabItem(label);
+            // End is paired only with a Begin that returned true (imgui.h:967).
+            bool selected = ImGuiInternal.BeginTabItem(label);
+            if (selected)
+            {
+                OpenScopeTracker.TabItems++;
+            }
+            return selected;
         }
 
         /// <summary>
@@ -390,11 +449,12 @@ namespace DearImGuiKSP
         /// </summary>
         public static void EndTabItem()
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
             ImGuiInternal.EndTabItem();
+            OpenScopeTracker.TabItems--;
         }
 
         /// <summary>
@@ -408,11 +468,12 @@ namespace DearImGuiKSP
         /// <param name="value">The color; components are linear RGBA in 0–1 range.</param>
         public static void PushStyleColor(ImGuiCol col, Color value)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
             ImGuiInternal.PushStyleColor((int)col, ToImVec4(value));
+            OpenScopeTracker.StyleColors++;
         }
 
         /// <summary>
@@ -426,11 +487,12 @@ namespace DearImGuiKSP
         /// <param name="value">The color; components are sRGB bytes in 0–255 range.</param>
         public static void PushStyleColor(ImGuiCol col, Color32 value)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
             ImGuiInternal.PushStyleColor((int)col, ToImVec4(value));
+            OpenScopeTracker.StyleColors++;
         }
 
         /// <summary>
@@ -441,11 +503,12 @@ namespace DearImGuiKSP
         /// <param name="count">Number of entries to pop; must not exceed the pushed depth.</param>
         public static void PopStyleColor(int count = 1)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
             ImGuiInternal.PopStyleColor(count);
+            OpenScopeTracker.StyleColors -= count;
         }
 
         /// <summary>
@@ -457,11 +520,12 @@ namespace DearImGuiKSP
         /// <param name="value">The new value for the slot.</param>
         public static void PushStyleVar(ImGuiStyleVar var, float value)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
             ImGuiInternal.PushStyleVar((int)var, value);
+            OpenScopeTracker.StyleVars++;
         }
 
         /// <summary>
@@ -473,11 +537,12 @@ namespace DearImGuiKSP
         /// <param name="value">The new value for the slot.</param>
         public static void PushStyleVar(ImGuiStyleVar var, Vector2 value)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
             ImGuiInternal.PushStyleVar((int)var, new ImVec2(value.x, value.y));
+            OpenScopeTracker.StyleVars++;
         }
 
         /// <summary>
@@ -488,11 +553,12 @@ namespace DearImGuiKSP
         /// <param name="count">Number of entries to pop; must not exceed the pushed depth.</param>
         public static void PopStyleVar(int count = 1)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return;
             }
             ImGuiInternal.PopStyleVar(count);
+            OpenScopeTracker.StyleVars -= count;
         }
 
         // Pure struct math, no heap allocation (hot-path checklist Check 2).

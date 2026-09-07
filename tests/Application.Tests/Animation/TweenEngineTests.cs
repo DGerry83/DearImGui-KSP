@@ -15,6 +15,7 @@ namespace Application.Tests
     /// cancellation safety (self-cancel and sibling cancel), zero/negative duration,
     /// and the public Tween facade guards (availability races never throw).
     /// </summary>
+    [Collection("FacadeStatics")]
     public class TweenEngineTests
     {
         private static readonly Ease[] AllEases =

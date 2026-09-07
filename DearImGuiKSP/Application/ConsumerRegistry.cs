@@ -28,9 +28,30 @@ namespace DearImGuiKSP.Application
 
         private readonly List<ConsumerRegistration> _ordered = new List<ConsumerRegistration>();
         private readonly Dictionary<string, ConsumerRegistration> _byId = new Dictionary<string, ConsumerRegistration>();
+        private ConsumerRegistration[] _snapshot = new ConsumerRegistration[0];
+        private bool _snapshotDirty = true;
 
-        /// <summary>Registrations in registration order; the frame loop iterates this.</summary>
+        /// <summary>Registrations in registration order; live list — do not iterate during the frame loop.</summary>
         internal List<ConsumerRegistration> Ordered => _ordered;
+
+        /// <summary>
+        /// Stable iteration snapshot for the frame loop (S1): refreshed lazily after any
+        /// register/unregister, so a consumer that registers or unregisters from inside
+        /// its own callback cannot invalidate the enumeration. Mid-frame changes apply
+        /// from the next frame. Steady-state frames allocate nothing.
+        /// </summary>
+        internal ConsumerRegistration[] OrderedSnapshot
+        {
+            get
+            {
+                if (_snapshotDirty)
+                {
+                    _snapshot = _ordered.ToArray();
+                    _snapshotDirty = false;
+                }
+                return _snapshot;
+            }
+        }
 
         /// <summary>Registers a consumer. Returns false when the id is already taken.</summary>
         internal bool TryRegister(string id, Action callback)
@@ -42,6 +63,7 @@ namespace DearImGuiKSP.Application
             var registration = new ConsumerRegistration(id, callback);
             _ordered.Add(registration);
             _byId.Add(id, registration);
+            _snapshotDirty = true;
             return true;
         }
 
@@ -55,6 +77,7 @@ namespace DearImGuiKSP.Application
             }
             _byId.Remove(id);
             _ordered.Remove(registration);
+            _snapshotDirty = true;
             return true;
         }
     }

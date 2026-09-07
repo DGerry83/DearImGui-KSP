@@ -82,7 +82,7 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool Knob(string label, ref float value, float min, float max)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
@@ -114,7 +114,7 @@ namespace DearImGuiKSP
             int steps,
             string format = null)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
@@ -134,7 +134,7 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool Knob(string label, ref int value, int min, int max)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
@@ -164,7 +164,7 @@ namespace DearImGuiKSP
             int steps,
             string format = null)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }

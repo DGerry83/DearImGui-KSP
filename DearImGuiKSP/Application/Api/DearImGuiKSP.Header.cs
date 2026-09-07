@@ -34,7 +34,7 @@ namespace DearImGuiKSP
         /// </remarks>
         public static bool CollapsingHeader(string label, bool defaultOpen = false)
         {
-            if (!IsAvailable)
+            if (!CanDeclareUi)
             {
                 return false;
             }
