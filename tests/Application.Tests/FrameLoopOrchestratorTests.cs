@@ -15,7 +15,11 @@ namespace Application.Tests
     /// Also covers the C14 tween tick: it runs inside RunFrame before consumer
     /// callbacks, so a tween does not advance across frames where the lifecycle
     /// is not Running (suspension is a pause, spec §5.4).
+    /// Shares the "FacadeStatics" collection: RunFrame writes the facade's
+    /// FrameOpen static (C01), so this class must not run in parallel with the
+    /// other classes that depend on facade statics (C07 found the race).
     /// </summary>
+    [Collection("FacadeStatics")]
     public class FrameLoopOrchestratorTests
     {
         /// <summary>Records ClampWindowsToViewport calls with their arguments.</summary>

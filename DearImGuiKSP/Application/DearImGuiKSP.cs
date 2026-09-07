@@ -464,11 +464,16 @@ namespace DearImGuiKSP
         /// with exactly one Pop before the end of the frame — use
         /// <c>ImGuiEx.StyleColor</c> (C3) for exception-safe pairing.
         /// </summary>
-        /// <param name="col">The style slot to override (see <see cref="DearImGuiKSP.ImGuiCol"/>).</param>
+        /// <param name="col">The style slot to override (see <see cref="DearImGuiKSP.ImGuiCol"/>).
+        /// Out-of-range values (including <see cref="ImGuiCol.COUNT"/>) are a logged no-op.</param>
         /// <param name="value">The color; components are linear RGBA in 0–1 range.</param>
         public static void PushStyleColor(ImGuiCol col, Color value)
         {
             if (!CanDeclareUi)
+            {
+                return;
+            }
+            if (!IsValidStyleColor(col))
             {
                 return;
             }
@@ -483,11 +488,16 @@ namespace DearImGuiKSP
         /// normalized to 0–1 floats; every Push must be paired with exactly one Pop
         /// before the end of the frame.
         /// </summary>
-        /// <param name="col">The style slot to override (see <see cref="DearImGuiKSP.ImGuiCol"/>).</param>
+        /// <param name="col">The style slot to override (see <see cref="DearImGuiKSP.ImGuiCol"/>).
+        /// Out-of-range values (including <see cref="ImGuiCol.COUNT"/>) are a logged no-op.</param>
         /// <param name="value">The color; components are sRGB bytes in 0–255 range.</param>
         public static void PushStyleColor(ImGuiCol col, Color32 value)
         {
             if (!CanDeclareUi)
+            {
+                return;
+            }
+            if (!IsValidStyleColor(col))
             {
                 return;
             }
@@ -516,11 +526,16 @@ namespace DearImGuiKSP
         /// style stack. Only valid inside a registered callback. Every Push must be
         /// paired with exactly one Pop before the end of the frame.
         /// </summary>
-        /// <param name="var">The style slot to override (see <see cref="DearImGuiKSP.ImGuiStyleVar"/>).</param>
+        /// <param name="var">The style slot to override (see <see cref="DearImGuiKSP.ImGuiStyleVar"/>).
+        /// Out-of-range values (including <see cref="ImGuiStyleVar.COUNT"/>) are a logged no-op.</param>
         /// <param name="value">The new value for the slot.</param>
         public static void PushStyleVar(ImGuiStyleVar var, float value)
         {
             if (!CanDeclareUi)
+            {
+                return;
+            }
+            if (!IsValidStyleVar(var))
             {
                 return;
             }
@@ -533,11 +548,16 @@ namespace DearImGuiKSP
         /// Only valid inside a registered callback. Every Push must be paired with
         /// exactly one Pop before the end of the frame.
         /// </summary>
-        /// <param name="var">The style slot to override (see <see cref="DearImGuiKSP.ImGuiStyleVar"/>).</param>
+        /// <param name="var">The style slot to override (see <see cref="DearImGuiKSP.ImGuiStyleVar"/>).
+        /// Out-of-range values (including <see cref="ImGuiStyleVar.COUNT"/>) are a logged no-op.</param>
         /// <param name="value">The new value for the slot.</param>
         public static void PushStyleVar(ImGuiStyleVar var, Vector2 value)
         {
             if (!CanDeclareUi)
+            {
+                return;
+            }
+            if (!IsValidStyleVar(var))
             {
                 return;
             }
@@ -572,6 +592,32 @@ namespace DearImGuiKSP
         {
             const float scale = 1f / 255f;
             return new ImVec4(color.r * scale, color.g * scale, color.b * scale, color.a * scale);
+        }
+
+        // G3-23: the release native build compiles out ImGui's idx bounds assert
+        // (/DNDEBUG), so an out-of-range slot (including the public COUNT sentinel)
+        // would index past style.Colors natively. Reject before crossing the ABI;
+        // the log string allocates only on the rejection path.
+        private static bool IsValidStyleColor(ImGuiCol col)
+        {
+            if (col >= 0 && col < ImGuiCol.COUNT)
+            {
+                return true;
+            }
+            Log?.Warn("PushStyleColor ignored: ImGuiCol " + (int)col + " is out of range.");
+            return false;
+        }
+
+        // G3-24: same as IsValidStyleColor — GetStyleVarInfo(idx) is unchecked in
+        // release, so COUNT and out-of-range vars are rejected before the ABI.
+        private static bool IsValidStyleVar(ImGuiStyleVar var)
+        {
+            if (var >= 0 && var < ImGuiStyleVar.COUNT)
+            {
+                return true;
+            }
+            Log?.Warn("PushStyleVar ignored: ImGuiStyleVar " + (int)var + " is out of range.");
+            return false;
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace DearImGuiKSP.Interop
@@ -11,9 +12,11 @@ namespace DearImGuiKSP.Interop
     /// </summary>
     internal static class ImGuiInternal
     {
-        // Reused across InputText calls; grown when a larger capacity is requested.
-        // ImGui calls are single-threaded (frame loop), so sharing one buffer is safe.
-        private static byte[] _inputTextBuffer;
+        // One buffer per distinct capacity, created on first use and reused (G2-10):
+        // the native call's buf_size is the buffer's length, so a shared grown buffer
+        // would let editing exceed a smaller caller capacity. ImGui calls are
+        // single-threaded (frame loop), so sharing buffers is safe.
+        private static readonly Dictionary<int, byte[]> _inputTextBuffers = new Dictionary<int, byte[]>();
 
         // Reused across InputTextWithHiddenLabel calls; holds "##" + label + NUL.
         // Same single-threaded rationale as _inputTextBuffer.
@@ -60,12 +63,13 @@ namespace DearImGuiKSP.Interop
         /// <summary>
         /// Draws a float slider. Wraps cimgui <c>igSliderFloat</c> with format = NULL;
         /// ImGui's SliderScalar substitutes the float default "%.3f"
-        /// (imgui_widgets.cpp:2744).
+        /// (imgui_widgets.cpp:2744). AlwaysClamp is set (G3-30): Ctrl+Click type-in
+        /// entry is clamped to [min, max], matching the drag behavior.
         /// </summary>
         /// <returns>True when the value changed this frame; <paramref name="value"/> is updated in place.</returns>
         internal static bool SliderFloat(string label, ref float value, float min, float max)
         {
-            return ImGuiNative.SliderFloat(ToUtf8(label), ref value, min, max, ImGuiSliderFlags.None);
+            return ImGuiNative.SliderFloat(ToUtf8(label), ref value, min, max, ImGuiSliderFlags.AlwaysClamp);
         }
 
         /// <summary>
@@ -102,8 +106,9 @@ namespace DearImGuiKSP.Interop
         /// </summary>
         /// <param name="capacity">
         /// Buffer size in bytes, including the NUL terminator; edited text is
-        /// truncated to capacity-1 UTF-8 bytes. The buffer is reused across calls
-        /// and grown when a larger capacity is requested.
+        /// truncated to capacity-1 UTF-8 bytes. Buffers are reused across calls,
+        /// one per distinct capacity, so the native buf_size always equals the
+        /// requested capacity.
         /// </param>
         /// <returns>True when the user edited the text this frame; <paramref name="value"/> is updated in place.</returns>
         internal static bool InputText(string label, ref string value, int capacity = 256)
@@ -128,32 +133,64 @@ namespace DearImGuiKSP.Interop
         }
 
         // Shared body of the InputText wrappers: stages the value into the
-        // reused _inputTextBuffer and round-trips edits back.
+        // per-capacity reused buffer and round-trips edits back.
         private static bool InputTextCore(byte[] labelUtf8, ref string value, int capacity)
         {
-            if (capacity < 2)
-            {
-                capacity = 2;
-            }
-            if (_inputTextBuffer == null || _inputTextBuffer.Length < capacity)
-            {
-                _inputTextBuffer = new byte[capacity];
-            }
+            byte[] buffer = GetInputTextBuffer(capacity < 2 ? 2 : capacity);
+            StageInputTextSeed(value, buffer);
 
-            byte[] current = Encoding.UTF8.GetBytes(value ?? string.Empty);
-            int copyLength = current.Length < _inputTextBuffer.Length - 1 ? current.Length : _inputTextBuffer.Length - 1;
-            for (int i = 0; i < copyLength; i++)
-            {
-                _inputTextBuffer[i] = current[i];
-            }
-            _inputTextBuffer[copyLength] = 0;
-
-            bool edited = ImGuiNative.InputText(labelUtf8, _inputTextBuffer, ImGuiInputTextFlags.None);
+            bool edited = ImGuiNative.InputText(labelUtf8, buffer, ImGuiInputTextFlags.None);
             if (edited)
             {
-                value = FromUtf8(_inputTextBuffer);
+                value = FromUtf8(buffer);
             }
             return edited;
+        }
+
+        // One reused buffer per distinct capacity (G2-10): the native call's
+        // buf_size is the buffer's length, so a shared grown buffer would let
+        // editing exceed a smaller caller capacity. Created once per capacity;
+        // steady-state frames allocate nothing. Internal for tests.
+        internal static byte[] GetInputTextBuffer(int capacity)
+        {
+            byte[] buffer;
+            if (!_inputTextBuffers.TryGetValue(capacity, out buffer))
+            {
+                buffer = new byte[capacity];
+                _inputTextBuffers.Add(capacity, buffer);
+            }
+            return buffer;
+        }
+
+        // Seeds the value into the buffer, clamped to length-1 bytes (G2-10) on a
+        // UTF-8 codepoint boundary (G3-18): a raw-byte clamp can split a multi-byte
+        // sequence, and the persisted U+FFFD replacement char would corrupt the
+        // value. NUL-terminates at the clamped length. Internal for tests.
+        internal static void StageInputTextSeed(string value, byte[] buffer)
+        {
+            byte[] current = Encoding.UTF8.GetBytes(value ?? string.Empty);
+            int copyLength = current.Length < buffer.Length - 1 ? current.Length : buffer.Length - 1;
+            copyLength = ClampToUtf8Boundary(current, copyLength);
+            for (int i = 0; i < copyLength; i++)
+            {
+                buffer[i] = current[i];
+            }
+            buffer[copyLength] = 0;
+        }
+
+        // Backs length off to the start of a split multi-byte UTF-8 sequence
+        // (continuation bytes are 0x80-0xBF), so truncation never persists U+FFFD.
+        private static int ClampToUtf8Boundary(byte[] bytes, int length)
+        {
+            if (length >= bytes.Length)
+            {
+                return length; // no truncation — nothing to split
+            }
+            while (length > 0 && (bytes[length] & 0xC0) == 0x80)
+            {
+                length--;
+            }
+            return length;
         }
 
         // "##" + label + NUL in the reused _hiddenLabelBuffer, grown on demand.

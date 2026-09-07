@@ -65,8 +65,8 @@ namespace DearImGuiKSP
         /// so <see cref="Vector2"/> zero is the conventional argument.
         /// </summary>
         /// <param name="title">Grid title; also its ImPlot identity (double-hash to hide).</param>
-        /// <param name="rows">Number of grid rows (1 or more).</param>
-        /// <param name="cols">Number of grid columns (1 or more).</param>
+        /// <param name="rows">Number of grid rows (1 or more; a non-positive value is a logged no-op).</param>
+        /// <param name="cols">Number of grid columns (1 or more; a non-positive value is a logged no-op).</param>
         /// <param name="size">Total grid size in pixels.</param>
         /// <returns>
         /// A scope whose <see cref="SubplotScope.Visible"/> mirrors the ImPlot
@@ -86,6 +86,14 @@ namespace DearImGuiKSP
         {
             if (!DearImGuiKSP.CanDeclareUi)
             {
+                return default(SubplotScope);
+            }
+            // ImPlot's only rows/cols guard is an assert compiled out of the
+            // release native build (/DNDEBUG, G3-22) — validate before the ABI.
+            if (rows < 1 || cols < 1)
+            {
+                DearImGuiKSP.Log?.Warn("BeginSubplots ignored: rows and cols must be >= 1 (got "
+                    + rows + "x" + cols + ").");
                 return default(SubplotScope);
             }
             bool visible = ImPlotNative.BeginSubplots(title, rows, cols, new ImVec2(size.x, size.y), ImPlotSubplotFlags.None);
