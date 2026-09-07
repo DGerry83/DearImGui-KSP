@@ -344,11 +344,20 @@ static void draw_label(const wheel_state& state, const ImGuiStyle& style, const 
         ImFormatString(val_buf, IM_ARRAYSIZE(val_buf), format, value);
     }
 
+    // DearImGui-KSP local patch (C08b): ImGui ID semantics — a "##"/"###"
+    // suffix is identity, not display. RenderText below hides everything after
+    // "##" (hide_text_after_hash defaults true), which used to eat the value
+    // readout along with the suffix; strip the suffix from the label portion
+    // up front so the display keeps "<label>: <value>". Identity is untouched
+    // (wheel_state still hashes the full label).
+    const char* label_display_end = ImGui::FindRenderedTextEnd(label);
+    const int label_display_len = (int)(label_display_end - label);
+
     char text_buf[256];
     if (is_test_value) {
-        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s (TEST): %s", label, val_buf);
+        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%.*s (TEST): %s", label_display_len, label, val_buf);
     } else {
-        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s: %s", label, val_buf);
+        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%.*s: %s", label_display_len, label, val_buf);
     }
 
     ImGui::RenderText(ImVec2(state.wheel_bb.Max.x + style.ItemInnerSpacing.x, state.wheel_bb.Min.y + (state.height - state.label_size.y) * 0.5f), text_buf);

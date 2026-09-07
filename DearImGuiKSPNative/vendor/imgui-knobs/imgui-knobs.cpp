@@ -184,13 +184,21 @@ namespace ImGuiKnobs {
 
             // Draw title
             if (!(flags & ImGuiKnobFlags_NoTitle)) {
-                auto title_size = ImGui::CalcTextSize(label, NULL, false, width);
+                // DearImGui-KSP local patch (C08b): ImGui ID semantics — a
+                // "##"/"###" suffix is identity, not display. Upstream measured
+                // (hide-after-## off) and rendered the RAW label, so the suffix
+                // showed as visible text and the title was mis-centred. Measure
+                // and draw only the visible portion; identity is untouched
+                // (PushID(label) above and GetID(_label) in knob() still hash
+                // the full string).
+                const char* label_display_end = ImGui::FindRenderedTextEnd(label);
+                auto title_size = ImGui::CalcTextSize(label, label_display_end, false, width);
 
                 // Center title
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
                                      (width - title_size[0]) * 0.5f);
 
-                ImGui::Text("%s", label);
+                ImGui::TextUnformatted(label, label_display_end);
             }
 
             // Draw knob

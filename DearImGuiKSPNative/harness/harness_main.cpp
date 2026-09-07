@@ -7,6 +7,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "ContextHost.h"
@@ -14,6 +15,9 @@
 #include "imgui_internal.h" // ImGuiContext::Windows / ImGuiWindow (gradient read-back)
 #include "cimgui.h"         // igBegin/igEnd (window submission)
 #include "implot.h"
+#include "shims/imgui_knobs_shim.h"   // C08b ##-suffix display check
+#include "shims/imgui_wheels_shim.h"
+#include "shims/imgui_toggle_shim.h"
 
 static int Fail(const char* step, int code)
 {
@@ -707,6 +711,42 @@ int main()
             return Fail("diagnostics buffer not cleared by drain", 84);
     }
     std::printf("Error callback: recoverable error reached the diagnostics buffer, tooltip off\n");
+
+    // ---- C08b: ##/### ID-suffix stripping in the vendored shim widgets ----
+    //
+    // The shim widgets take ONE label used for both identity and display;
+    // ImGui semantics make the "##" suffix identity-only. Rendered-text
+    // capture (g.LogBuffer) proves the displayed text carries no suffix:
+    // knob title (imgui-knobs local patch), wheel "label: value" line
+    // (imgui-wheels local patch — the suffix must not eat the value readout),
+    // and toggle label (upstream already hides via RenderText's default).
+    // Identity paths (PushID/GetID on the full label) are untouched by both
+    // patches.
+    {
+        float knobV = 0.5f, wheelV = 0.5f;
+        int toggleV = 1;
+        DearImGuiKSPNative_BeginFrame(1920.0f, 1080.0f, 1.0f / 60.0f);
+        igBegin("c08b-shim-labels", nullptr, 0);
+        ImGui::LogToBuffer();
+        DK_Knob("Throttle##input", &knobV, 0.0f, 1.0f, 0.0f, "%.2f", 1, 0.0f, 0, 10);
+        DK_WheelFloat("Flow##wheel", &wheelV, 0.0f, 1.0f, 40.0f, 80.0f, 0, "%.2f", 1.0f, 0);
+        DK_Toggle("Master Arm##tog", &toggleV);
+        // ImGui::End auto-finishes window-scoped logging and LogFinish CLEARS
+        // LogBuffer (imgui.cpp:16337) — copy the capture before igEnd.
+        std::string text = ImGui::GetCurrentContext()->LogBuffer.c_str();
+        igEnd();
+        ImGui::LogFinish(); // no-op if End already finished it; safe either way
+        DearImGuiKSPNative_EndFrame();
+        if (text.find("Throttle") == std::string::npos ||
+            text.find("Flow") == std::string::npos ||
+            text.find("Master Arm") == std::string::npos)
+            return Fail("shim widget visible label missing from rendered text", 90);
+        if (text.find("##") != std::string::npos)
+            return Fail("shim widget rendered a raw ## ID suffix", 91);
+        if (text.find("0.50") == std::string::npos)
+            return Fail("wheel/knob value readout missing (## hiding ate it)", 92);
+    }
+    std::printf("C08b shim labels: ## suffix stripped from display, value readouts kept\n");
 
     DearImGuiKSPNative_ContextShutdown();
 

@@ -58,3 +58,15 @@ Theme: widget-level correctness for the label/ID family. All guards follow the n
 
 ### Rollback
 - `git checkout -- DearImGuiKSP/Application/Api/DearImGuiKSP.Radio.cs DearImGuiKSP/Application/Api/ImGuiGradients.cs DearImGuiKSP/Application/Api/DearImGuiKSP.Spinner.cs DearImGuiKSP/Application/Api/ImGuiDraw.cs DearImGuiKSP/Application/DearImGuiKSP.cs DearImGuiKSP/Application/FaultBarrier.cs DearImGuiKSP/Interop/ImGuiInternal.cs DearImGuiKSP/Interop/ImSpinnerNative.cs`; delete `tests/Application.Tests/WidgetGuardTests.cs`.
+
+## Addendum C08b (2026-09-07) — shim-widget `##` suffix display (Gate B follow-up)
+
+Gate B found a consumer Knob labeled `"Throttle##input"` rendering the raw suffix. Audit of all shim-rendered labels (single label param feeds BOTH identity and display, so the strip must be native-side — managed-side stripping would change the ImGui ID):
+
+- **Knob** (`vendor/imgui-knobs/imgui-knobs.cpp`, knob_with_drag title): upstream measured with hide-after-`##` OFF and rendered via `ImGui::Text("%s", label)` — raw suffix visible + mis-centred. Patched: measure/render only up to `ImGui::FindRenderedTextEnd(label)` (`TextUnformatted(label, label_display_end)`). Identity untouched (`PushID(label)`, `GetID(_label)` unchanged).
+- **Wheel** (`vendor/imgui-wheels/imgui-wheels.cpp`, draw_label): subtler — `RenderText`'s default `hide_text_after_hash=true` already hid the suffix, but it also ATE the `"label: value"` readout (everything after `##` is dropped, including the formatted value). Patched: the label portion is bounded by `FindRenderedTextEnd` before `ImFormatString` (`%.*s: %s`), so display is `"Flow: 0.50"`. Identity untouched (`wheel_state` still `GetID(label)` on the full label).
+- **Toggle** (`vendor/imgui_toggle/imgui_toggle_renderer.cpp`, DrawLabel): already correct upstream — `CalcTextSize(..., hide=true)` + `RenderText` default hiding. No change.
+
+No export/signature changes (no handshake bump needed); no managed changes (facades forward the full label by design — nothing new testable managed-side; `dotnet test` stays at the 178 baseline). `vendor/PIN_RECORD.md` rows for imgui-knobs/imgui-wheels updated to record the local patches (per its own never-patch-without-recording rule). New harness section (C08b) in `harness/harness_main.cpp`: rendered-text capture via `ImGui::LogToBuffer` + `g.LogBuffer` proves the displayed text of all three widgets contains the visible label, contains NO `##`, and keeps the `0.50` value readout. (Gotcha encoded in a comment: `ImGui::End` auto-finishes window-scoped logging and `LogFinish` CLEARS `LogBuffer`, imgui.cpp:16337 — copy before `igEnd`.)
+
+Verification: `cmd //c build.bat` green (debug DLL → GameData), `build_harness.bat` + `build\harness.exe` → **HARNESS PASS** incl. the C08b section (the `##`-absence assertion would fail pre-patch). Managed: `dotnet build` 0 errors, `dotnet test` 178/178 green.
