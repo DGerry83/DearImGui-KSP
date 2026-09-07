@@ -61,7 +61,7 @@ All three sit at the same seam: the boundary between consumer-mod code and the s
 | G2-12 | Demo: virtualized-list RowHeight hard-coded 22px desyncs under uiScale/fontScale; docs recommend same constant | `BenchmarkUI.cs:21` | VALID; doc tie-in in Group 5 |
 | G2-13 | Demo: radar ellipse rotated by argPe while markers drawn periapsis-aligned — worse: argPe (degrees) fed to Math.Cos | `OrbitPanel.cs:191` | VALID |
 | G2-14 | Demo: inclination readout multiplies already-degrees `Orbit.inclination` by 180/pi | `OrbitPanel.cs:356` | VALID (KSP source: Orbit.cs:619/2618) |
-| G2-15 | Demo: stage dV rocket equation omits upper-stage propellant from both masses | `StageAnalyzer.cs:187` | VALID; only labeled "approx" |
+| G2-15 | Demo: stage dV rocket equation omits upper-stage propellant from both masses | `StageAnalyzer.cs:187` | VALID; only labeled "approx". **CLOSED BY FEATURE REMOVAL 2026-09-07 (user decision):** after two fix rounds (C12, C12b) the demo's demo-scale dV math still diverged from stock's crossfeed-simulated values; the Stages/dV tab, StagePanel and StageAnalyzer were removed from the demo rather than chase parity (the findings live on in the KSP Knowledge Library `NOTES\stock-deltav-simulation.md`). G3-34/G3-35/G3-40 closed by the same removal |
 | G2-16 | Release zip ships settings.cfg — extracting an upgrade silently resets player settings | `package_release.bat:49` | VALID |
 
 ### UNCERTAIN — need in-game verification before scheduling

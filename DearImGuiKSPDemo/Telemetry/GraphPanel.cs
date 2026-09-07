@@ -25,7 +25,7 @@ namespace DearImGuiKSPDemo.Telemetry
     /// throttle graph cell: a Wiper-variant Knob bound two-way to
     /// <c>FlightInputHandler.state.mainThrottle</c> (seed a local each frame, write
     /// back only when the knob reports a change). Its percent readout is a cached
-    /// string reformatted only when the value moves (StagePanel preformatting
+    /// string reformatted only when the value moves (preformat-on-change
     /// pattern); the steady-state unhovered, undragged path still allocates nothing.
     /// Empty cells (first frames, before the ring has samples) draw empty axes:
     /// <see cref="DearImGuiKSP.ImGuiPlot.PlotLine(string, System.ReadOnlySpan{float})"/>
@@ -67,7 +67,7 @@ namespace DearImGuiKSPDemo.Telemetry
         private readonly TelemetrySampler _sampler;
 
         // Throttle readout cache: formatted only when the value changes (drag or
-        // keyboard input), never per frame (StagePanel preformatting pattern).
+        // keyboard input), never per frame (preformat-on-change pattern).
         private float _lastReadoutThrottle = -1f;
         private string _throttleReadout = "Throttle: 0%";
 

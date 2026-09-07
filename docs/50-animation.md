@@ -125,7 +125,7 @@ private void SetKnobValue(float value)
 }
 ```
 
-The knob is `Knob(string label, ref float value, float min, float max)` — the simple overload; see the [Widget catalog](20-widgets.md) for the full variant/flags surface. The demo's `ThemeDemo` class (`DearImGuiKSPDemo/ThemeDemo.cs`) shows the ping-pong version of this (play flips the target between the min and max each press, plus a parallel `Color` tween driving a `TextColored` header), and `DearImGuiKSPDemo/Telemetry/StagePanel.cs` uses color tweens for propellant-meter transitions. Spinners and toggles, by contrast, animate themselves natively — no tweens needed for those; see the [Widget catalog](20-widgets.md).
+The knob is `Knob(string label, ref float value, float min, float max)` — the simple overload; see the [Widget catalog](20-widgets.md) for the full variant/flags surface. The demo's `ThemeDemo` class (`DearImGuiKSPDemo/ThemeDemo.cs`) shows the ping-pong version of this (play flips the target between the min and max each press, plus a parallel `Color` tween driving a `TextColored` header). Spinners and toggles, by contrast, animate themselves natively — no tweens needed for those; see the [Widget catalog](20-widgets.md).
 
 ## Next
 

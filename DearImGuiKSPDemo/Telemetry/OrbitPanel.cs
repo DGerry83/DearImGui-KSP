@@ -45,7 +45,7 @@ namespace DearImGuiKSPDemo.Telemetry
         private const string UnavailableText = "Orbit data unavailable.";
 
         // Canvas geometry (pixels). Square canvas, fixed size keeps the
-        // per-frame path free of content-region queries (StagePanel precedent).
+        // per-frame path free of content-region queries.
         private const float CanvasWidth = 360f;
         private const float CanvasHeight = 360f;
         private const float CanvasMargin = 16f;
@@ -74,8 +74,7 @@ namespace DearImGuiKSPDemo.Telemetry
 
         // Radar colors: KSP palette accents where one fits (vessel green, Ap/Pe
         // oranges, text); target/node need hues the palette does not carry, so
-        // those two are panel-local constants (StagePanel does the same for its
-        // meter fills).
+        // those two are panel-local constants.
         private static readonly Color32 RadarBackground = new Color32(30, 32, 38, 110);
         private static readonly Color32 BodyFill = new Color32(96, 100, 110, 255);
         private static readonly Color32 OrbitLine = DearImGuiKSP.Application.KspPalette.TextLightGrey;
@@ -147,8 +146,7 @@ namespace DearImGuiKSPDemo.Telemetry
         private static void DrawRadar(Vessel vessel, Orbit orbit)
         {
             // Cursor anchor: capture BEFORE Dummy — Dummy advances the cursor,
-            // so the canvas origin is the pre-Dummy cursor position (the
-            // StagePanel meter pattern).
+            // so the canvas origin is the pre-Dummy cursor position.
             Vector2 origin = DearImGuiKSP.ImGuiDraw.GetCursorScreenPos();
             DearImGuiKSP.ImGuiDraw.Dummy(CanvasWidth, CanvasHeight);
 

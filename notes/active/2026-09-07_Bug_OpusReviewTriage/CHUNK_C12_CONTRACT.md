@@ -60,3 +60,15 @@ Theme: correctness of the demo telemetry windows' flight math. The demo teaches 
 **Expected accuracy:** agrees closely with stock on serial staging with default crossfeed (the gate-vessel shape) — stage 11 now draws from the full pool instead of reading 0, lower stages see the depleted pool (stage-4-style "0 m/s, fuel already burned above" now reproduces). Documented residual divergences (class remarks): explicit flow priorities / disabled crossfeed / fuel lines (pooled instead); parallel staging (engines in different stages firing together) burns sequentially here, shifting per-stage attribution while the total stays close; jet velocity/atm-density Isp multipliers and thrust curves not modeled.
 
 **Verification:** `dotnet build DearImGui-KSP.slnx` green (0 errors, 0 warnings). §5.9: per-frame `Tick` path still flag + float compare; all new pooling structures are inside the 1 Hz recompute (may allocate freely); no new statics. Re-gate in-game: same checks as Gate C above, with the sidebar comparison now expected close on serial-staged vessels.
+
+## Addendum 2 — feature removed (2026-09-07, user decision)
+
+Gate B2 re-test showed the C12b pooled model still diverging from stock on a
+parallel-staged vessel (attribution lumped into the top stage; total ~10% low).
+Exact parity requires stock's live crossfeed/flow-priority simulation
+(KSP Knowledge Library `NOTES\stock-deltav-simulation.md`), which is out of
+scope for demo showcase code. Per user decision the Stages/dV tab was removed
+from the demo instead of iterating further: `StagePanel.cs` and
+`StageAnalyzer.cs` deleted; `TelemetryAddon` hosts Graphs + Orbit only;
+docs/50's StagePanel example reference removed. G2-15, G3-34, G3-35, G3-40
+(and the C12b follow-up) close via the removal — recorded in TRIAGE_SWEEP.md.
