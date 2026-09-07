@@ -8,11 +8,11 @@ namespace DearImGuiKSPDemo.Telemetry
     /// Orbit tab content (spec §5.5, §6.2; chunk C21, M6): a 2D orbital radar
     /// plus an orbital elements readout, redrawn per frame from the active
     /// vessel's live <c>Orbit</c> object. The radar is a top-down projection
-    /// onto the vessel's orbital plane: the reference body sits at the ellipse
-    /// focus, the ellipse comes straight from semiMajorAxis/eccentricity/
-    /// argumentOfPeriapsis, and markers cover the live vessel position, Ap/Pe,
-    /// the current target (same SOI only), and any maneuver nodes
-    /// (display-only). All ImGui calls go through the library's public API
+    /// onto the vessel's orbital plane in the periapsis-aligned frame (angle 0 = the
+    /// periapsis direction): the reference body sits at the ellipse focus, the
+    /// ellipse comes straight from semiMajorAxis/eccentricity, and markers
+    /// cover the live vessel position, Ap/Pe, the current target (same SOI
+    /// only), and any maneuver nodes (display-only). All ImGui calls go through the library's public API
     /// only (<see cref="DearImGuiKSP.ImGuiDraw"/>, <see cref="DearImGuiKSP.DearImGuiKSP"/>).
     /// </summary>
     /// <remarks>
@@ -62,7 +62,15 @@ namespace DearImGuiKSPDemo.Telemetry
 
         // Readout reformat cadence (seconds of game UT).
         private const double ReadoutInterval = 1.0;
-        private const double RadToDeg = 180.0 / Math.PI;
+
+        // KSP unit trap: Orbit.inclination and Orbit.argumentOfPeriapsis are
+        // DEGREES (KSPSOURCE/Orbit.cs:619 and :708 — both built via
+        // * 180/PI, and stock itself converts back via * PI/180 at :2618/:2627)
+        // while trueAnomaly and the getMeanAnomalyAtUT/solveEccentricAnomaly/
+        // GetTrueAnomaly chain are RADIANS (:712, Atan2 with no conversion).
+        // The radar's math frame is radians; element-angle offsets convert
+        // through this constant.
+        private const double DegToRad = Math.PI / 180.0;
 
         // Radar colors: KSP palette accents where one fits (vessel green, Ap/Pe
         // oranges, text); target/node need hues the palette does not carry, so
@@ -159,21 +167,18 @@ namespace DearImGuiKSPDemo.Telemetry
             }
             float scale = (float)(fitRadius / apR); // pixels per meter
 
+            // argumentOfPeriapsis (DEGREES — see DegToRad above) is kept here
+            // only for the target/node marker offsets below. The ellipse
+            // itself is drawn in the SAME periapsis-aligned frame as every
+            // marker (angle 0 = the periapsis direction, +x on screen), so it
+            // takes no rotation: its center simply sits c BEHIND the focus
+            // along the periapsis line (screen -x).
             double argPe = orbit.argumentOfPeriapsis;
-            double cosPe = Math.Cos(argPe);
-            double sinPe = Math.Sin(argPe);
             double c = a * e; // focus-to-center distance, along the periapsis line
             double b = a * Math.Sqrt(Math.Max(0.0, 1.0 - e * e));
 
-            // Ellipse: AddEllipse's positive rotation runs toward +y (screen
-            // down), opposite the math frame's y-up angle — negate argPe. The
-            // ellipse center sits c BEHIND the focus, along the periapsis
-            // direction (screen: (cosPe, -sinPe)).
-            Vector2 center = new Vector2(
-                (float)(focus.x - c * scale * cosPe),
-                (float)(focus.y + c * scale * sinPe));
+            Vector2 center = new Vector2((float)(focus.x - c * scale), focus.y);
             Vector2 radii = new Vector2((float)(a * scale), (float)(b * scale));
-            float rotation = -(float)argPe;
 
             DearImGuiKSP.ImGuiDraw.AddRectFilled(
                 origin,
@@ -188,7 +193,7 @@ namespace DearImGuiKSPDemo.Telemetry
             }
             DearImGuiKSP.ImGuiDraw.AddCircleFilled(focus, (float)bodyRadiusPx, BodyFill);
 
-            DearImGuiKSP.ImGuiDraw.AddEllipse(center, radii, OrbitLine, rotation, OrbitLineThickness);
+            DearImGuiKSP.ImGuiDraw.AddEllipse(center, radii, OrbitLine, 0f, OrbitLineThickness);
 
             // Vessel: live true-anomaly field -> polar -> radar coords (axes =
             // vessel periapsis direction + in-plane perpendicular, so the
@@ -233,7 +238,8 @@ namespace DearImGuiKSPDemo.Telemetry
             double tNu = targetOrbit.trueAnomaly;
             double tR = RadiusAtTrueAnomaly(
                 targetOrbit.semiMajorAxis, targetOrbit.eccentricity, tNu);
-            double tAngle = tNu + targetOrbit.argumentOfPeriapsis - argPe;
+            // tNu is radians; the argPe difference is degrees — convert.
+            double tAngle = tNu + (targetOrbit.argumentOfPeriapsis - argPe) * DegToRad;
             DearImGuiKSP.ImGuiDraw.AddCircle(
                 Project(focus, scale, tR, tAngle), TargetMarkerRadius, TargetMarker);
         }
@@ -271,7 +277,8 @@ namespace DearImGuiKSPDemo.Telemetry
                     continue;
                 }
                 double nR = RadiusAtTrueAnomaly(patch.semiMajorAxis, patch.eccentricity, nodeNu);
-                double nAngle = nodeNu + patch.argumentOfPeriapsis - argPe;
+                // nodeNu is radians; the argPe difference is degrees — convert.
+                double nAngle = nodeNu + (patch.argumentOfPeriapsis - argPe) * DegToRad;
                 Vector2 pos = Project(focus, scale, nR, nAngle);
                 DearImGuiKSP.ImGuiDraw.AddCircle(pos, NodeMarkerRadius, NodeMarker);
                 DearImGuiKSP.ImGuiDraw.AddLine(
@@ -352,8 +359,9 @@ namespace DearImGuiKSPDemo.Telemetry
             _periodLine = elliptical && !double.IsNaN(orbit.period) && orbit.period > 0.0
                 ? "Period: " + KSPUtil.PrintTime(orbit.period, 4, false)
                 : "Period: n/a";
-            _inclLine = string.Format(
-                "Inclination: {0:0.##} deg", orbit.inclination * RadToDeg);
+            // Orbit.inclination is ALREADY degrees (KSPSOURCE/Orbit.cs:619) —
+            // no conversion.
+            _inclLine = string.Format("Inclination: {0:0.##} deg", orbit.inclination);
             _eccLine = string.Format("Eccentricity: {0:0.###}", orbit.eccentricity);
             _smaLine = string.Format("SMA: {0:0.0} km", orbit.semiMajorAxis / 1000.0);
         }

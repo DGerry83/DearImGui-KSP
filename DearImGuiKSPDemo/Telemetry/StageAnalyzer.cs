@@ -17,19 +17,31 @@ namespace DearImGuiKSPDemo.Telemetry
     /// panel renders is labeled "approx"):
     /// parts are grouped by <c>Part.inverseStage</c>; stages are evaluated from
     /// <c>Vessel.currentStage</c> downward. A stage's engines are the
-    /// <c>ModuleEngines</c> modules on parts in that stage; stage Isp is the
-    /// thrust-weighted vacuum Isp (<c>atmosphereCurve.Evaluate(0)</c>); usable
-    /// propellant is the stage's own tanks' content limited by the scarcest
+    /// <c>ModuleEngines</c> modules on parts in that stage — on multi-mode
+    /// parts (RAPIER-class) only the SELECTED mode's module counts
+    /// (<c>MultiModeEngine.runningPrimary</c> picks between the two
+    /// <c>ModuleEnginesFX</c> modules by <c>engineID</c>), matching what
+    /// stock's engine display shows; counting both modes would double the
+    /// stage's thrust and mass flow. Stage Isp is the thrust-weighted vacuum
+    /// Isp (<c>atmosphereCurve.Evaluate(0)</c>); usable propellant is the
+    /// stage's own tanks' UNLOCKED content (<c>PartResource.flowState</c> —
+    /// locked tanks are dead mass, not propellant) limited by the scarcest
     /// engine propellant per its normalized ratio (IntakeAir-style
-    /// <c>ignoreForIsp</c> propellants excluded); Δv is the rocket equation over
-    /// the remaining dry mass (all parts at or above the stage); burn time is
+    /// <c>ignoreForIsp</c> propellants excluded); Δv is the rocket equation
+    /// with wet mass = remaining dry mass (all parts at or above the stage)
+    /// plus ALL resource mass still aboard (propellant of lower stages that
+    /// burn later, locked contents, non-propellant resources — mass is mass)
+    /// and dry mass = wet minus this stage's usable propellant; burn time is
     /// usable propellant over full-throttle mass flow (Σ thrust / Isp·g0).
     /// Crossfeed, thrust curves, and atmospheric Isp are NOT modeled.
     /// All mass figures are tonnes (KSP's native unit for part mass and
     /// resource density), thrust in kN, so kN/(m/s) = t/s makes the burn-time
     /// ratio consistent. Stages without engines or propellant yield zeros —
     /// never exceptions. Recompute may allocate freely (1 Hz cadence); the
-    /// per-frame path is a dirty-flag check and a time comparison.
+    /// per-frame path is a dirty-flag check and a time comparison. The cadence
+    /// timer runs on <c>Time.unscaledTime</c> so physics warp (scaled
+    /// <c>Time.time</c> runs up to 4x fast) does not multiply the recompute
+    /// rate.
     /// </remarks>
     internal sealed class StageAnalyzer
     {
@@ -125,16 +137,18 @@ namespace DearImGuiKSPDemo.Telemetry
         /// Recompute gate, called once per frame from the addon's Update.
         /// Dirty-flag check plus a 1 s timer — the only per-frame cost is a
         /// float comparison; part iteration happens exclusively inside
-        /// <see cref="Recompute"/>.
+        /// <see cref="Recompute"/>. The timer uses unscaled time: scaled
+        /// <c>Time.time</c> accelerates with physics warp, which would
+        /// multiply the recompute rate by the warp factor.
         /// </summary>
         public void Tick()
         {
-            if (!_dirty && Time.time - _lastRecomputeTime < RecomputeIntervalSeconds)
+            if (!_dirty && Time.unscaledTime - _lastRecomputeTime < RecomputeIntervalSeconds)
             {
                 return;
             }
             _dirty = false;
-            _lastRecomputeTime = Time.time;
+            _lastRecomputeTime = Time.unscaledTime;
             Recompute();
         }
 
@@ -159,9 +173,12 @@ namespace DearImGuiKSPDemo.Telemetry
             }
 
             // Per-stage accumulation buckets (index = inverseStage). Dry mass
-            // becomes "remaining mass" via a low-to-high suffix sum below.
+            // becomes "remaining mass" via a low-to-high suffix sum below;
+            // resourceMassBucket does the same for the mass of everything the
+            // tanks hold (locked tanks included — their contents are aboard).
             int[] partCount = new int[currentStage + 1];
             double[] dryMassBucket = new double[currentStage + 1];
+            double[] resourceMassBucket = new double[currentStage + 1];
             List<ModuleEngines>[] enginesByStage = new List<ModuleEngines>[currentStage + 1];
             Dictionary<string, double>[] availableByStage = new Dictionary<string, double>[currentStage + 1];
             Dictionary<string, double>[] capacityByStage = new Dictionary<string, double>[currentStage + 1];
@@ -186,12 +203,40 @@ namespace DearImGuiKSPDemo.Telemetry
                 partCount[stage]++;
                 dryMassBucket[stage] += part.mass;
 
+                // Multi-mode parts (RAPIER class) carry one ModuleEnginesFX
+                // per mode, but only the SELECTED mode burns:
+                // MultiModeEngine.runningPrimary picks between the two modes
+                // (KSPSOURCE/MultiModeEngine.cs:42; SetPrimary/SetSecondary at
+                // :394/:508 enable exactly one module), matched by engineID
+                // (KSPSOURCE/ModuleEnginesFX.cs:26). The selection persists
+                // while shutdown, so this matches the stock engine display
+                // whether or not the engine is running. Summing both modes
+                // would double the stage's thrust and mass flow.
+                MultiModeEngine multiMode = null;
+                for (int m = 0; m < part.Modules.Count; m++)
+                {
+                    multiMode = part.Modules[m] as MultiModeEngine;
+                    if (multiMode != null)
+                    {
+                        break;
+                    }
+                }
+                string activeEngineId = multiMode != null
+                    ? (multiMode.runningPrimary ? multiMode.primaryEngineID : multiMode.secondaryEngineID)
+                    : null;
+
                 for (int m = 0; m < part.Modules.Count; m++)
                 {
                     ModuleEngines engine = part.Modules[m] as ModuleEngines;
                     if (engine == null)
                     {
                         continue;
+                    }
+                    ModuleEnginesFX modeEngine = engine as ModuleEnginesFX;
+                    if (activeEngineId != null && modeEngine != null &&
+                        modeEngine.engineID != activeEngineId)
+                    {
+                        continue; // the non-selected mode of a multi-mode part
                     }
                     List<ModuleEngines> list = enginesByStage[stage];
                     if (list == null)
@@ -212,6 +257,16 @@ namespace DearImGuiKSPDemo.Telemetry
                     PartResource resource = resources[r];
                     if (resource == null)
                     {
+                        continue;
+                    }
+                    // Mass is mass: everything the tank holds rides the rocket
+                    // equation's mass terms, locked or not.
+                    resourceMassBucket[stage] += resource.amount * DensityOf(resource.resourceName);
+                    if (!resource.flowState)
+                    {
+                        // Locked tank (KSPSOURCE/PartResource.cs:36): dead
+                        // mass only — not usable propellant, and not capacity
+                        // for the propellant-fraction readout.
                         continue;
                     }
                     Dictionary<string, double> available = availableByStage[stage];
@@ -245,11 +300,19 @@ namespace DearImGuiKSPDemo.Telemetry
 
             // Remaining dry mass per stage: everything at or above the stage
             // (lower/equal inverseStage) is still onboard while it burns.
+            // carriedResourceMass is the resource mass of stages strictly
+            // BELOW s — they burn later, so their contents (propellant,
+            // locked tanks, anything) are still aboard during s's burn and
+            // belong in both rocket-equation mass terms.
             double[] remainingDryMass = new double[currentStage + 1];
+            double[] carriedResourceMass = new double[currentStage + 1];
             double running = 0.0;
+            double runningResources = 0.0;
             for (int s = 0; s <= currentStage; s++)
             {
+                carriedResourceMass[s] = runningResources;
                 running += dryMassBucket[s];
+                runningResources += resourceMassBucket[s];
                 remainingDryMass[s] = running;
             }
 
@@ -266,7 +329,8 @@ namespace DearImGuiKSPDemo.Telemetry
                     enginesByStage[s],
                     availableByStage[s],
                     capacityByStage[s],
-                    remainingDryMass[s]);
+                    remainingDryMass[s] + carriedResourceMass[s],
+                    resourceMassBucket[s]);
                 totalDeltaV += info.ApproxDeltaV;
                 stages.Add(info);
             }
@@ -274,12 +338,18 @@ namespace DearImGuiKSPDemo.Telemetry
             return new Snapshot(stages.ToArray(), totalDeltaV, true);
         }
 
+        // dryMass: part dry mass at or below this stage plus the resource
+        // mass of lower stages (everything that stays aboard through the
+        // burn). stageResourceMass: this stage's own tank contents — the
+        // unburnable remainder of it (locked tanks, propellant beyond the
+        // limiting mix share) is still dead mass after the burn.
         private static StageInfo ComputeStage(
             int stage,
             List<ModuleEngines> engines,
             Dictionary<string, double> available,
             Dictionary<string, double> capacity,
-            double dryMass)
+            double dryMass,
+            double stageResourceMass)
         {
             StageInfo info = new StageInfo();
             info.Stage = stage;
@@ -430,10 +500,18 @@ namespace DearImGuiKSPDemo.Telemetry
                 : 0.0;
             info.BurnTimeSeconds = massFlow > 0.0 ? usableMass / massFlow : 0.0;
 
-            if (usableMass > 0.0 && dryMass > 0.0 && info.ApproxIsp > 0.0)
+            if (usableMass > 0.0 && info.ApproxIsp > 0.0)
             {
-                double wetMass = dryMass + usableMass;
-                info.ApproxDeltaV = info.ApproxIsp * StandardGravity * Math.Log(wetMass / dryMass);
+                // Rocket equation over what is actually aboard: dryMass already
+                // carries the lower stages' resource mass; add back this
+                // stage's own resources the engines cannot burn — they remain
+                // after the burn and belong on both sides of the ratio.
+                double massAfterBurn = dryMass + Math.Max(0.0, stageResourceMass - usableMass);
+                if (massAfterBurn > 0.0)
+                {
+                    double massBeforeBurn = massAfterBurn + usableMass;
+                    info.ApproxDeltaV = info.ApproxIsp * StandardGravity * Math.Log(massBeforeBurn / massAfterBurn);
+                }
             }
 
             return info;
