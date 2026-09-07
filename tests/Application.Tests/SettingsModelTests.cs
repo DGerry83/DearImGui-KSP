@@ -88,11 +88,13 @@ namespace Application.Tests
             model.ClampWindowsToViewport = model.ClampWindowsToViewport;
 
             Assert.Equal(0, changeCount);
+            Assert.False(model.PersistPending);
+            model.SaveNow();
             Assert.Empty(store.Saves);
         }
 
         [Fact]
-        public void Set_NewValue_FiresChangedOnce_AndPersistsOnce()
+        public void Set_NewValue_FiresChangedOnce_AndMarksPersistPending()
         {
             SettingsModel model = CreateModel(out FakeSettingsStore store);
             int changeCount = 0;
@@ -100,7 +102,14 @@ namespace Application.Tests
 
             model.UiScale = 1.5f;
 
+            // The disk write is debounced (C06): the setter flags the model;
+            // the frame loop flushes once the changes settle.
             Assert.Equal(1, changeCount);
+            Assert.True(model.PersistPending);
+            Assert.Empty(store.Saves);
+
+            model.SaveNow();
+            Assert.False(model.PersistPending);
             Assert.Single(store.Saves);
         }
 
@@ -110,6 +119,7 @@ namespace Application.Tests
             SettingsModel model = CreateModel(out FakeSettingsStore store);
             model.ClampWindowsToViewport = false;
             model.VerboseLogging = true;
+            model.SaveNow();
 
             LibrarySettings saved = store.Saves[store.Saves.Count - 1];
             Assert.False(saved.ClampWindowsToViewport);
@@ -139,6 +149,7 @@ namespace Application.Tests
 
             Assert.False(model.ClampWindowsToViewport);
             Assert.Equal(1, changeCount);
+            model.SaveNow();
             Assert.Single(store.Saves);
             Assert.False(store.Saves[0].ClampWindowsToViewport);
         }
@@ -177,6 +188,7 @@ namespace Application.Tests
 
             Assert.Equal("MyCustomFont", model.Font);
             Assert.Equal(1, changeCount);
+            model.SaveNow();
             Assert.Single(store.Saves);
             Assert.Equal("MyCustomFont", store.Saves[0].Font);
         }
@@ -244,6 +256,7 @@ namespace Application.Tests
             Assert.Null(model.ConsumeRejectedTheme());
 
             model.Theme = "ksp";
+            model.SaveNow();
             Assert.Single(store.Saves);
             Assert.Equal("ksp", store.Saves[0].Theme);
         }

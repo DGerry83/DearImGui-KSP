@@ -6,6 +6,10 @@ namespace DearImGuiKSP.Application
 {
     /// <summary>
     /// Holds the in-memory settings snapshot and raises change notifications (spec §9).
+    /// Persistence is debounced (C06, G3-08/09/14/16/19): a setter only flags the
+    /// model dirty, and the frame loop flushes via <see cref="PersistIfSettled"/>
+    /// once changes settle — one disk write per edit burst, outside the held
+    /// native frame lock, instead of a full rewrite per changed frame.
     /// Application-layer; no UnityEngine/KSP types.
     /// </summary>
     internal sealed class SettingsModel
@@ -36,6 +40,16 @@ namespace DearImGuiKSP.Application
         /// <summary>Raised after any setting actually changes.</summary>
         internal event Action Changed;
 
+        /// <summary>
+        /// True when a change is waiting for the debounced persist. Observability
+        /// for the frame loop's flush and for tests.
+        /// </summary>
+        internal bool PersistPending { get; private set; }
+
+        // Seconds since the most recent change while a persist is pending;
+        // any new change rearms the debounce (MarkPersistPending).
+        private float _persistQuietSeconds;
+
         internal float UiScale
         {
             get => _uiScale;
@@ -43,7 +57,7 @@ namespace DearImGuiKSP.Application
             {
                 if (Set(ref _uiScale, ClampScale(value)))
                 {
-                    Persist();
+                    MarkPersistPending();
                 }
             }
         }
@@ -55,7 +69,7 @@ namespace DearImGuiKSP.Application
             {
                 if (Set(ref _fontScale, ClampScale(value)))
                 {
-                    Persist();
+                    MarkPersistPending();
                 }
             }
         }
@@ -67,7 +81,7 @@ namespace DearImGuiKSP.Application
             {
                 if (Set(ref _theme, NormalizeTheme(value)))
                 {
-                    Persist();
+                    MarkPersistPending();
                 }
             }
         }
@@ -79,7 +93,7 @@ namespace DearImGuiKSP.Application
             {
                 if (Set(ref _font, NormalizeFont(value)))
                 {
-                    Persist();
+                    MarkPersistPending();
                 }
             }
         }
@@ -91,7 +105,7 @@ namespace DearImGuiKSP.Application
             {
                 if (Set(ref _verboseLogging, value))
                 {
-                    Persist();
+                    MarkPersistPending();
                 }
             }
         }
@@ -103,7 +117,7 @@ namespace DearImGuiKSP.Application
             {
                 if (Set(ref _enabled, value))
                 {
-                    Persist();
+                    MarkPersistPending();
                 }
             }
         }
@@ -115,7 +129,7 @@ namespace DearImGuiKSP.Application
             {
                 if (Set(ref _clampWindowsToViewport, value))
                 {
-                    Persist();
+                    MarkPersistPending();
                 }
             }
         }
@@ -132,9 +146,54 @@ namespace DearImGuiKSP.Application
             return true;
         }
 
-        private void Persist()
+        private void MarkPersistPending()
         {
-            _store.Save(new LibrarySettings
+            PersistPending = true;
+            _persistQuietSeconds = 0f;
+        }
+
+        /// <summary>
+        /// Advances the save debounce; the frame loop calls this once per frame
+        /// at frame start, before BeginUiFrame — the disk write therefore never
+        /// happens inside the held native frame lock. The write lands only after
+        /// changes settle for <see cref="LibraryConfig.SettingsSaveDebounceSeconds"/>,
+        /// so a slider drag costs one write, not one per changed frame. Steady
+        /// state (nothing pending) is one bool check and zero allocation.
+        /// </summary>
+        internal void PersistIfSettled(float deltaSeconds)
+        {
+            if (!PersistPending)
+            {
+                return;
+            }
+
+            _persistQuietSeconds += deltaSeconds;
+            if (_persistQuietSeconds >= LibraryConfig.SettingsSaveDebounceSeconds)
+            {
+                SaveNow();
+            }
+        }
+
+        /// <summary>
+        /// Writes the current snapshot immediately when a change is pending;
+        /// no-op otherwise. Used for the session-end flush
+        /// (DearImGuiKSPAddon.OnDestroy) and by tests.
+        /// </summary>
+        internal void SaveNow()
+        {
+            if (!PersistPending)
+            {
+                return;
+            }
+
+            PersistPending = false;
+            _persistQuietSeconds = 0f;
+            _store.Save(BuildSnapshot());
+        }
+
+        private LibrarySettings BuildSnapshot()
+        {
+            return new LibrarySettings
             {
                 UiScale = _uiScale,
                 FontScale = _fontScale,
@@ -143,7 +202,7 @@ namespace DearImGuiKSP.Application
                 VerboseLogging = _verboseLogging,
                 Enabled = _enabled,
                 ClampWindowsToViewport = _clampWindowsToViewport,
-            });
+            };
         }
 
         // The raw theme name most recently rejected by NormalizeTheme. The model

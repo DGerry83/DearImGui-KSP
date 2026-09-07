@@ -11,8 +11,10 @@ namespace DearImGuiKSP.Infrastructure
     /// <see cref="LibraryConfig.ModName"/>) through the same
     /// ConsumerRegistry/frame-loop path any consumer uses — the fault barrier
     /// covers it like any other consumer, no special-casing.
-    /// Every edit persists immediately via the <see cref="SettingsModel"/>
-    /// setters. Theme and UI scale apply live (the ThemeEngine dirty path
+    /// Every edit applies immediately in memory via the <see cref="SettingsModel"/>
+    /// setters; the disk write is debounced (C06) — the model flags itself dirty
+    /// and the frame loop writes settings.cfg once the changes settle, outside the
+    /// held frame lock. Theme and UI scale apply live (the ThemeEngine dirty path
     /// re-applies at the next frame start); font and font scale are read only
     /// at startup (atlas rebuild), so the panel states plainly that they apply
     /// on the next KSP start. Both scale sliders sit beside a numeric type-in
@@ -104,7 +106,7 @@ namespace DearImGuiKSP.Infrastructure
             ImGuiInternal.SetNextItemWidth(ScaleSliderWidth);
             if (ImGuiInternal.SliderFloat(UiScaleSliderLabel, ref uiScale, LibraryConfig.MinScale, LibraryConfig.MaxScale))
             {
-                _settings.UiScale = uiScale; // persists; ThemeEngine forwards it to the native side live
+                _settings.UiScale = uiScale; // applies live; disk write debounced (C06) — ThemeEngine forwards it to the native side
             }
             ImGuiInternal.SameLine();
             float typedUiScale = _settings.UiScale;
@@ -146,8 +148,8 @@ namespace DearImGuiKSP.Infrastructure
             ImGuiInternal.SetNextItemWidth(ScaleTypeInWidth);
             if (ImGuiInternal.InputFloat(FontScaleTypeInLabel, ref typedFontScale))
             {
-                // Same semantics as the slider (saved now, applied on next KSP
-                // start), just a second input path.
+                // Same semantics as the slider (saved once the changes settle,
+                // applied on next KSP start), just a second input path.
                 _settings.FontScale = typedFontScale;
             }
             ImGuiInternal.Text(FontRestartNote);

@@ -8,7 +8,9 @@ namespace DearImGuiKSP.Infrastructure
 {
     /// <summary>
     /// Implements <see cref="ISettingsStore"/> over KSP ConfigNode.
-    /// Read at startup, written on change; migrates older formatVersions forward (spec §4.4, §10.5).
+    /// Read at startup, written on change-settle (debounced by SettingsModel, C06);
+    /// migrates older formatVersions forward (spec §4.4, §10.5). Writes are atomic:
+    /// the new content goes to a temp sibling first, then replaces the real file.
     /// </summary>
     internal sealed class SettingsStore : ISettingsStore
     {
@@ -102,6 +104,7 @@ namespace DearImGuiKSP.Infrastructure
             }
 
             string path = GetPath();
+            string tempPath = path + ".tmp";
 
             try
             {
@@ -124,10 +127,34 @@ namespace DearImGuiKSP.Infrastructure
                 node.AddValue(VerboseLoggingKey, settings.VerboseLogging);
                 node.AddValue(EnabledKey, settings.Enabled);
                 node.AddValue(ClampWindowsToViewportKey, settings.ClampWindowsToViewport);
-                file.Save(path);
+
+                // Atomic write (C06, G3-16): write the temp sibling first, then
+                // replace the real file, so a crash or concurrent reader mid-write
+                // never sees a truncated settings.cfg. File.Replace needs the
+                // destination to exist; the first-ever save moves instead.
+                file.Save(tempPath);
+                if (File.Exists(path))
+                {
+                    File.Replace(tempPath, path, null);
+                }
+                else
+                {
+                    File.Move(tempPath, path);
+                }
             }
             catch (Exception ex)
             {
+                try
+                {
+                    if (File.Exists(tempPath))
+                    {
+                        File.Delete(tempPath);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Best-effort cleanup only; the save failure below is the real signal.
+                }
                 _logger.Warn($"Failed to save settings. Path: {path}, error: {ex.Message}");
             }
         }

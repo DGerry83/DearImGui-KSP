@@ -7,8 +7,10 @@ namespace DearImGuiKSP.Application
     /// <summary>
     /// Executes the per-frame sequence (locked in C7, spec §5.3; theme apply added in C8):
     /// sample capture state → apply/release input locks (C9) → deferred theme apply
-    /// when dirty (C8, one bool check at steady state) → tween tick (C14: advances
-    /// live tweens with this frame's delta, before any consumer callback) → native BeginUiFrame →
+    /// when dirty (C8, one bool check at steady state) → debounced settings persist
+    /// (C06: writes settings.cfg once changes settle, at frame start, outside the
+    /// native frame lock) → tween tick (C14: advances live tweens with this frame's
+    /// delta, before any consumer callback) → native BeginUiFrame →
     /// consumer callbacks in registration order through the FaultBarrier (C10) →
     /// native EndUiFrame. The render-event handoff is issued separately by the addon.
     /// Frames run only while the lifecycle state machine (C12) is Running —
@@ -80,6 +82,12 @@ namespace DearImGuiKSP.Application
             // engine; the re-apply happens here at frame start — never inside a
             // consumer callback. Steady-state cost is the bool check.
             _themeEngine.ApplyIfDirty();
+
+            // Debounced settings persist (C06, G3-08/09/14/16/19): setters only
+            // flag the model dirty; the write lands here once changes settle —
+            // at frame start, outside the native frame lock held between
+            // BeginUiFrame/EndUiFrame. Steady-state cost is one bool check.
+            _settings.PersistIfSettled(deltaTime);
 
             // Tween tick (C14): advance live tweens with this frame's delta before
             // BeginUiFrame and any consumer callback, so setters see fresh values

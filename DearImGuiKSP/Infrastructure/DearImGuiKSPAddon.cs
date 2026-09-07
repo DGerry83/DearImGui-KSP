@@ -64,6 +64,9 @@ namespace DearImGuiKSP.Infrastructure
 
         private void OnDestroy()
         {
+            // C06: flush a still-pending debounced settings save so an edit made
+            // in the debounce window before quit is not lost.
+            Composition.Settings.SaveNow();
             // C31: consumer registration symmetry — the panel unregisters with
             // the once-addon (session end). The panel never holds input locks
             // or hooks, so nothing else needs tearing down here.

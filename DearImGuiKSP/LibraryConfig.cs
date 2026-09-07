@@ -49,5 +49,12 @@ namespace DearImGuiKSP
 
         // Settings persistence (spec §4.4, §10.5)
         internal const int SettingsFormatVersion = 1;
+
+        /// <summary>
+        /// Quiet period before a pending settings change is written to disk
+        /// (C06 debounce): a slider drag rewrites settings.cfg once after the
+        /// changes settle, not once per changed frame.
+        /// </summary>
+        internal const float SettingsSaveDebounceSeconds = 0.5f;
     }
 }
