@@ -48,3 +48,15 @@ Theme: correctness of the demo telemetry windows' flight math. The demo teaches 
 
 ### Rollback
 - `git checkout -- DearImGuiKSPDemo/Telemetry/OrbitPanel.cs DearImGuiKSPDemo/Telemetry/StageAnalyzer.cs`; delete this file. (The knowledge-library note correction is in a separate repo and stands on its own citations.)
+
+---
+
+## C12b addendum (2026-09-07) — Gate C follow-up: stage dV vs stock
+
+**Gate C failure:** in-game, the stage panel disagreed with the stock ΔV sidebar (stock 2865/688/2671/0 = 6224 total; demo 0/3613/11/653/342 = 4619). Root cause, verified against the dump (new knowledge note `NOTES\stock-deltav-simulation.md`): stock does not group propellant by the stage's physical tanks at all — per engine it queries the live crossfeed/priority graph (`Part.GetConnectedResourceTotals(..., simulate: true)`, DeltaVEngineInfo.cs:271/:424) and drains it through simulated `RequestResource` (:912). The C12 "stage's own tanks" model diverged on any vessel where engines and their tanks sit in different inverseStage buckets (exactly the gate vessel: stage 11's engines found zero own-tank fuel → dV 0, while stage 10 inherited an absurd pool → 2176 s burn).
+
+**Fix (commit C12b):** `StageAnalyzer` now pools each propellant over every unlocked tank still aboard (cumulative snapshots per stage), burns in firing order (currentStage → 0), and subtracts each stage's consumption from the pool before lower stages compute — the closest demo-scale approximation of stock's graph, per the scope cap (the full flow-graph simulation was explicitly NOT reimplemented). Mass terms simplified accordingly: wet = remaining dry mass + all aboard resource mass − already-burned mass; dry = wet − usable. Isp moved from vacuum-only to stock's flight "Actual" situation — `atmosphereCurve.Evaluate(current static pressure atm)` (DeltaVEngineInfo.cs:1915; identical to vacuum in vacuum), via `Vessel.staticPressurekPa * PhysicsGlobals.KpaToAtmospheres`; per-engine fuel flow stays vacuum-rated (pressure-independent, ModuleEngines.cs:1048), which also keeps burn time consistent with the same tank set as the dV calc.
+
+**Expected accuracy:** agrees closely with stock on serial staging with default crossfeed (the gate-vessel shape) — stage 11 now draws from the full pool instead of reading 0, lower stages see the depleted pool (stage-4-style "0 m/s, fuel already burned above" now reproduces). Documented residual divergences (class remarks): explicit flow priorities / disabled crossfeed / fuel lines (pooled instead); parallel staging (engines in different stages firing together) burns sequentially here, shifting per-stage attribution while the total stays close; jet velocity/atm-density Isp multipliers and thrust curves not modeled.
+
+**Verification:** `dotnet build DearImGui-KSP.slnx` green (0 errors, 0 warnings). §5.9: per-frame `Tick` path still flag + float compare; all new pooling structures are inside the 1 Hz recompute (may allocate freely); no new statics. Re-gate in-game: same checks as Gate C above, with the sidebar comparison now expected close on serial-staged vessels.

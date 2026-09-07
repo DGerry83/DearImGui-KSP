@@ -15,25 +15,43 @@ namespace DearImGuiKSPDemo.Telemetry
     /// <remarks>
     /// Computation model (approximation is spec-sanctioned; every figure the
     /// panel renders is labeled "approx"):
-    /// parts are grouped by <c>Part.inverseStage</c>; stages are evaluated from
-    /// <c>Vessel.currentStage</c> downward. A stage's engines are the
-    /// <c>ModuleEngines</c> modules on parts in that stage — on multi-mode
-    /// parts (RAPIER-class) only the SELECTED mode's module counts
-    /// (<c>MultiModeEngine.runningPrimary</c> picks between the two
-    /// <c>ModuleEnginesFX</c> modules by <c>engineID</c>), matching what
-    /// stock's engine display shows; counting both modes would double the
-    /// stage's thrust and mass flow. Stage Isp is the thrust-weighted vacuum
-    /// Isp (<c>atmosphereCurve.Evaluate(0)</c>); usable propellant is the
-    /// stage's own tanks' UNLOCKED content (<c>PartResource.flowState</c> —
-    /// locked tanks are dead mass, not propellant) limited by the scarcest
-    /// engine propellant per its normalized ratio (IntakeAir-style
-    /// <c>ignoreForIsp</c> propellants excluded); Δv is the rocket equation
-    /// with wet mass = remaining dry mass (all parts at or above the stage)
-    /// plus ALL resource mass still aboard (propellant of lower stages that
-    /// burn later, locked contents, non-propellant resources — mass is mass)
-    /// and dry mass = wet minus this stage's usable propellant; burn time is
-    /// usable propellant over full-throttle mass flow (Σ thrust / Isp·g0).
-    /// Crossfeed, thrust curves, and atmospheric Isp are NOT modeled.
+    /// parts are grouped by <c>Part.inverseStage</c>; stages are evaluated in
+    /// firing order, from <c>Vessel.currentStage</c> downward. A stage's
+    /// engines are the <c>ModuleEngines</c> modules on parts in that stage —
+    /// on multi-mode parts (RAPIER-class) only the SELECTED mode's module
+    /// counts (<c>MultiModeEngine.runningPrimary</c> picks between the two
+    /// <c>ModuleEnginesFX</c> modules by <c>engineID</c>; stock's dV sim does
+    /// the same, KSPSOURCE/DeltaVEngineInfo.cs:124-140), matching what stock's
+    /// engine display shows. Stage Isp is the thrust-weighted
+    /// <c>atmosphereCurve</c> value at the CURRENT static pressure — stock's
+    /// flight "Actual" situation (KSPSOURCE/DeltaVEngineInfo.cs:1915; equals
+    /// vacuum Isp in vacuum, so this never diverges there). Per-engine fuel
+    /// flow is pressure-independent (<c>maxFuelFlow = maxThrust /
+    /// (atmosphereCurve.Evaluate(0) * g)</c>, KSPSOURCE/ModuleEngines.cs:1048),
+    /// so burn time uses vacuum-rated flow regardless of situation.
+    /// Usable propellant is POOLED per propellant over every unlocked tank
+    /// (<c>PartResource.flowState</c> — locked tanks are dead mass, not
+    /// propellant) still aboard during the burn, limited by the scarcest
+    /// engine propellant per its normalized mix ratio (IntakeAir-style
+    /// <c>ignoreForIsp</c> propellants excluded); each stage's consumption is
+    /// subtracted from the pool before lower stages compute. Δv is the rocket
+    /// equation with wet mass = remaining dry mass (all parts at or above the
+    /// stage) plus ALL resource mass still aboard minus what higher stages
+    /// already burned, and dry mass = wet minus this stage's usable
+    /// propellant; burn time is usable propellant over full-throttle mass
+    /// flow (Σ thrust / Isp·g0).
+    /// Why pooled: stock simulates the REAL fuel-flow graph (flow priorities,
+    /// crossfeed toggles, fuel lines) via <c>Part.GetConnectedResourceTotals
+    /// </c>(..., simulate: true) and <c>RequestResource(..., simulate: true)</c>
+    /// (KSPSOURCE/DeltaVEngineInfo.cs:271/:912) — reimplementing that graph is
+    /// out of scope for a demo. Pooling matches stock on serial staging with
+    /// default crossfeed; documented divergences: explicit flow priorities,
+    /// disabled crossfeed and fuel lines are not modeled (everything pooled);
+    /// engines in DIFFERENT stages firing simultaneously (parallel staging)
+    /// burn sequentially here, so per-stage attribution shifts between those
+    /// stages (the total stays close); velocity/atm-density Isp multipliers
+    /// (jets) and thrust curves are not modeled; parts of already-fired
+    /// stages are assumed jettisoned with their remaining contents.
     /// All mass figures are tonnes (KSP's native unit for part mass and
     /// resource density), thrust in kN, so kN/(m/s) = t/s makes the burn-time
     /// ratio consistent. Stages without engines or propellant yield zeros —
@@ -53,8 +71,10 @@ namespace DearImGuiKSPDemo.Telemetry
         /// <summary>
         /// Immutable per-stage figures for one recompute. Structs in a
         /// snapshot array — the panel reads them without copying per frame.
-        /// All figures are approximations; Δv in m/s, Isp in s, burn time in s,
-        /// fraction 0–1 (usable propellant mass over capacity mass).
+        /// All figures are approximations; Δv in m/s, Isp in s (at the current
+        /// static pressure — stock's flight "Actual" situation), burn time in
+        /// s, fraction 0–1 (usable propellant mass over the pooled, still-aboard
+        /// capacity mass for this stage's engine mix).
         /// </summary>
         public struct StageInfo
         {
@@ -300,37 +320,60 @@ namespace DearImGuiKSPDemo.Telemetry
 
             // Remaining dry mass per stage: everything at or above the stage
             // (lower/equal inverseStage) is still onboard while it burns.
-            // carriedResourceMass is the resource mass of stages strictly
-            // BELOW s — they burn later, so their contents (propellant,
-            // locked tanks, anything) are still aboard during s's burn and
-            // belong in both rocket-equation mass terms.
+            // cumulativeResourceMass is the same suffix sum over tank contents
+            // (locked tanks included — mass is mass). poolAvailable/poolCapacity
+            // are the POOLED propellant snapshots: propellant units/capacities
+            // summed over all parts still aboard at stage s (the crossfeed
+            // approximation — see the class remarks).
             double[] remainingDryMass = new double[currentStage + 1];
-            double[] carriedResourceMass = new double[currentStage + 1];
+            double[] cumulativeResourceMass = new double[currentStage + 1];
+            Dictionary<string, double>[] poolAvailable = new Dictionary<string, double>[currentStage + 1];
+            Dictionary<string, double>[] poolCapacity = new Dictionary<string, double>[currentStage + 1];
             double running = 0.0;
             double runningResources = 0.0;
+            Dictionary<string, double> runningAvailable = new Dictionary<string, double>();
+            Dictionary<string, double> runningCapacity = new Dictionary<string, double>();
             for (int s = 0; s <= currentStage; s++)
             {
-                carriedResourceMass[s] = runningResources;
                 running += dryMassBucket[s];
                 runningResources += resourceMassBucket[s];
                 remainingDryMass[s] = running;
+                cumulativeResourceMass[s] = runningResources;
+                MergeInto(runningAvailable, availableByStage[s]);
+                MergeInto(runningCapacity, capacityByStage[s]);
+                poolAvailable[s] = new Dictionary<string, double>(runningAvailable);
+                poolCapacity[s] = new Dictionary<string, double>(runningCapacity);
             }
 
+            // Burn pass in firing order (currentStage downward). Each stage
+            // draws from the pooled propellant and its consumption is recorded
+            // (consumedUnits / consumedMass) so lower stages see a depleted
+            // pool — this is what keeps a shared tank from being counted once
+            // per stage.
+            double pressureAtm = Math.Max(0.0, vessel.staticPressurekPa) * PhysicsGlobals.KpaToAtmospheres;
             List<StageInfo> stages = new List<StageInfo>();
             double totalDeltaV = 0.0;
+            Dictionary<string, double> consumedUnits = new Dictionary<string, double>();
+            double consumedMass = 0.0;
             for (int s = currentStage; s >= 0; s--)
             {
                 if (partCount[s] == 0)
                 {
                     continue; // no parts at this index — not a stage
                 }
+                double burnedMass;
                 StageInfo info = ComputeStage(
                     s,
                     enginesByStage[s],
-                    availableByStage[s],
-                    capacityByStage[s],
-                    remainingDryMass[s] + carriedResourceMass[s],
-                    resourceMassBucket[s]);
+                    poolAvailable[s],
+                    poolCapacity[s],
+                    consumedUnits,
+                    consumedMass,
+                    remainingDryMass[s],
+                    cumulativeResourceMass[s],
+                    pressureAtm,
+                    out burnedMass);
+                consumedMass += burnedMass;
                 totalDeltaV += info.ApproxDeltaV;
                 stages.Add(info);
             }
@@ -338,21 +381,28 @@ namespace DearImGuiKSPDemo.Telemetry
             return new Snapshot(stages.ToArray(), totalDeltaV, true);
         }
 
-        // dryMass: part dry mass at or below this stage plus the resource
-        // mass of lower stages (everything that stays aboard through the
-        // burn). stageResourceMass: this stage's own tank contents — the
-        // unburnable remainder of it (locked tanks, propellant beyond the
-        // limiting mix share) is still dead mass after the burn.
+        // poolAvailable/poolCapacity: pooled unlocked propellant units and
+        // capacities over all parts still aboard at this stage (the crossfeed
+        // approximation). consumedUnits/consumedMass: what higher (already
+        // burned) stages drew from the pool; consumedUnits is updated with
+        // this stage's draw. dryMass/resourceMassAboard: part dry mass and
+        // total tank-content mass (locked included) still aboard at ignition.
+        // pressureAtm: current static pressure in atm for the situation Isp.
         private static StageInfo ComputeStage(
             int stage,
             List<ModuleEngines> engines,
-            Dictionary<string, double> available,
-            Dictionary<string, double> capacity,
+            Dictionary<string, double> poolAvailable,
+            Dictionary<string, double> poolCapacity,
+            Dictionary<string, double> consumedUnits,
+            double consumedMass,
             double dryMass,
-            double stageResourceMass)
+            double resourceMassAboard,
+            double pressureAtm,
+            out double burnedMass)
         {
             StageInfo info = new StageInfo();
             info.Stage = stage;
+            burnedMass = 0.0;
             if (engines == null || engines.Count == 0)
             {
                 // Decoupler-only / probe stage: zeros by contract, no exceptions.
@@ -371,16 +421,25 @@ namespace DearImGuiKSPDemo.Telemetry
             for (int i = 0; i < engines.Count; i++)
             {
                 ModuleEngines engine = engines[i];
-                float isp = engine.atmosphereCurve != null ? engine.atmosphereCurve.Evaluate(0f) : 0f;
+                float ispVac = engine.atmosphereCurve != null ? engine.atmosphereCurve.Evaluate(0f) : 0f;
+                // Situation Isp: the curve at the CURRENT static pressure
+                // (stock's flight "Actual" — DeltaVEngineInfo.cs:1915; equal
+                // to ispVac in vacuum). Velocity/atm-density multipliers
+                // (jets) are not modeled — see the class remarks.
+                float ispSituation = engine.atmosphereCurve != null
+                    ? engine.atmosphereCurve.Evaluate((float)pressureAtm)
+                    : 0f;
                 float thrust = engine.maxThrust * engine.thrustPercentage * 0.01f;
-                if (isp <= 0f || thrust <= 0f)
+                if (ispVac <= 0f || ispSituation <= 0f || thrust <= 0f)
                 {
                     continue;
                 }
                 thrustSum += thrust;
-                ispTimesThrustSum += thrust * isp;
-                // kN / (m/s) = t/s — see the class remarks on unit consistency.
-                massFlow += thrust / (isp * StandardGravity);
+                ispTimesThrustSum += thrust * ispSituation;
+                // Fuel flow is pressure-independent (maxFuelFlow =
+                // maxThrust/(ispVac*g0), KSPSOURCE/ModuleEngines.cs:1048);
+                // kN / (m/s) = t/s — see the class remarks on units.
+                massFlow += thrust / (ispVac * StandardGravity);
 
                 List<Propellant> propellants = engine.propellants;
                 if (propellants == null)
@@ -429,10 +488,12 @@ namespace DearImGuiKSPDemo.Telemetry
             info.ApproxIsp = ispTimesThrustSum / thrustSum;
 
             // Usable propellant limited by the scarcest propellant per the
-            // aggregate mix ratio; mass = resource units x definition density.
+            // aggregate mix ratio, drawn from the POOLED pool minus what
+            // higher stages already burned; mass = resource units x
+            // definition density.
             double usableMass = 0.0;
             double capacityMass = 0.0;
-            if (aggregateRatio.Count > 0 && available != null)
+            if (aggregateRatio.Count > 0 && poolAvailable != null)
             {
                 double limitUnits = double.MaxValue;
                 double limitCapacityUnits = double.MaxValue;
@@ -440,9 +501,18 @@ namespace DearImGuiKSPDemo.Telemetry
                 {
                     double ratio = pair.Value / thrustSum; // normalized mix share
                     double amount;
-                    if (!available.TryGetValue(pair.Key, out amount))
+                    if (!poolAvailable.TryGetValue(pair.Key, out amount))
                     {
                         amount = 0.0;
+                    }
+                    double consumed;
+                    if (consumedUnits.TryGetValue(pair.Key, out consumed))
+                    {
+                        amount -= consumed;
+                        if (amount < 0.0)
+                        {
+                            amount = 0.0; // higher stages drained it all
+                        }
                     }
                     if (ratio > 0.0)
                     {
@@ -452,10 +522,10 @@ namespace DearImGuiKSPDemo.Telemetry
                             limitUnits = engineLimited;
                         }
                     }
-                    if (capacity != null)
+                    if (poolCapacity != null)
                     {
                         double maxAmount;
-                        if (!capacity.TryGetValue(pair.Key, out maxAmount))
+                        if (!poolCapacity.TryGetValue(pair.Key, out maxAmount))
                         {
                             maxAmount = 0.0;
                         }
@@ -489,6 +559,20 @@ namespace DearImGuiKSPDemo.Telemetry
                     usableMass += ratio * limitUnits * density;
                     capacityMass += ratio * limitCapacityUnits * density;
                 }
+
+                // Record this stage's draw (in resource units) so lower
+                // stages see a depleted pool.
+                if (limitUnits > 0.0)
+                {
+                    foreach (KeyValuePair<string, double> pair in aggregateRatio)
+                    {
+                        double ratio = pair.Value / thrustSum;
+                        double existing;
+                        consumedUnits[pair.Key] =
+                            (consumedUnits.TryGetValue(pair.Key, out existing) ? existing : 0.0) +
+                            ratio * limitUnits;
+                    }
+                }
             }
 
             if (usableMass < 0.0)
@@ -499,22 +583,41 @@ namespace DearImGuiKSPDemo.Telemetry
                 ? Clamp01(usableMass / capacityMass)
                 : 0.0;
             info.BurnTimeSeconds = massFlow > 0.0 ? usableMass / massFlow : 0.0;
+            burnedMass = usableMass;
 
             if (usableMass > 0.0 && info.ApproxIsp > 0.0)
             {
-                // Rocket equation over what is actually aboard: dryMass already
-                // carries the lower stages' resource mass; add back this
-                // stage's own resources the engines cannot burn — they remain
-                // after the burn and belong on both sides of the ratio.
-                double massAfterBurn = dryMass + Math.Max(0.0, stageResourceMass - usableMass);
+                // Rocket equation over what is actually aboard at ignition:
+                // dry parts plus every tank content, minus what higher stages
+                // already burned. The unburnable remainder (locked tanks,
+                // propellant beyond the limiting mix share) stays aboard
+                // after the burn and belongs on both sides of the ratio.
+                double massBeforeBurn = dryMass + Math.Max(0.0, resourceMassAboard - consumedMass);
+                double massAfterBurn = massBeforeBurn - usableMass;
                 if (massAfterBurn > 0.0)
                 {
-                    double massBeforeBurn = massAfterBurn + usableMass;
                     info.ApproxDeltaV = info.ApproxIsp * StandardGravity * Math.Log(massBeforeBurn / massAfterBurn);
                 }
             }
 
             return info;
+        }
+
+        // Adds every entry of source into target (sum on key collision).
+        // Null source is a no-op (stages without tanks).
+        private static void MergeInto(Dictionary<string, double> target, Dictionary<string, double> source)
+        {
+            if (source == null)
+            {
+                return;
+            }
+            foreach (KeyValuePair<string, double> pair in source)
+            {
+                double existing;
+                target[pair.Key] = target.TryGetValue(pair.Key, out existing)
+                    ? existing + pair.Value
+                    : pair.Value;
+            }
         }
 
         // Tons per resource unit (PartResourceDefinition.density, KSPSOURCE/
