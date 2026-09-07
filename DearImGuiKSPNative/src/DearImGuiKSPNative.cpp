@@ -24,10 +24,21 @@
 
 // Managed/native version handshake (spec §5.4, D17). Bump in lockstep with the
 // managed ExpectedNativeVersion constant; mismatch -> Failed state.
-// 4: ISSUES #001-#003 fixed; 5: C5 font load (LoadFontFromFile); 6: C31 SetUiScale.
+// 4: ISSUES #001-#003 fixed; 5: C5 font load (LoadFontFromFile); 6: C31 SetUiScale;
+// 7: C04 native diagnostics channel (DrainDiagnostics export, G2-04/G3-03).
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetVersion()
 {
-    return 6; // handshake constant value 6 (managed side bumps in C31)
+    return 7; // handshake constant value 7 (managed side bumps in C04)
+}
+
+// Native diagnostics drain (C04, G2-04/G3-03): the ImGui error callback and
+// D3D11 backend bring-up failures accumulate in a fixed native buffer; the
+// managed bridge polls once per frame after EndUiFrame (query with a null
+// dst, then drain into a reused buffer) and writes any lines to KSP.log.
+// Returns the bytes pending before the call; 0 = nothing pending.
+DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_DrainDiagnostics(char* dst, int dstCapacity)
+{
+    return ContextHost_DrainDiagnostics(dst, dstCapacity);
 }
 
 // Loads a font file into the atlas before the first frame (spec §4.2). The

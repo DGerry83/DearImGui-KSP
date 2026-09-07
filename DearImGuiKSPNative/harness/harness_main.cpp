@@ -55,6 +55,10 @@ int main()
     if (ContextHost_GetDrawListVtxCount(nullptr) != -1)
         return Fail("GetDrawListVtxCount(null)", 10);
 
+    // G2-01: stock dark ChildBg has alpha 0 (no bg fill at all), so give the
+    // child-window test below a visible bg before the reference snapshot.
+    ImGui::GetStyle().Colors[ImGuiCol_ChildBg] = ImVec4(0.2f, 0.2f, 0.2f, 1.0f);
+
     // Warm-up frames: the window's first frames have deferred/auto-fit sizing
     // (AutoFitFrames counts down from creation), so the reference snapshot
     // below (and every later comparison frame) must run with stable geometry.
@@ -62,8 +66,22 @@ int main()
     // this section (warm-up, reference, enabled, interaction, disabled) has
     // identical geometry; grad-scroll is pinned and forced to show a vertical
     // scrollbar so its bg/grab prims land in command 0 every frame.
+    // G2-01: grad-child-host pins a bordered child window; with one
+    // non-overlapping child and a non-empty parent, Begin renders the child's
+    // decorations into the PARENT's draw list (imgui.cpp:8585-8611), which is
+    // exactly the retarget case.
     auto submitGradientWindows = []()
     {
+        // grad-child-host first: grad-scroll stays the last-appearing window,
+        // so it is the focused one in the no-input reference frame — matching
+        // the state the C34 scrollbar-active click restores before the
+        // disabled byte-exact comparison (appearing windows take focus).
+        igSetNextWindowPos(ImVec2_c{100.0f, 400.0f}, ImGuiCond_Always, ImVec2_c{0.0f, 0.0f});
+        igSetNextWindowSize(ImVec2_c{300.0f, 200.0f}, ImGuiCond_Always);
+        igBegin("grad-child-host", nullptr, 0);
+        igBeginChild_Str("##grad-child", ImVec2_c{100.0f, 50.0f}, ImGuiChildFlags_Borders, 0);
+        igEndChild();
+        igEnd();
         igBegin("grad-test", nullptr, 0);
         igEnd();
         igSetNextWindowPos(ImVec2_c{600.0f, 100.0f}, ImGuiCond_Always, ImVec2_c{0.0f, 0.0f});
@@ -116,6 +134,23 @@ int main()
     if (!scrollWindow->ScrollbarY)
         return Fail("grad-scroll has no vertical scrollbar", 51);
 
+    // G2-01: the child-host window and its child, plus the host's stock
+    // reference snapshot (the child's decorations live in the HOST's list).
+    ImGuiWindow* hostWindow = nullptr;
+    ImGuiWindow* childWindow = nullptr;
+    for (int i = 0; i < ctx->Windows.Size; ++i)
+    {
+        ImGuiWindow* w = ctx->Windows[i];
+        if (w == nullptr || !w->Active)
+            continue;
+        if (std::strcmp(w->Name, "grad-child-host") == 0)
+            hostWindow = w;
+        else if (std::strstr(w->Name, "##grad-child") != nullptr)
+            childWindow = w;
+    }
+    if (hostWindow == nullptr || childWindow == nullptr)
+        return Fail("grad-child-host/child window not found", 62);
+
     const int refVtxCount = testWindow->DrawList->VtxBuffer.Size;
     std::vector<ImU32> refCols;
     for (int i = 0; i < refVtxCount; ++i)
@@ -125,6 +160,11 @@ int main()
     std::vector<ImU32> refScrollCols;
     for (int i = 0; i < refScrollVtxCount; ++i)
         refScrollCols.push_back(scrollWindow->DrawList->VtxBuffer.Data[i].col);
+
+    const int refHostVtxCount = hostWindow->DrawList->VtxBuffer.Size;
+    std::vector<ImU32> refHostCols;
+    for (int i = 0; i < refHostVtxCount; ++i)
+        refHostCols.push_back(hostWindow->DrawList->VtxBuffer.Data[i].col);
 
     // The vtx-count export must agree with the live draw list.
     if (ContextHost_GetDrawListVtxCount(testWindow->DrawList) != refVtxCount || refVtxCount <= 0)
@@ -138,6 +178,48 @@ int main()
     DearImGuiKSPNative_BeginFrame(1920.0f, 1080.0f, 1.0f / 60.0f);
     submitGradientWindows();
     DearImGuiKSPNative_EndFrame();
+
+    // G2-01: the child's decorations were rendered into the HOST's draw list
+    // (precondition: the child's own first command is empty), and the gradient
+    // pass must have shaded them there — verts changed only inside the child's
+    // rect, alpha preserved everywhere on the host list.
+    {
+        if (childWindow->DrawList->CmdBuffer.Size == 0 ||
+            childWindow->DrawList->CmdBuffer[0].ElemCount != 0)
+            return Fail("child decorations not in the parent draw list (retarget precondition)", 63);
+        const ImDrawList* hdl = hostWindow->DrawList;
+        if (hdl->VtxBuffer.Size != refHostVtxCount)
+            return Fail("enabled-pass vertex count differs (grad-child-host)", 64);
+        // Verts are append-only, so command 0's referenced range is exactly the
+        // host's own decorations (shaded by the host's own pass); every later
+        // vert is host content or the child's decorations, and only the child
+        // decorations may change — all of them inside the child's rect.
+        const ImDrawCmd& hcmd0 = hdl->CmdBuffer[0];
+        int cmd0VertEnd = 0;
+        for (unsigned int n = 0; n < hcmd0.ElemCount; ++n)
+            if ((int)hdl->IdxBuffer.Data[hcmd0.IdxOffset + n] + 1 > cmd0VertEnd)
+                cmd0VertEnd = (int)hdl->IdxBuffer.Data[hcmd0.IdxOffset + n] + 1;
+        const float pad = childWindow->WindowBorderSize + 0.5f;
+        const float minX = childWindow->Pos.x - pad, minY = childWindow->Pos.y - pad;
+        const float maxX = childWindow->Pos.x + childWindow->Size.x + pad;
+        const float maxY = childWindow->Pos.y + childWindow->Size.y + pad;
+        int changedInRect = 0;
+        for (int i = 0; i < refHostVtxCount; ++i)
+        {
+            const ImDrawVert& v = hdl->VtxBuffer.Data[i];
+            if ((v.col >> 24) != (refHostCols[i] >> 24))
+                return Fail("gradient changed alpha (grad-child-host)", 65);
+            if (v.col == refHostCols[i] || i < cmd0VertEnd)
+                continue;
+            const bool inRect = v.pos.x >= minX && v.pos.x <= maxX && v.pos.y >= minY && v.pos.y <= maxY;
+            if (!inRect)
+                return Fail("vert outside the child rect recolored", 66);
+            changedInRect++;
+        }
+        if (changedInRect == 0)
+            return Fail("child decorations in the parent draw list not shaded", 67);
+        std::printf("Child-window decorations shaded in the parent draw list: %d verts\n", changedInRect);
+    }
 
     {
         const ImDrawList* dl = testWindow->DrawList;
@@ -497,8 +579,16 @@ int main()
             if (dl->VtxBuffer.Data[i].col != refScrollCols[i])
                 return Fail("disabled pass is not byte-exact (grad-scroll)", 59);
     }
-    std::printf("Gradient disabled: draw list byte-exact vs. stock reference (%d + %d verts)\n",
-                refVtxCount, refScrollVtxCount);
+    {
+        const ImDrawList* dl = hostWindow->DrawList;
+        if (dl->VtxBuffer.Size != refHostVtxCount)
+            return Fail("disabled-pass vertex count differs (grad-child-host)", 68);
+        for (int i = 0; i < refHostVtxCount; ++i)
+            if (dl->VtxBuffer.Data[i].col != refHostCols[i])
+                return Fail("disabled pass is not byte-exact (grad-child-host)", 69);
+    }
+    std::printf("Gradient disabled: draw list byte-exact vs. stock reference (%d + %d + %d verts)\n",
+                refVtxCount, refScrollVtxCount, refHostVtxCount);
 
     // ---- C31: live UI scale ----
     //
@@ -568,6 +658,55 @@ int main()
             return Fail("compounding detected across repeated applies", 38);
     }
     std::printf("UiScale 1.5 x3 with resets: (12,12) every time (no compounding)\n");
+
+    // G3-01: below 1.0 the 1px line sizes must floor at 1px, never truncate
+    // to 0 (borders, separators, the text caret); fields that were zero
+    // before scaling stay zero.
+    rc = ContextHost_StyleColorsDark();
+    if (rc != 0)
+        return Fail("StyleColorsDark (ui-scale floor baseline)", rc);
+    rc = ContextHost_SetUiScale(0.5f);
+    if (rc != 0)
+        return Fail("SetUiScale(0.5)", rc);
+    {
+        const ImGuiStyle& s = ImGui::GetStyle();
+        if (s.WindowBorderSize != 1.0f || s.ChildBorderSize != 1.0f || s.PopupBorderSize != 1.0f ||
+            s.TabBarBorderSize != 1.0f || s.TabBarOverlineSize != 1.0f || s.TreeLinesSize != 1.0f ||
+            s.SeparatorSize != 1.0f || s.SeparatorTextBorderSize != 1.0f || s.InputTextCursorSize != 1.0f)
+            return Fail("SetUiScale(0.5) truncated a line size to 0", 39);
+        if (s.FrameBorderSize != 0.0f || s.ImageBorderSize != 0.0f || s.TabBorderSize != 0.0f)
+            return Fail("SetUiScale(0.5) raised a zero border size", 44);
+        if (s.DockingSeparatorSize != 1.0f || s.DragDropTargetBorderSize != 1.0f)
+            return Fail("SetUiScale(0.5) 2px line sizes wrong", 45);
+    }
+    std::printf("UiScale 0.5: 1px line sizes floored at 1px, zero fields stay zero\n");
+
+    // ---- C04 (G2-04): error callback + diagnostics drain ----
+    //
+    // The stock red error tooltip must be disabled and the internal error
+    // callback installed; a recoverable ImGui error must reach the
+    // diagnostics buffer (drained to KSP.log managed-side) and the drain
+    // must leave the buffer empty.
+    if (ImGui::GetIO().ConfigErrorRecoveryEnableTooltip)
+        return Fail("error tooltip not disabled", 80);
+    if (ImGui::GetCurrentContext()->ErrorCallback == nullptr)
+        return Fail("error callback not installed", 81);
+    char diag[1024];
+    if (ContextHost_DrainDiagnostics(diag, sizeof(diag)) != 0)
+        return Fail("diagnostics buffer not empty before error injection", 82);
+    DearImGuiKSPNative_BeginFrame(1920.0f, 1080.0f, 1.0f / 60.0f);
+    igBegin("err-win", nullptr, 0);
+    igEnd();
+    igEnd(); // one End() too many — a recoverable ImGui error (returns early, no state damage)
+    DearImGuiKSPNative_EndFrame();
+    {
+        int pending = ContextHost_DrainDiagnostics(diag, sizeof(diag));
+        if (pending <= 0 || std::strstr(diag, "too many times") == nullptr)
+            return Fail("ImGui error did not reach the diagnostics buffer", 83);
+        if (ContextHost_DrainDiagnostics(diag, sizeof(diag)) != 0)
+            return Fail("diagnostics buffer not cleared by drain", 84);
+    }
+    std::printf("Error callback: recoverable error reached the diagnostics buffer, tooltip off\n");
 
     DearImGuiKSPNative_ContextShutdown();
 

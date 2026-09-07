@@ -9,6 +9,9 @@
 
 #include <windows.h> // SRWLOCK (ISSUES #004 frame guard)
 
+#include <cstdio>  // _snprintf (diagnostics line formatting, G2-04)
+#include <cstring> // strlen/memcpy (diagnostics buffer, G2-04)
+
 #include "imgui.h"
 #include "imgui_internal.h" // ImGuiContext::Windows / ImGuiWindow (ISSUES #002 clamp)
 #include "implot.h"
@@ -59,6 +62,88 @@ static const float kDefaultDisplayHeight = 1080.0f;
 // Defined below; called between ImGui::EndFrame and ImGui::Render.
 static void ApplyWindowBgGradient();
 
+// ---- Diagnostics channel (C04, review items G2-04/G3-03) ----
+//
+// ImGui's stock recoverable-error path (ErrorLog, imgui.cpp:11984-12026)
+// paints a red debug tooltip over the game and otherwise writes only to the
+// never-shown debug-log buffer — diagnostics never reach KSP.log. ContextInit
+// disables the tooltip (io.ConfigErrorRecoveryEnableTooltip) and installs an
+// error callback whose text lands in this fixed buffer; the managed bridge
+// drains it once per frame (DearImGuiKSPNative_DrainDiagnostics, after
+// EndUiFrame) and writes the lines to KSP.log. The D3D11 backend bring-up
+// failure (G3-03) reports through the same buffer from the render thread, so
+// the buffer has its own lock (never held while taking s_FrameLock — no
+// lock-order hazard). Fixed storage, no allocation; on overflow the new
+// message is dropped and a drop notice becomes the next pending message.
+static SRWLOCK s_DiagLock = SRWLOCK_INIT;
+static const int kDiagCapacityBytes = 4096;
+static char s_DiagBuffer[kDiagCapacityBytes]; // '\n'-separated lines, no embedded NULs
+static int s_DiagUsed = 0;
+static int s_DiagDropped = 0;
+
+void ContextHost_PushDiagnostic(const char* msg)
+{
+    if (msg == nullptr || msg[0] == '\0')
+        return;
+    AcquireSRWLockExclusive(&s_DiagLock);
+    const int len = (int)strlen(msg);
+    if (s_DiagUsed + len + 1 <= kDiagCapacityBytes) // +1: '\n' separator
+    {
+        if (s_DiagUsed > 0)
+            s_DiagBuffer[s_DiagUsed++] = '\n';
+        memcpy(s_DiagBuffer + s_DiagUsed, msg, len);
+        s_DiagUsed += len;
+    }
+    else
+    {
+        ++s_DiagDropped;
+    }
+    ReleaseSRWLockExclusive(&s_DiagLock);
+}
+
+// ImGuiErrorCallback (typedef imgui_internal.h:2315). The g.ErrorCallback
+// field is internal-only in 1.92.9 ("May be exposed in public API eventually",
+// imgui_internal.h:2809) — this TU already compiles against imgui_internal.h
+// for the ISSUES #002 clamp. Line format mirrors the debug log's
+// ("In window 'X': msg", imgui.cpp:11997).
+static void OnImGuiError(ImGuiContext* ctx, void* userData, const char* msg)
+{
+    (void)userData;
+    ImGuiWindow* window = ctx != nullptr ? ctx->CurrentWindow : nullptr;
+    char line[512];
+    _snprintf(line, sizeof(line) - 1, "ImGui error in window '%s': %s",
+        window != nullptr ? window->Name : "NULL", msg != nullptr ? msg : "(null)");
+    line[sizeof(line) - 1] = '\0'; // _snprintf does not NUL-terminate on truncation
+    ContextHost_PushDiagnostic(line);
+}
+
+// Returns the bytes pending BEFORE the call (0 = nothing pending — the managed
+// side queries with a null dst first, so steady state allocates nothing). A
+// non-null dst drains: copies up to dstCapacity-1 bytes, NUL-terminates, and
+// clears the buffer.
+int ContextHost_DrainDiagnostics(char* dst, int dstCapacity)
+{
+    AcquireSRWLockExclusive(&s_DiagLock);
+    const int pending = s_DiagUsed;
+    if (dst != nullptr && dstCapacity > 0 && s_DiagUsed > 0)
+    {
+        const int copy = s_DiagUsed < dstCapacity - 1 ? s_DiagUsed : dstCapacity - 1;
+        memcpy(dst, s_DiagBuffer, copy);
+        dst[copy] = '\0';
+        s_DiagUsed = 0;
+        if (s_DiagDropped > 0)
+        {
+            // The overflow notice becomes the next pending message.
+            const int n = _snprintf(s_DiagBuffer, kDiagCapacityBytes - 1,
+                "(%d native diagnostics dropped: buffer overflow)", s_DiagDropped);
+            s_DiagUsed = n > 0 ? n : 0;
+            s_DiagDropped = 0;
+        }
+    }
+    ReleaseSRWLockExclusive(&s_DiagLock);
+    return pending;
+}
+
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_ContextInit(void)
 {
     if (s_Context != nullptr)
@@ -79,6 +164,17 @@ DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_ContextInit(void)
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
     io.DisplaySize  = ImVec2(kDefaultDisplayWidth, kDefaultDisplayHeight);
     io.IniFilename  = nullptr; // no imgui.ini: window state belongs to consumers (D7, spec §5.4)
+
+    // G2-04: route ImGui recoverable errors to the diagnostics buffer (drained
+    // to KSP.log by the managed bridge) instead of the stock red debug tooltip
+    // painted over the game. Recovery itself and the assert/debug-log flags
+    // stay stock (the assert is compiled out of the /DNDEBUG release build
+    // anyway; the debug log only feeds the never-shown metrics UI). ErrorLog
+    // still requires one sink to be enabled (imgui.cpp:11747) — the callback
+    // satisfies that with all three stock sinks off or on.
+    io.ConfigErrorRecoveryEnableTooltip = false;
+    s_Context->ErrorCallback = &OnImGuiError;
+    s_Context->ErrorCallbackUserData = nullptr;
 
     ImGui::StyleColorsDark();
 
@@ -119,6 +215,12 @@ DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_ContextShutdown(void)
         s_Context = nullptr;
     }
     s_FramesBegun = false;
+
+    // Drop any undrained diagnostics with the context that produced them.
+    AcquireSRWLockExclusive(&s_DiagLock);
+    s_DiagUsed = 0;
+    s_DiagDropped = 0;
+    ReleaseSRWLockExclusive(&s_DiagLock);
 }
 
 DEARIMGUIKSP_NATIVE_API void DearImGuiKSPNative_BeginFrame(float width, float height, float deltaSeconds)
@@ -314,8 +416,84 @@ int ContextHost_GetDrawListVtxCount(ImDrawList* drawList)
     return drawList->VtxBuffer.Size;
 }
 
-// Shades the window-background fill verts of every visible window. O(windows),
-// no allocation; STRICT no-op when the descriptor is disabled.
+// Shades one solid-fill vert in place when its full RGBA is one of the window
+// chrome fills (the C35 inclusion filter: resolved bg, title bar either focus
+// state, menu bar, border); glyph verts and every other primitive keep their
+// color BY CONSTRUCTION. t saturates like ShadeVertsLinearColorGradientKeepAlpha
+// (imgui_draw.cpp:2399); alpha is never touched. Returns true when the vert
+// was shaded. Shared by the own-command-0 path and the G2-01 child retarget.
+static bool TryShadeChromeVert(ImDrawVert& vert, const ImVec2& whiteUv,
+    ImU32 bgCol, ImU32 titleBgCol, ImU32 titleBgActiveCol, ImU32 menuBarBgCol, ImU32 borderCol,
+    float gradientTopY, float gradientHeight)
+{
+    if (vert.uv.x != whiteUv.x || vert.uv.y != whiteUv.y)
+        return false; // glyph vert — never a fill
+    if (vert.col != bgCol && vert.col != titleBgCol && vert.col != titleBgActiveCol
+        && vert.col != menuBarBgCol && vert.col != borderCol)
+        return false; // not window chrome — keeps its theme color
+    float t = gradientHeight > 0.0f ? (vert.pos.y - gradientTopY) / gradientHeight : 0.0f;
+    t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+    const float invT = 1.0f - t;
+    const ImU32 r = (ImU32)(((s_WindowBgGradientTop      ) & 0xFF) * invT + ((s_WindowBgGradientBottom      ) & 0xFF) * t + 0.5f);
+    const ImU32 gcol = (ImU32)(((s_WindowBgGradientTop >>  8) & 0xFF) * invT + ((s_WindowBgGradientBottom >>  8) & 0xFF) * t + 0.5f);
+    const ImU32 b = (ImU32)(((s_WindowBgGradientTop >> 16) & 0xFF) * invT + ((s_WindowBgGradientBottom >> 16) & 0xFF) * t + 0.5f);
+    vert.col = (vert.col & 0xFF000000u) | r | (gcol << 8) | (b << 16);
+    return true;
+}
+
+// G2-01 retarget: when a child window's decorations (bg fill, border,
+// scrollbars) are rendered into an ANCESTOR's draw list — Begin swaps
+// window->DrawList to the parent's for RenderWindowDecorations to save a draw
+// call, then restores it (imgui.cpp:8585-8611) — the child's own list holds
+// only content and the fills must be found in the ancestor chain. They merge
+// into whichever ancestor command was current at the child's Begin (never the
+// ancestor's own command 0, which holds the ancestor's decorations and is
+// shaded by that ancestor's own pass), so scan every command past 0 of each
+// direct-line ancestor and shade only chrome-colored solid fills contained in
+// the child's outer rect. Walking the whole chain covers nested children (a
+// swapped parent forwarded its decorations to ITS parent in turn).
+static void ShadeChildDecorationsInAncestors(ImGuiWindow* window,
+    ImU32 bgCol, ImU32 titleBgCol, ImU32 titleBgActiveCol, ImU32 menuBarBgCol, ImU32 borderCol)
+{
+    // The border strokes sit on the rect edge; expand the containment test by
+    // the border size so they are included.
+    const float pad = ImMax(window->WindowBorderSize, 1.0f);
+    const float minX = window->Pos.x - pad;
+    const float minY = window->Pos.y - pad;
+    const float maxX = window->Pos.x + window->Size.x + pad;
+    const float maxY = window->Pos.y + window->Size.y + pad;
+    for (ImGuiWindow* ancestor = window->ParentWindow; ancestor != nullptr; ancestor = ancestor->ParentWindow)
+    {
+        ImDrawList* ancestorList = ancestor->DrawList;
+        if (ancestorList == nullptr || ancestorList->CmdBuffer.Size == 0)
+            continue;
+        const ImVec2 whiteUv = ancestorList->_Data->TexUvWhitePixel;
+        for (int c = 1; c < ancestorList->CmdBuffer.Size; ++c) // cmd 0 = the ancestor's own decorations
+        {
+            const ImDrawCmd& cmd = ancestorList->CmdBuffer[c];
+            if (cmd.ElemCount == 0)
+                continue;
+            int vertEnd = 0;
+            const ImDrawIdx* idx = ancestorList->IdxBuffer.Data + cmd.IdxOffset;
+            for (unsigned int n = 0; n < cmd.ElemCount; ++n)
+                if ((int)idx[n] + 1 > vertEnd)
+                    vertEnd = (int)idx[n] + 1;
+            ImDrawVert* verts = ancestorList->VtxBuffer.Data + (int)cmd.VtxOffset;
+            for (int n = 0; n < vertEnd; ++n)
+            {
+                ImDrawVert& vert = verts[n];
+                if (vert.pos.x < minX || vert.pos.x > maxX || vert.pos.y < minY || vert.pos.y > maxY)
+                    continue; // outside the child's rect — the ancestor's own content
+                TryShadeChromeVert(vert, whiteUv, bgCol, titleBgCol, titleBgActiveCol, menuBarBgCol, borderCol,
+                    window->Pos.y, window->Size.y);
+            }
+        }
+    }
+}
+
+// Shades the window-background fill verts of every visible window. O(windows +
+// shaded vert ranges), no allocation; STRICT no-op when the descriptor is
+// disabled.
 static void ApplyWindowBgGradient()
 {
     if (!s_WindowBgGradientEnabled)
@@ -407,7 +585,16 @@ static void ApplyWindowBgGradient()
             continue;
         const ImDrawCmd& cmd = drawList->CmdBuffer[0];
         if (cmd.ElemCount == 0)
+        {
+            // G2-01: an empty first command on a CHILD window means Begin
+            // rendered its decorations into an ancestor's draw list
+            // (imgui.cpp:8585-8611); retarget the shading there instead of
+            // silently skipping the child. Any other window simply has no
+            // fill in command 0 to shade.
+            if (window->Flags & ImGuiWindowFlags_ChildWindow)
+                ShadeChildDecorationsInAncestors(window, bgCol, titleBgCol, titleBgActiveCol, menuBarBgCol, borderCol);
             continue;
+        }
         const int vtxBase = (int)cmd.VtxOffset;
         int vertEnd = 0;
         const ImDrawIdx* idx = drawList->IdxBuffer.Data + cmd.IdxOffset;
@@ -422,26 +609,8 @@ static void ApplyWindowBgGradient()
         const ImVec2 whiteUv = drawList->_Data->TexUvWhitePixel;
         ImDrawVert* verts = drawList->VtxBuffer.Data + vtxBase;
         for (int n = 0; n < vertEnd; ++n)
-        {
-            ImDrawVert& vert = verts[n];
-            if (vert.uv.x != whiteUv.x || vert.uv.y != whiteUv.y)
-                continue; // glyph vert — never a fill
-            // C35 inclusion filter: shade only verts whose full RGBA is one of
-            // the window chrome fills (resolved bg, title bar either focus
-            // state, menu bar, border). Every other solid fill — Text
-            // foreground, grip/scrollbar states, title-button hover/held
-            // background, resize-border highlight — keeps its theme color.
-            if (vert.col != bgCol && vert.col != titleBgCol && vert.col != titleBgActiveCol
-                && vert.col != menuBarBgCol && vert.col != borderCol)
-                continue;
-            float t = gradientHeight > 0.0f ? (vert.pos.y - gradientP0.y) / gradientHeight : 0.0f;
-            t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
-            const float invT = 1.0f - t;
-            const ImU32 r = (ImU32)(((s_WindowBgGradientTop      ) & 0xFF) * invT + ((s_WindowBgGradientBottom      ) & 0xFF) * t + 0.5f);
-            const ImU32 gcol = (ImU32)(((s_WindowBgGradientTop >>  8) & 0xFF) * invT + ((s_WindowBgGradientBottom >>  8) & 0xFF) * t + 0.5f);
-            const ImU32 b = (ImU32)(((s_WindowBgGradientTop >> 16) & 0xFF) * invT + ((s_WindowBgGradientBottom >> 16) & 0xFF) * t + 0.5f);
-            vert.col = (vert.col & 0xFF000000u) | r | (gcol << 8) | (b << 16);
-        }
+            TryShadeChromeVert(verts[n], whiteUv, bgCol, titleBgCol, titleBgActiveCol, menuBarBgCol, borderCol,
+                gradientP0.y, gradientHeight);
     }
 }
 
@@ -492,6 +661,14 @@ int ContextHost_SetStyleVarVec2(int idx, float x, float y)
     }
 }
 
+// G3-01 1px floor: a line-thickness field that was nonzero before scaling may
+// not truncate to zero (ScaleAllSizes uses ImTrunc), or borders/separators/
+// the text caret vanish below uiScale 1.0.
+static float ScaledLineSizeFloor(float before, float scaled)
+{
+    return (before > 0.0f && scaled < 1.0f) ? 1.0f : scaled;
+}
+
 int ContextHost_SetUiScale(float scale)
 {
     if (s_Context == nullptr)
@@ -502,7 +679,46 @@ int ContextHost_SetUiScale(float scale)
     // ScaleAllSizes multiplies the CURRENT values: the managed ThemeEngine
     // resets the whole style (ContextHost_StyleColorsDark) before every apply,
     // so this always multiplies the defaults and repeated applies stay exact.
-    ImGui::GetStyle().ScaleAllSizes(scale);
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    // G3-01: ScaleAllSizes truncates with ImTrunc (imgui.cpp:1628-1681), so at
+    // uiScale < 1.0 every 1px line size collapses to 0 and the line vanishes
+    // (window/child/popup borders, separators, the text caret; MinScale 0.5 is
+    // reachable from the settings panel). Snapshot the line-thickness fields
+    // and re-apply a 1px floor to any that were nonzero before scaling —
+    // deliberately zero fields (e.g. stock FrameBorderSize) stay zero.
+    const float windowBorderSize         = style.WindowBorderSize;
+    const float childBorderSize          = style.ChildBorderSize;
+    const float popupBorderSize          = style.PopupBorderSize;
+    const float frameBorderSize          = style.FrameBorderSize;
+    const float imageBorderSize          = style.ImageBorderSize;
+    const float tabBorderSize            = style.TabBorderSize;
+    const float tabBarBorderSize         = style.TabBarBorderSize;
+    const float tabBarOverlineSize       = style.TabBarOverlineSize;
+    const float separatorSize            = style.SeparatorSize;
+    const float separatorTextBorderSize  = style.SeparatorTextBorderSize;
+    const float dockingSeparatorSize     = style.DockingSeparatorSize;
+    const float treeLinesSize            = style.TreeLinesSize;
+    const float inputTextCursorSize      = style.InputTextCursorSize;
+    const float dragDropTargetBorderSize = style.DragDropTargetBorderSize;
+
+    style.ScaleAllSizes(scale);
+
+    style.WindowBorderSize         = ScaledLineSizeFloor(windowBorderSize, style.WindowBorderSize);
+    style.ChildBorderSize          = ScaledLineSizeFloor(childBorderSize, style.ChildBorderSize);
+    style.PopupBorderSize          = ScaledLineSizeFloor(popupBorderSize, style.PopupBorderSize);
+    style.FrameBorderSize          = ScaledLineSizeFloor(frameBorderSize, style.FrameBorderSize);
+    style.ImageBorderSize          = ScaledLineSizeFloor(imageBorderSize, style.ImageBorderSize);
+    style.TabBorderSize            = ScaledLineSizeFloor(tabBorderSize, style.TabBorderSize);
+    style.TabBarBorderSize         = ScaledLineSizeFloor(tabBarBorderSize, style.TabBarBorderSize);
+    style.TabBarOverlineSize       = ScaledLineSizeFloor(tabBarOverlineSize, style.TabBarOverlineSize);
+    style.SeparatorSize            = ScaledLineSizeFloor(separatorSize, style.SeparatorSize);
+    style.SeparatorTextBorderSize  = ScaledLineSizeFloor(separatorTextBorderSize, style.SeparatorTextBorderSize);
+    style.DockingSeparatorSize     = ScaledLineSizeFloor(dockingSeparatorSize, style.DockingSeparatorSize);
+    style.TreeLinesSize            = ScaledLineSizeFloor(treeLinesSize, style.TreeLinesSize);
+    style.InputTextCursorSize      = ScaledLineSizeFloor(inputTextCursorSize, style.InputTextCursorSize);
+    style.DragDropTargetBorderSize = ScaledLineSizeFloor(dragDropTargetBorderSize, style.DragDropTargetBorderSize);
+
     ImGui::GetIO().FontGlobalScale = scale;
     return 0;
 }

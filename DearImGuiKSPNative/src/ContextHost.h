@@ -121,6 +121,21 @@ int ContextHost_SetWindowBgGradient(int enabled, float r1, float g1, float b1, f
 // DearImGuiKSPNative_GetDrawListVtxCount lives in DearImGuiKSPNative.cpp.
 int ContextHost_GetDrawListVtxCount(ImDrawList* drawList);
 
+// Appends one line to the native diagnostics buffer (C04 channel, review
+// items G2-04/G3-03: fixed 4 KB storage, '\n'-separated, overflow drops the
+// new message and queues a drop notice). Internal to the DLL — the ImGui
+// error callback and the D3D11 backend push through here; the managed side
+// only drains. Thread-safe (own SRWLOCK, never held with the frame lock).
+void ContextHost_PushDiagnostic(const char* msg);
+
+// Drains the diagnostics buffer. Returns the bytes pending BEFORE the call
+// (0 = nothing pending); with a non-null dst it also copies up to
+// dstCapacity-1 bytes, NUL-terminates, and clears the buffer. The managed
+// bridge queries with dst=nullptr first, so steady state allocates nothing.
+// Not part of the exported C ABI itself — the exported wrapper
+// DearImGuiKSPNative_DrainDiagnostics lives in DearImGuiKSPNative.cpp.
+int ContextHost_DrainDiagnostics(char* dst, int dstCapacity);
+
 // Loads a font file into the context atlas (spec §4.2). Legal only before
 // the first NewFrame — afterwards the atlas is built and locked. Returns
 // 0 on success, 1 if there is no context, 2 if frames have already begun,

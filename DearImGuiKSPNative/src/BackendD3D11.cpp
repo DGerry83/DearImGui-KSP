@@ -27,6 +27,14 @@ static ID3D11DeviceContext* s_DeviceContext = nullptr;
 // True once ImGui_ImplDX11_Init + ImGui_ImplDX11_CreateDeviceObjects succeeded.
 static bool s_BackendUp = false;
 
+// G3-03: latched bring-up failure. Before this latch a failed
+// ImGui_ImplDX11_Init/CreateDeviceObjects was silent and retried on every
+// render event, and each failed CreateDeviceObjects attempt ran
+// ImGui_ImplDX11_Shutdown, flapping the RendererHasTextures backend flag the
+// context depends on. One failure = one diagnostic (drained to KSP.log via
+// the C04 channel) + no retry; the latch clears in BackendD3D11_Shutdown.
+static bool s_BackendFailed = false;
+
 int BackendD3D11_InitFromTexture(void* d3d11TexturePtr)
 {
     if (s_Device != nullptr)
@@ -60,16 +68,22 @@ int BackendD3D11_InitFromTexture(void* d3d11TexturePtr)
 // draw_data->Textures on the first RenderDrawData (RendererHasTextures).
 static void TryInitBackend()
 {
-    if (s_BackendUp || s_Device == nullptr || s_DeviceContext == nullptr)
+    if (s_BackendUp || s_BackendFailed || s_Device == nullptr || s_DeviceContext == nullptr)
         return;
     if (ImGui::GetCurrentContext() == nullptr)
         return; // context not up yet; retry on the next render event
 
     if (!ImGui_ImplDX11_Init(s_Device, s_DeviceContext))
+    {
+        s_BackendFailed = true;
+        ContextHost_PushDiagnostic("D3D11 backend bring-up failed (ImGui_ImplDX11_Init); UI rendering is disabled for this session.");
         return;
+    }
     if (!ImGui_ImplDX11_CreateDeviceObjects())
     {
         ImGui_ImplDX11_Shutdown();
+        s_BackendFailed = true;
+        ContextHost_PushDiagnostic("D3D11 backend bring-up failed (ImGui_ImplDX11_CreateDeviceObjects); UI rendering is disabled for this session.");
         return;
     }
     s_DeviceContext->Release(); // backend AddRef'd its own; drop our capture ref
@@ -83,6 +97,7 @@ void BackendD3D11_Shutdown(void)
     if (s_BackendUp && ImGui::GetCurrentContext() != nullptr)
         ImGui_ImplDX11_Shutdown();
     s_BackendUp = false;
+    s_BackendFailed = false; // G3-03 latch clears with the backend teardown
 
     if (s_DeviceContext != nullptr)
     {

@@ -33,8 +33,9 @@ namespace DearImGuiKSP.Infrastructure
 
         // Managed/native handshake constant (spec §5.4, D17); must match
         // DearImGuiKSPNative_GetVersion(). Bump both DLLs in lockstep.
-        // 4: ISSUES #001-#003; 5: C5 font load; 6: C31 live uiScale (SetUiScale export).
-        private const int ExpectedNativeVersion = 6;
+        // 4: ISSUES #001-#003; 5: C5 font load; 6: C31 live uiScale (SetUiScale
+        // export); 7: C04 native diagnostics channel (DrainDiagnostics export).
+        private const int ExpectedNativeVersion = 7;
 
         private readonly ILogger _logger;
         private readonly InputCaptureState _captureState = new InputCaptureState();
@@ -60,6 +61,11 @@ namespace DearImGuiKSP.Infrastructure
         private GetIoCaptureStateDelegate _getIoCaptureState;
         private FeedFrameInputDelegate _feedFrameInput;
         private ClampWindowsToViewportDelegate _clampWindowsToViewport;
+        private DrainDiagnosticsDelegate _drainDiagnostics;
+
+        // C04 (G2-04/G3-03): reused drain target for the native diagnostics
+        // buffer; allocated lazily on the first error, never per frame.
+        private byte[] _diagnosticsBuffer;
 
         internal NativeBridge(ILogger logger)
         {
@@ -304,6 +310,31 @@ namespace DearImGuiKSP.Infrastructure
                 return;
             }
             _endFrame();
+            DrainNativeDiagnostics();
+        }
+
+        // C04 (G2-04/G3-03): the native ImGui error callback (red debug tooltip
+        // disabled native-side) and D3D11 bring-up failures accumulate in a
+        // fixed native buffer; drain it once per frame after EndUiFrame so the
+        // diagnostics reach KSP.log. Steady state is the null-buffer query
+        // returning 0 — no allocation when there are no errors.
+        private void DrainNativeDiagnostics()
+        {
+            int pending = _drainDiagnostics(null, 0);
+            if (pending <= 0)
+            {
+                return;
+            }
+            if (_diagnosticsBuffer == null || _diagnosticsBuffer.Length < pending + 1)
+            {
+                _diagnosticsBuffer = new byte[pending + 1];
+            }
+            _drainDiagnostics(_diagnosticsBuffer, _diagnosticsBuffer.Length);
+            int length = Array.IndexOf(_diagnosticsBuffer, (byte)0);
+            if (length > 0)
+            {
+                _logger.Error("DearImGuiKSPNative: " + Encoding.UTF8.GetString(_diagnosticsBuffer, 0, length));
+            }
         }
 
         /// <inheritdoc/>
@@ -365,6 +396,7 @@ namespace DearImGuiKSP.Infrastructure
             _getIoCaptureState = Bind<GetIoCaptureStateDelegate>("DearImGuiKSPNative_GetIoCaptureState");
             _feedFrameInput = Bind<FeedFrameInputDelegate>("DearImGuiKSPNative_FeedFrameInput");
             _clampWindowsToViewport = Bind<ClampWindowsToViewportDelegate>("DearImGuiKSPNative_ClampWindowsToViewport");
+            _drainDiagnostics = Bind<DrainDiagnosticsDelegate>("DearImGuiKSPNative_DrainDiagnostics");
             return _setD3D11DeviceTexture != null
                 && _loadFontFromFile != null
                 && _contextInit != null
@@ -374,7 +406,8 @@ namespace DearImGuiKSP.Infrastructure
                 && _getRenderEventFunc != null
                 && _getIoCaptureState != null
                 && _feedFrameInput != null
-                && _clampWindowsToViewport != null;
+                && _clampWindowsToViewport != null
+                && _drainDiagnostics != null;
         }
 
         private T Bind<T>(string exportName) where T : class
@@ -430,6 +463,11 @@ namespace DearImGuiKSP.Infrastructure
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void ClampWindowsToViewportDelegate(float width, float height);
+
+        // int DearImGuiKSPNative_DrainDiagnostics(char* dst, int dstCapacity) —
+        // null dst queries the pending byte count without draining (C04).
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int DrainDiagnosticsDelegate([In, Out] byte[] dst, int dstCapacity);
 
         // kernel32 only — the GameData load-path gotcha applies to OUR dll, not these.
         [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]
