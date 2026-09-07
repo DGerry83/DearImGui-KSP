@@ -39,8 +39,14 @@ namespace DearImGuiKSP.Application.Animation
 
         // Ids start at 1; 0 is reserved for the inert default(TweenHandle).
         private readonly List<Entry> _entries = new List<Entry>(InitialCapacity);
+        private readonly Interfaces.ILogger _log;
         private int _nextId;
         private bool _ticking;
+
+        internal TweenEngine(Interfaces.ILogger log = null)
+        {
+            _log = log;
+        }
 
         internal TweenHandle StartFloat(Action<float> set, float from, float to, float seconds, Ease ease)
         {
@@ -72,7 +78,9 @@ namespace DearImGuiKSP.Application.Animation
         /// <summary>
         /// Advances every live tween by <paramref name="deltaTime"/>, invoking each
         /// setter with the eased value; tweens reaching t = 1 get the exact target
-        /// value and are removed. Safe against setters that cancel tweens mid-tick.
+        /// value and are removed. Safe against setters that cancel tweens mid-tick;
+        /// a setter that throws is contained (S3): that tween is stopped and logged,
+        /// siblings keep running, and the exception never escapes Tick.
         /// </summary>
         internal void Tick(float deltaTime)
         {
@@ -100,19 +108,33 @@ namespace DearImGuiKSP.Application.Animation
                     float eased = EaseFunctions.Evaluate(entry.Ease, t);
                     entries[i] = entry;
 
-                    if (entry.IsColor)
+                    try
                     {
-                        // t == 1 short-circuits to the exact target: component-wise
-                        // lerp arithmetic need not reproduce `to` bit-for-bit.
-                        Color value = t >= 1f
-                            ? entry.ToColor
-                            : Color.Lerp(entry.FromColor, entry.ToColor, eased);
-                        entry.ColorSetter(value);
+                        if (entry.IsColor)
+                        {
+                            // t == 1 short-circuits to the exact target: component-wise
+                            // lerp arithmetic need not reproduce `to` bit-for-bit.
+                            Color value = t >= 1f
+                                ? entry.ToColor
+                                : Color.Lerp(entry.FromColor, entry.ToColor, eased);
+                            entry.ColorSetter(value);
+                        }
+                        else
+                        {
+                            float f = t >= 1f ? entry.To : entry.From + (entry.To - entry.From) * eased;
+                            entry.FloatSetter(f);
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        float f = t >= 1f ? entry.To : entry.From + (entry.To - entry.From) * eased;
-                        entry.FloatSetter(f);
+                        // S3: setters are consumer code running outside the fault
+                        // barrier. Unguarded, a throw escapes Tick and the tween —
+                        // never marked done — rethrows every frame, freezing the
+                        // whole frame loop. Contain it: kill this tween only.
+                        _log?.Error("Tween setter threw; the tween has been stopped. Exception: " + ex);
+                        entry.Done = true;
+                        entries[i] = entry;
+                        continue;
                     }
 
                     // The setter may have cancelled this tween (tombstone in the

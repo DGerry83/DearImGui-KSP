@@ -140,7 +140,7 @@ namespace DearImGuiKSP.Infrastructure
         /// <see cref="WireApplicationFacade"/>.
         /// </summary>
         internal static TweenEngine TweenEngine =>
-            _tweenEngine ?? (_tweenEngine = new TweenEngine());
+            _tweenEngine ?? (_tweenEngine = new TweenEngine(Logger));
 
         /// <summary>The failure notifier singleton (C13). Shows the one-per-session failure popup.</summary>
         internal static FailureNotifier Notifier =>

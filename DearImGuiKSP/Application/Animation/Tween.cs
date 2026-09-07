@@ -32,7 +32,9 @@ namespace DearImGuiKSP
         /// <param name="ease">Easing curve applied to the normalized progress.</param>
         /// <returns>
         /// A handle for <see cref="TweenHandle.Cancel"/> and <see cref="TweenHandle.IsPlaying"/>.
-        /// Inert (never playing, cancel is a no-op) when the library is not available.
+        /// Inert (never playing, cancel is a no-op) when the library is not available,
+        /// or when the immediate baseline <paramref name="set"/> call throws (the throw
+        /// is contained, logged, and the tween is not started).
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="set"/> is null.</exception>
         public static TweenHandle To(Action<float> set, float from, float to, float seconds, Ease ease)
@@ -47,7 +49,17 @@ namespace DearImGuiKSP
                 DearImGuiKSP.Log?.Warn("Tween.To(...) ignored: DearImGui-KSP is not available.");
                 return default(TweenHandle);
             }
-            set(from);
+            // G3-07: the baseline set(from) is consumer code too — contain a throw
+            // and refuse to start the tween rather than let it escape To.
+            try
+            {
+                set(from);
+            }
+            catch (Exception ex)
+            {
+                DearImGuiKSP.Log?.Error("Tween.To(...) baseline setter threw; the tween was not started. Exception: " + ex);
+                return default(TweenHandle);
+            }
             return engine.StartFloat(set, from, to, seconds, ease);
         }
 
@@ -66,7 +78,9 @@ namespace DearImGuiKSP
         /// <param name="ease">Easing curve applied to the normalized progress.</param>
         /// <returns>
         /// A handle for <see cref="TweenHandle.Cancel"/> and <see cref="TweenHandle.IsPlaying"/>.
-        /// Inert (never playing, cancel is a no-op) when the library is not available.
+        /// Inert (never playing, cancel is a no-op) when the library is not available,
+        /// or when the immediate baseline <paramref name="set"/> call throws (the throw
+        /// is contained, logged, and the tween is not started).
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="set"/> is null.</exception>
         public static TweenHandle To(Action<Color> set, Color from, Color to, float seconds, Ease ease)
@@ -81,7 +95,15 @@ namespace DearImGuiKSP
                 DearImGuiKSP.Log?.Warn("Tween.To(...) ignored: DearImGui-KSP is not available.");
                 return default(TweenHandle);
             }
-            set(from);
+            try
+            {
+                set(from);
+            }
+            catch (Exception ex)
+            {
+                DearImGuiKSP.Log?.Error("Tween.To(...) baseline setter threw; the tween was not started. Exception: " + ex);
+                return default(TweenHandle);
+            }
             return engine.StartColor(set, from, to, seconds, ease);
         }
     }
