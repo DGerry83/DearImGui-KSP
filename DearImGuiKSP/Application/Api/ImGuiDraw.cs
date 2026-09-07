@@ -172,7 +172,10 @@ namespace DearImGuiKSP
         /// position, drawn with the current font at its current size. No-op
         /// when unavailable.
         /// </summary>
-        /// <param name="pos">Baseline anchor position, screen coordinates.</param>
+        /// <param name="pos">
+        /// Top-left corner of the text's bounding box, screen coordinates
+        /// (ImDrawList::AddText anchors at the top-left, not the baseline).
+        /// </param>
         /// <param name="color">Text color (sRGB bytes).</param>
         /// <param name="text">The text to draw; null renders nothing.</param>
         /// <remarks>

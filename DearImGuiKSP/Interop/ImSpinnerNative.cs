@@ -4,11 +4,12 @@ using System.Runtime.InteropServices;
 namespace DearImGuiKSP.Interop
 {
     /// <summary>
-    /// Blittable mirror of cimgui's <c>ImColor_c</c> (<c>struct { ImVec4_c Value; }</c>,
-    /// cimgui.h:1348-1351), which is what the generated cimspinner ABI passes by value
-    /// for every <c>const ImColor</c> parameter (I-07 discipline: small structs by value,
-    /// mirrored field-for-field). 16 bytes (4 floats), sequential default layout —
-    /// safe on Win64 Cdecl.
+    /// Blittable mirror of C++ <c>imgui::ImColor</c> (<c>struct { ImVec4 Value; }</c>,
+    /// imgui.h), which is what the generated cimspinner ABI passes by value for every
+    /// <c>const ImColor</c> parameter (e.g. cimspinner.h:125 — the cimspinner C ABI
+    /// passes the C++ type directly, NOT cimgui's <c>ImColor_c</c>).
+    /// (I-07 discipline: small structs by value, mirrored field-for-field.)
+    /// 16 bytes (4 floats), sequential default layout — safe on Win64 Cdecl.
     /// </summary>
     internal struct ImSpinnerColor
     {
@@ -164,7 +165,7 @@ namespace DearImGuiKSP.Interop
             SpinnerRainbowMixEx(label, radius, thickness, tint ?? White, 2.8f, 0f, 6.2831855f, 1, 0);
         }
 
-        /// <summary>SpinnerAng8 (imspinner.h:387: bg white, speed 2.8f, angle π, mode 0, rkoef 0.5f).</summary>
+        /// <summary>SpinnerAng8 (imspinner.h:410: bg white, speed 2.8f, angle π, mode 0, rkoef 0.5f).</summary>
         internal static void SpinnerAng8(byte[] label, float radius, float thickness, ImSpinnerColor? tint)
         {
             SpinnerAng8Ex(label, radius, thickness, tint ?? White, White, 2.8f, 3.1415927f, 0, 0.5f);

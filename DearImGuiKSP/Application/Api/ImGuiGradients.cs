@@ -104,7 +104,11 @@ namespace DearImGuiKSP
         /// button. While hovered, both gradient stops lighten ~15%; while held,
         /// both shift toward the KSP light green.
         /// </summary>
-        /// <param name="label">Button text; also its ImGui identity.</param>
+        /// <param name="label">
+        /// Button text; also its ImGui identity. Standard ImGui <c>##</c>/<c>###</c>
+        /// ID suffixes are honored: the suffix anchors the identity but is never
+        /// drawn or measured (G2-08).
+        /// </param>
         /// <param name="top">Gradient top stop (sRGB bytes).</param>
         /// <param name="bottom">Gradient bottom stop (sRGB bytes).</param>
         /// <param name="size">
@@ -120,16 +124,21 @@ namespace DearImGuiKSP
                 return false;
             }
 
+            // Measure the DISPLAY text exactly once (G3-26): the ID suffix is
+            // stripped up front (no allocation when there is none), so the
+            // fit-to-label size and the centering below use the same measure —
+            // and the drawn text matches what was measured (G2-08).
+            string displayLabel = DearImGuiKSP.StripIdSuffix(label);
+            ImVec2 textSize = ImGuiInternal.CalcTextSize(displayLabel);
             if (size.x <= 0f || size.y <= 0f)
             {
-                ImVec2 labelSize = ImGuiInternal.CalcTextSize(label);
                 if (size.x <= 0f)
                 {
-                    size.x = labelSize.X + FitPadX;
+                    size.x = textSize.X + FitPadX;
                 }
                 if (size.y <= 0f)
                 {
-                    size.y = labelSize.Y + FitPadY;
+                    size.y = textSize.Y + FitPadY;
                 }
             }
 
@@ -165,15 +174,14 @@ namespace DearImGuiKSP
                 bottomStop,
                 ButtonRounding);
 
-            // Centered label in the current text color.
-            ImVec2 textSize = ImGuiInternal.CalcTextSize(label);
+            // Centered display label in the current text color (measured above).
             ImGuiInternal.DrawListAddText(
                 ImGuiInternal.GetWindowDrawList(),
                 new ImVec2(
                     bbMin.X + (size.x - textSize.X) * 0.5f,
                     bbMin.Y + (size.y - textSize.Y) * 0.5f),
                 ImGuiInternal.GetColorU32((int)ImGuiCol.Text),
-                label);
+                displayLabel);
 
             return pressed;
         }
@@ -186,7 +194,10 @@ namespace DearImGuiKSP
         /// to the explicit-color overload, which this delegates to. Only valid
         /// inside a registered callback.
         /// </summary>
-        /// <param name="label">Button text; also its ImGui identity.</param>
+        /// <param name="label">
+        /// Button text; also its ImGui identity (<c>##</c>/<c>###</c> ID
+        /// suffixes are honored but never drawn).
+        /// </param>
         /// <param name="size">
         /// Button size in pixels; a component &lt;= 0 fits that dimension to the
         /// label plus a fixed padding.

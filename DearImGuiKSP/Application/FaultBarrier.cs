@@ -33,7 +33,18 @@ namespace DearImGuiKSP.Application
 
             try
             {
-                consumer.Callback();
+                // G2-11: expose the running consumer so facade-level detection
+                // (window-title collision warning) can attribute the call.
+                string previousConsumerId = DearImGuiKSP.CurrentConsumerId;
+                DearImGuiKSP.CurrentConsumerId = consumer.Id;
+                try
+                {
+                    consumer.Callback();
+                }
+                finally
+                {
+                    DearImGuiKSP.CurrentConsumerId = previousConsumerId;
+                }
                 consumer.ConsecutiveFailureCount = 0;
             }
             catch (Exception ex)

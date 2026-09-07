@@ -18,9 +18,21 @@ namespace DearImGuiKSP.Interop
         // single-threaded (frame loop), so sharing buffers is safe.
         private static readonly Dictionary<int, byte[]> _inputTextBuffers = new Dictionary<int, byte[]>();
 
-        // Reused across InputTextWithHiddenLabel calls; holds "##" + label + NUL.
+        // Reused across InputTextWithHiddenLabel calls; holds
+        // "##" + display text + "###" + label + NUL (G2-09).
         // Same single-threaded rationale as _inputTextBuffer.
         private static byte[] _hiddenLabelBuffer;
+
+        // G3-20: docs/10 §6 promises every library widget guards the empty-label
+        // collision with the window's own ImGui ID (the ISSUES #005 family:
+        // GetID("") at window root returns the window's ID and trips ItemAdd's
+        // assert — compiled out in the release native build, so the collision is
+        // silent there). ID-bearing calls route through ToIdUtf8: an empty label
+        // gets this shared invisible sentinel ID instead. Two empty labels in one
+        // window now collide with EACH OTHER (harmless shared-item behavior),
+        // never with the window. Silent substitution, same convention as the
+        // Spinner facade's default per-type IDs.
+        private static readonly byte[] EmptyIdSentinel = ToUtf8("##dk_empty_id");
 
         /// <summary>
         /// Begins an ImGui window. Wraps cimgui <c>igBegin</c> with p_open = NULL
@@ -57,7 +69,7 @@ namespace DearImGuiKSP.Interop
         /// <returns>True on the frame the button is clicked.</returns>
         internal static bool Button(string label)
         {
-            return ImGuiNative.Button(ToUtf8(label), new ImVec2(0f, 0f));
+            return ImGuiNative.Button(ToIdUtf8(label), new ImVec2(0f, 0f));
         }
 
         /// <summary>
@@ -69,7 +81,7 @@ namespace DearImGuiKSP.Interop
         /// <returns>True when the value changed this frame; <paramref name="value"/> is updated in place.</returns>
         internal static bool SliderFloat(string label, ref float value, float min, float max)
         {
-            return ImGuiNative.SliderFloat(ToUtf8(label), ref value, min, max, ImGuiSliderFlags.AlwaysClamp);
+            return ImGuiNative.SliderFloat(ToIdUtf8(label), ref value, min, max, ImGuiSliderFlags.AlwaysClamp);
         }
 
         /// <summary>
@@ -96,7 +108,7 @@ namespace DearImGuiKSP.Interop
         /// <returns>True when a typed value was applied this frame; <paramref name="value"/> is updated in place.</returns>
         internal static bool InputFloat(string label, ref float value)
         {
-            return ImGuiNative.InputFloat(ToUtf8(label), ref value);
+            return ImGuiNative.InputFloat(ToIdUtf8(label), ref value);
         }
 
         /// <summary>
@@ -113,16 +125,19 @@ namespace DearImGuiKSP.Interop
         /// <returns>True when the user edited the text this frame; <paramref name="value"/> is updated in place.</returns>
         internal static bool InputText(string label, ref string value, int capacity = 256)
         {
-            return InputTextCore(ToUtf8(label), ref value, capacity);
+            return InputTextCore(ToIdUtf8(label), ref value, capacity);
         }
 
         /// <summary>
         /// Draws a single-line text input with no visible label: the widget runs
-        /// under a "##"-prefixed hidden ID ("##" + <paramref name="label"/>), so
-        /// ImGui renders no label text inside the field — the caller draws the
+        /// under a hidden ID ("##" + display text + "###" + <paramref name="label"/>),
+        /// so ImGui renders no label text inside the field — the caller draws the
         /// label itself (ksp theme colors typed text by pushing Col_Text around
-        /// this call). The label still anchors the widget's identity, so it must
-        /// stay unique among the window's inputs. Same buffer semantics as
+        /// this call). The mid-string "###" resets the ID hash (imgui.cpp
+        /// ImHashStr), so the widget's identity equals the stock single-call
+        /// <c>igInputText(label)</c> identity under every theme (G2-09), and the
+        /// label still anchors it — it must stay unique among the window's
+        /// inputs. Same buffer semantics as
         /// <see cref="InputText(string, ref string, int)"/>; the label is encoded
         /// into a reused buffer (zero per-frame allocation).
         /// </summary>
@@ -193,22 +208,34 @@ namespace DearImGuiKSP.Interop
             return length;
         }
 
-        // "##" + label + NUL in the reused _hiddenLabelBuffer, grown on demand.
-        // The "##" prefix (not suffix) is what hides the label: ImGui renders
-        // nothing before the marker, so no label text appears inside the field.
-        private static byte[] HiddenLabelUtf8(string label)
+        // Hidden-label ID with a THEME-INDEPENDENT identity (G2-09): the buffer
+        // holds "##" + display text + "###" + label + NUL. The leading "##"
+        // hides the label inside the field (ImGui renders nothing before the
+        // marker — the caller draws the label itself); the mid-string "###"
+        // resets ImHashStr to the window seed (imgui.cpp:2578/2596), so
+        // everything before it contributes nothing and the widget ID hashes
+        // exactly as the stock single-call path's GetID(label) — identical
+        // under every theme. Encoded into a reused buffer (zero per-frame
+        // allocation). Internal for tests.
+        internal static byte[] HiddenLabelUtf8(string label)
         {
             string s = label ?? string.Empty;
+            int displayChars = DearImGuiKSP.StripIdSuffixLength(s);
             int byteCount = Encoding.UTF8.GetByteCount(s);
-            int needed = byteCount + 3; // "##" + NUL terminator
+            int needed = byteCount + byteCount + 6; // "##" + display + "###" + label + NUL (display <= label in bytes)
             if (_hiddenLabelBuffer == null || _hiddenLabelBuffer.Length < needed)
             {
                 _hiddenLabelBuffer = new byte[needed];
             }
-            Encoding.UTF8.GetBytes(s, 0, s.Length, _hiddenLabelBuffer, 2);
             _hiddenLabelBuffer[0] = (byte)'#';
             _hiddenLabelBuffer[1] = (byte)'#';
-            _hiddenLabelBuffer[byteCount + 2] = 0;
+            int pos = 2 + Encoding.UTF8.GetBytes(s, 0, displayChars, _hiddenLabelBuffer, 2);
+            _hiddenLabelBuffer[pos] = (byte)'#';
+            _hiddenLabelBuffer[pos + 1] = (byte)'#';
+            _hiddenLabelBuffer[pos + 2] = (byte)'#';
+            pos += 3;
+            pos += Encoding.UTF8.GetBytes(s, 0, s.Length, _hiddenLabelBuffer, pos);
+            _hiddenLabelBuffer[pos] = 0;
             return _hiddenLabelBuffer;
         }
 
@@ -220,7 +247,7 @@ namespace DearImGuiKSP.Interop
         /// <returns>False when the region is clipped — caller must still call <see cref="EndScrollRegion"/>.</returns>
         internal static bool BeginScrollRegion(string id, float height)
         {
-            return ImGuiNative.BeginScrollRegion(ToUtf8(id), height);
+            return ImGuiNative.BeginScrollRegion(ToIdUtf8(id), height);
         }
 
         /// <summary>
@@ -231,7 +258,7 @@ namespace DearImGuiKSP.Interop
         /// <returns>False when the region is clipped — caller must still call <see cref="EndScrollRegion"/>.</returns>
         internal static bool BeginScrollRegion(string id, ImVec2 size)
         {
-            return ImGuiNative.BeginScrollRegion(ToUtf8(id), size);
+            return ImGuiNative.BeginScrollRegion(ToIdUtf8(id), size);
         }
 
         /// <summary>
@@ -472,7 +499,7 @@ namespace DearImGuiKSP.Interop
         /// <returns>True on the frame the button is clicked.</returns>
         internal static bool RadioButton(string label, bool active)
         {
-            return ImGuiNative.RadioButton(ToUtf8(label), active);
+            return ImGuiNative.RadioButton(ToIdUtf8(label), active);
         }
 
         /// <summary>
@@ -483,7 +510,7 @@ namespace DearImGuiKSP.Interop
         /// <returns>True on the frame the button is clicked; <paramref name="v"/> is updated in place.</returns>
         internal static bool RadioButton(string label, ref int v, int vButton)
         {
-            return ImGuiNative.RadioButton(ToUtf8(label), ref v, vButton);
+            return ImGuiNative.RadioButton(ToIdUtf8(label), ref v, vButton);
         }
 
         // ---- Custom-widget interaction + text measurement (chunk C9) ----
@@ -499,7 +526,7 @@ namespace DearImGuiKSP.Interop
         /// <returns>True on the frame the button is clicked (pressed).</returns>
         internal static bool InvisibleButton(string label, ImVec2 size)
         {
-            return ImGuiNative.InvisibleButton(ToUtf8(label), size);
+            return ImGuiNative.InvisibleButton(ToIdUtf8(label), size);
         }
 
         /// <summary>
@@ -585,7 +612,7 @@ namespace DearImGuiKSP.Interop
         /// </returns>
         internal static bool BeginTabBar(string id)
         {
-            return ImGuiNative.BeginTabBar(ToUtf8(id));
+            return ImGuiNative.BeginTabBar(ToIdUtf8(id));
         }
 
         /// <summary>
@@ -609,7 +636,7 @@ namespace DearImGuiKSP.Interop
         /// </returns>
         internal static bool BeginTabItem(string label)
         {
-            return ImGuiNative.BeginTabItem(ToUtf8(label));
+            return ImGuiNative.BeginTabItem(ToIdUtf8(label));
         }
 
         /// <summary>
@@ -631,7 +658,7 @@ namespace DearImGuiKSP.Interop
         /// <returns>True while the section is open (draw its content this frame).</returns>
         internal static bool CollapsingHeader(string label, bool defaultOpen)
         {
-            return ImGuiNative.CollapsingHeader(ToUtf8(label), defaultOpen);
+            return ImGuiNative.CollapsingHeader(ToIdUtf8(label), defaultOpen);
         }
 
         /// <summary>
@@ -741,21 +768,31 @@ namespace DearImGuiKSP.Interop
             }
         }
 
-        // Null-terminated UTF-8. Null becomes "\0" (empty string).
+        // Null-terminated UTF-8 in a single allocation (G3-29): size the result
+        // buffer from GetByteCount and encode straight into it, instead of
+        // encoding to a scratch array and copying. Null/empty returns a shared
+        // static empty string (callers never mutate the returned buffer).
+        private static readonly byte[] EmptyUtf8 = { 0 };
+
         private static byte[] ToUtf8(string value)
         {
             if (string.IsNullOrEmpty(value))
             {
-                return new byte[] { 0 };
+                return EmptyUtf8;
             }
-            byte[] bytes = Encoding.UTF8.GetBytes(value);
-            byte[] terminated = new byte[bytes.Length + 1];
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                terminated[i] = bytes[i];
-            }
-            terminated[bytes.Length] = 0;
+            byte[] terminated = new byte[Encoding.UTF8.GetByteCount(value) + 1];
+            Encoding.UTF8.GetBytes(value, 0, value.Length, terminated, 0);
             return terminated;
+        }
+
+        // G3-20: ID-bearing variant of ToUtf8 — an empty label would hash to the
+        // window's own ImGui ID at window root (ISSUES #005 family), so it gets
+        // the shared invisible sentinel instead. Raw-render paths (Text,
+        // CalcTextSize, DrawListAddText) keep ToUtf8: the sentinel would render
+        // literally there, and they seed no ID. Internal for tests.
+        internal static byte[] ToIdUtf8(string value)
+        {
+            return string.IsNullOrEmpty(value) ? EmptyIdSentinel : ToUtf8(value);
         }
 
         // Decodes up to the first NUL (or end of buffer).

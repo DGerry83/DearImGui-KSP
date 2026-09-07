@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using DearImGuiKSP.Application;
 using DearImGuiKSP.Application.Interfaces;
 using DearImGuiKSP.Interop;
@@ -27,6 +28,13 @@ namespace DearImGuiKSP
         internal static ConsumerRegistry Registry { get; set; }
         internal static LifecycleStateMachine Lifecycle { get; set; }
         internal static Application.ThemeEngine ThemeEngine { get; set; }
+
+        /// <summary>
+        /// Id of the consumer whose callback is currently running (set by
+        /// FaultBarrier around each invocation; null between callbacks). Backs
+        /// the G2-11 window-title collision warning's attribution.
+        /// </summary>
+        internal static string CurrentConsumerId { get; set; }
 
         /// <summary>
         /// True only between the frame loop's BeginUiFrame and EndUiFrame — the
@@ -135,7 +143,17 @@ namespace DearImGuiKSP
         /// <summary>
         /// Begins an ImGui window. Only valid inside a registered callback.
         /// </summary>
-        /// <param name="name">Window title; also its ImGui identity.</param>
+        /// <param name="name">
+        /// Window title; also its ImGui identity. Titles are PROCESS-GLOBAL:
+        /// they are shared by every mod using this library (and any other ImGui
+        /// user) in the KSP process, with no namespacing — two mods beginning
+        /// the same title share one window identity, so position, collapse
+        /// state, and focus bleed across them. When two different registered
+        /// consumers begin the same title, the library logs one warning per
+        /// title (G2-11; detection only, the window still begins). Prefix
+        /// titles with your mod name to keep them unique. Standard ImGui
+        /// <c>##</c>/<c>###</c> suffix rules apply.
+        /// </param>
         /// <param name="autoResize">
         /// Opt in to fit-to-content sizing (<c>ImGuiWindowFlags_AlwaysAutoResize</c>,
         /// imgui.h:1225): the window is resized to its content every frame. While
@@ -153,6 +171,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            WarnOnWindowTitleCollision(name);
             // End is required even when Begin returns false, so count unconditionally.
             bool visible = ImGuiInternal.BeginWindow(
                 name, autoResize ? ImGuiWindowFlags.AlwaysAutoResize : ImGuiWindowFlags.None);
@@ -232,7 +251,11 @@ namespace DearImGuiKSP
         /// off-white and only the typed text renders in the KSP light orange —
         /// ImGui colors an InputText's label with the same Col_Text as its
         /// contents, so the widget runs with a hidden-label ID and Col_Text
-        /// pushed to orange for that call. Under the "dark" theme the stock
+        /// pushed to orange for that call. The hidden ID is built with a
+        /// mid-string "###" (ImHashStr reset), so the widget's ImGui identity
+        /// equals the stock single-call identity in EVERY theme (G2-09):
+        /// switching themes mid-edit does not drop focus, and <c>##</c> suffixes
+        /// never render as visible text. Under the "dark" theme the stock
         /// single-call path is kept byte-identical.
         /// </remarks>
         public static bool InputText(string label, ref string value, int capacity = 256)
@@ -247,7 +270,7 @@ namespace DearImGuiKSP
                 return ImGuiInternal.InputText(label, ref value, capacity);
             }
 
-            Text(label);
+            Text(StripIdSuffix(label));
             ImGuiInternal.SameLine();
             PushStyleColor(ImGuiCol.Text, KspPalette.OrangeLight);
             bool edited = ImGuiInternal.InputTextWithHiddenLabel(label, ref value, capacity);
@@ -592,6 +615,74 @@ namespace DearImGuiKSP
         {
             const float scale = 1f / 255f;
             return new ImVec4(color.r * scale, color.g * scale, color.b * scale, color.a * scale);
+        }
+
+        // ImGui label ID-suffix rules (imgui.cpp FindRenderedTextEnd): everything
+        // from the first "##" on is identity, not display — "###" included, since
+        // "###id" contains "##" at its start. Returns the label itself (no
+        // allocation) when there is no suffix.
+        internal static string StripIdSuffix(string label)
+        {
+            if (string.IsNullOrEmpty(label))
+            {
+                return label;
+            }
+            int marker = label.IndexOf("##", StringComparison.Ordinal);
+            return marker >= 0 ? label.Substring(0, marker) : label;
+        }
+
+        // Character count of <see cref="StripIdSuffix(string)"/> without
+        // allocating the substring (the reused-buffer encoder's form, G2-09).
+        internal static int StripIdSuffixLength(string label)
+        {
+            if (string.IsNullOrEmpty(label))
+            {
+                return 0;
+            }
+            int marker = label.IndexOf("##", StringComparison.Ordinal);
+            return marker >= 0 ? marker : label.Length;
+        }
+
+        // G2-11: window titles are process-global ImGui identities shared by
+        // every mod in the process (no namespacing — spec §5.3 leaves scoping to
+        // consumers). Minimal detection only: the first registered consumer to
+        // begin a given title is recorded as its owner; when a DIFFERENT consumer
+        // later begins the same title, one warning is logged per title (both
+        // windows then share one ImGui identity — state, position, and focus
+        // bleed across the two mods). Not a gate: the window still begins.
+        // Process-static, mutated only on the single frame-loop thread.
+        private static readonly Dictionary<string, string> s_windowTitleOwners =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        private static readonly HashSet<string> s_windowTitleWarnings =
+            new HashSet<string>(StringComparer.Ordinal);
+
+        // G2-11 collision bookkeeping, split out so tests can drive it without a
+        // native frame (BeginWindow itself P/Invokes). Null titles are not
+        // tracked (the anonymous-window case).
+        internal static void WarnOnWindowTitleCollision(string name)
+        {
+            if (name == null)
+            {
+                return;
+            }
+            string owner;
+            if (!s_windowTitleOwners.TryGetValue(name, out owner))
+            {
+                s_windowTitleOwners.Add(name, CurrentConsumerId);
+                return;
+            }
+            if (string.Equals(owner, CurrentConsumerId, StringComparison.Ordinal))
+            {
+                return;
+            }
+            if (s_windowTitleWarnings.Add(name))
+            {
+                Log?.Warn(
+                    "BeginWindow('" + name + "'): window title already in use by consumer '" +
+                    (owner ?? "<unknown>") + "' (now also '" + (CurrentConsumerId ?? "<unknown>") +
+                    "'). Window titles are process-global ImGui identities shared by all mods; " +
+                    "both windows now share one identity. Prefix the title with your mod name to disambiguate.");
+            }
         }
 
         // G3-23: the release native build compiles out ImGui's idx bounds assert

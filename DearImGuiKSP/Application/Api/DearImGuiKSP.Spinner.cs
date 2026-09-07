@@ -126,12 +126,13 @@ namespace DearImGuiKSP
 
     public static partial class DearImGuiKSP
     {
-        // ISSUES #005: a spinner's label seeds its ImGuiID via SpinnerBegin's
-        // GetID + ItemAdd (vendor/imspinner/imspinner.h:110) — an EMPTY label
-        // returns the window's own ID and trips ItemAdd's assert
+        // ISSUES #005 / G4-01: a spinner's label seeds its ImGuiID via
+        // SpinnerBegin's GetID + ItemAdd (vendor/imspinner/imspinner.h:110) — an
+        // EMPTY label returns the window's own ID and trips ItemAdd's assert
         // (imgui.cpp:12203). The default IDs below are unique per SpinnerType
-        // and invisible ("##" prefix). Placing two spinners of the SAME type in
-        // one window needs distinct caller-provided ids (standard ImGui ID rules).
+        // and invisible ("##" prefix). Null AND "" caller ids both take the
+        // default. Placing two spinners of the SAME type in one window needs
+        // distinct caller-provided ids (standard ImGui ID rules).
         private static readonly byte[][] s_spinnerDefaultIds =
         {
             Label("##dk_spinner_rainbowmix"),
@@ -164,6 +165,15 @@ namespace DearImGuiKSP
             return terminated;
         }
 
+        // G4-01: null AND "" both take the unique per-type default ID — an empty
+        // id would collide with the window's own ImGui ID (ISSUES #005). Caller
+        // must have range-checked the type first (the Spinner body does, G3-17).
+        // Internal seam so the guard is testable without a native context.
+        internal static byte[] ResolveSpinnerLabel(SpinnerType type, string id)
+        {
+            return string.IsNullOrEmpty(id) ? s_spinnerDefaultIds[(int)type] : Label(id);
+        }
+
         /// <summary>
         /// Draws an animated spinner (vendored dalerank/imspinner) of the given
         /// type. Spinners indicate ongoing work; they animate themselves natively
@@ -194,13 +204,20 @@ namespace DearImGuiKSP
         /// </param>
         /// <param name="id">
         /// Optional ImGui ID for the widget (invisible; standard "##" semantics
-        /// apply). Null uses a unique per-type default. Pass distinct ids when
-        /// placing two spinners of the same type in one window.
+        /// apply). Null or empty uses a unique per-type default. Pass distinct
+        /// ids when placing two spinners of the same type in one window.
         /// </param>
         public static void Spinner(SpinnerType type, float radius, float thickness, Color? tint = null, string id = null)
         {
             if (!CanDeclareUi)
             {
+                return;
+            }
+            // G3-17: no-throw widget contract — an out-of-range type would index
+            // past the default-ID table and dispatch nothing; reject before it.
+            if (type < SpinnerType.RainbowMix || type > SpinnerType.SplitSquare)
+            {
+                Log?.Warn("Spinner ignored: SpinnerType " + (int)type + " is out of range.");
                 return;
             }
             // Nullable<ImSpinnerColor> is a stack value type; null = "upstream
@@ -210,7 +227,7 @@ namespace DearImGuiKSP
             ImSpinnerColor? spinnerTint = tint.HasValue
                 ? new ImSpinnerColor(ToImVec4(tint.Value))
                 : (ImSpinnerColor?)null;
-            byte[] label = id == null ? s_spinnerDefaultIds[(int)type] : Label(id);
+            byte[] label = ResolveSpinnerLabel(type, id);
             switch (type)
             {
                 case SpinnerType.RainbowMix:
