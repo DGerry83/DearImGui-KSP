@@ -48,3 +48,13 @@ Theme: demo-only UI/benchmark correctness. Demo files only — the library was n
 
 ### Rollback
 - `git checkout -- DearImGuiKSPDemo/BenchmarkUI.cs DearImGuiKSPDemo/Telemetry/TelemetrySampler.cs DearImGuiKSPDemo/PlotDemo.cs DearImGuiKSPDemo/DemoConsumer.cs`; delete this contract record.
+
+---
+
+## Addendum C13b (2026-09-07, Gate C follow-up): IMGUI toggle non-responsive
+
+**Defect in the C13 G3-33 fix:** applying the toggle's new value only when `Event.current.type == EventType.Layout` fixed the Layout/Repaint mismatch but made the toggle dead — toggle clicks register on input events (MouseUp), and those passes never satisfied the Layout condition, so `_imguiVirtualized` never changed.
+
+**Fix (`BenchmarkUI.cs` only):** standard IMGUI stash-and-commit. The toggle's returned value is stashed into `_pendingImguiVirtualized` on every OnGUI pass (a click's input-event pass is where it actually flips); the commit to `_imguiVirtualized` — the state driving the control tree — happens only during a Layout pass. A click therefore lands one frame later, at the start of a frame, and every pass of that frame (Layout, Repaint, input) sees one consistent branch, so the G3-33 guarantee (no mid-pass tree change → no ArgumentException) holds. Verified: `dotnet build DearImGui-KSP.slnx` 0 errors, 0 warnings.
+
+**Gate C re-check:** click "Use Virtualization" in the IMGUI reference window — the mode flips within a frame AND repeated spam-clicking still produces no "Getting control N's position..." ArgumentException in the log.

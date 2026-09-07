@@ -37,6 +37,9 @@ namespace DearImGuiKSPDemo
         // Independent toggles: AC5 toggles each side separately to compare paths.
         private bool _virtualized = true;
         private bool _imguiVirtualized = true;
+        // Last value returned by the IMGUI reference toggle, stashed on every OnGUI
+        // pass and committed to _imguiVirtualized only during Layout (G3-33).
+        private bool _pendingImguiVirtualized;
 
         private Vector2 _imguiScrollPos;
         private Rect _imguiWindowRect = new Rect(60f, 60f, 380f, 420f);
@@ -210,13 +213,17 @@ namespace DearImGuiKSPDemo
 
             bool newVirtualized = GUILayout.Toggle(_imguiVirtualized, "Use Virtualization");
             // IMGUI lays out in the Layout pass and replays the SAME control tree in
-            // the Repaint/input passes: flipping the branch mid-pass (a click is an
-            // input event, not Layout) lays out a different control count and the
-            // next Repaint throws "Getting control N's position in a group with
-            // only M controls". Apply the new state only during Layout.
-            if (newVirtualized != _imguiVirtualized && Event.current.type == EventType.Layout)
+            // the Repaint/input passes: flipping the branch mid-pass lays out a
+            // different control count and the next Repaint throws "Getting control
+            // N's position in a group with only M controls" (G3-33). Toggle clicks
+            // register on input events, so the returned value is stashed on every
+            // pass and committed to the state driving the tree only during Layout —
+            // all passes of a frame still see one consistent tree, and clicks land.
+            _pendingImguiVirtualized = newVirtualized;
+            if (Event.current.type == EventType.Layout &&
+                _pendingImguiVirtualized != _imguiVirtualized)
             {
-                _imguiVirtualized = newVirtualized;
+                _imguiVirtualized = _pendingImguiVirtualized;
                 _imguiScrollPos = Vector2.zero; // reset scroll when switching modes
             }
 
