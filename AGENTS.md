@@ -6,7 +6,7 @@
 
 - **Target**: KSP 1.12.x, Unity 2019.4.18f1, Mono x64, Windows-first, D3D11 (OpenGL deferred post-MVP, D20).
 - **Structure**: `DearImGuiKSPNative.dll` (C++: Dear ImGui + cimgui + render backends) + `DearImGuiKSP.dll` (C#: KSP plugin, frame loop, input locks, public API).
-- **Current status**: **1.0.0 released** (2026-09-05) — pre-release feature wave complete, all milestones M1–M8 verified in-game by the user including the clean-KSP zip-install gate in the full D16 environment; session `notes\finished\2026-09-03_PreReleaseFeatureWave_Implementation\` (read its HANDOFF.md first for the wave record and the post-release deferred backlog). `package_release.bat` builds both release zips into `dist\` (library + separate demo, D7); D35 records OpenGL post-release (user preparing a stripped-down GL test install); D36 records the versioning paradigm (see Hard constraints). Release stepping-stone: the demo's `KSPAssemblyDependencyEqualMajor` attribute must be bumped with every library major (ISSUES #016). Earlier history: implementation plan complete 2026-09-03 (M1–M6 verified, `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`); post-MVP follow-ups (ISSUES #001–#003); wave spec `notes\finished\2026-09-03_DesignSpec_Theming_Extensions_Showcase\DESIGN_SPEC.md` (D24–D34).
+- **Current status**: **1.0.0 released** (2026-09-05) — pre-release feature wave complete, all milestones M1–M8 verified in-game by the user including the clean-KSP zip-install gate in the full D16 environment; session `notes\finished\2026-09-03_PreReleaseFeatureWave_Implementation\` (read its HANDOFF.md first for the wave record and the post-release deferred backlog). `package_release.bat` builds both release zips into `dist\` (library + separate demo, D7); D35 records OpenGL post-release (stripped-down GL-capable test install ready and pinned as the default build target — `notes\knowledge\ENVIRONMENT.md`); D36 records the versioning paradigm (see Hard constraints); D37 sequences post-release graphics-API work (OpenGL first extension → #011 docking → Metal/Mac track → Vulkan back-burner pending user demand). Release stepping-stone: the demo's `KSPAssemblyDependencyEqualMajor` attribute must be bumped with every library major (ISSUES #016). Earlier history: implementation plan complete 2026-09-03 (M1–M6 verified, `notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`); post-MVP follow-ups (ISSUES #001–#003); wave spec `notes\finished\2026-09-03_DesignSpec_Theming_Extensions_Showcase\DESIGN_SPEC.md` (D24–D34).
 
 ## Working on this repo — read these first
 
@@ -44,7 +44,7 @@ Authoritative design record, in `notes\finished\2026-07-29_DesignSpec_DearImGuiK
 | File | Contents |
 |------|----------|
 | `DESIGN_SPEC.md` | **The spec.** Confirmed by the user 2026-07-29. Build from this. |
-| `DECISION_LOG.md` | D1–D36: every design decision, alternatives, rationale. Check before reversing anything. |
+| `DECISION_LOG.md` | D1–D37: every design decision, alternatives, rationale. Check before reversing anything. |
 | `QUESTION_LOG.md` | Q1–Q47: the user's answers that the spec is built from. |
 | `RESEARCH_NOTES.md` | KSP API findings, precedents, compatibility concerns, open gaps. |
 

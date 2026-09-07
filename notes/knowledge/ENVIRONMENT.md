@@ -27,6 +27,9 @@
 
 - Bash tool executes through Git Bash; use Unix syntax (`/dev/null`, forward slashes) inside Bash commands.
 - `DearImGui-KSP.props.user` pins `KSPBT_GameRoot` and is gitignored.
+- Two local KSP instances (2026-09-06):
+  - `C:\SSDGames\DearImGui-KSP_TESTING` — **currently pinned.** Stripped-down GL-capable instance with modern-modded basics (Deferred, TUFX, Scatterer, ParallaxContinued, IMGUI_Helper, ModuleManager, Harmony, Kopernicus, …; deliberately no CinematicShaders/CinematicRecorder, which fail under GL — D20). Default target for test builds; unblocks the D35 OpenGL work.
+  - `C:\SSDGames\ReformTestInstance` — full D16 compatibility environment. Flip the `KSPBT_GameRoot` pin back here for full-compat checks.
 
 ## Verified
 

@@ -331,7 +331,7 @@ None identified in the game dump — zero existing native-plugin render integrat
 - **Assumption (verify in PoC)**: the standard Unity low-level native plugin pattern (`GL.IssuePluginEvent`) works in KSP — no game-side precedent exists in the dump; this is the gating technical risk.
 - **Open (runtime probing)**: player settings not in the dump (scripting runtime version, API compatibility level, graphics API order, color space) — read from `boot.config` or at runtime.
 - **Open (runtime probing)**: scene contents (canvas render modes, camera depths, culling masks) determine exactly where rendering is injected.
-- **Deferred decisions**: CKAN metadata, Linux/Mac port plan, bundled alternate font choice (if ProggyClean is ever replaced), old-major support window, **OpenGL backend scheduling (D20 — blocked on a clean GL test environment)**.
+- **Deferred decisions**: CKAN metadata, Linux/Mac port plan, bundled alternate font choice (if ProggyClean is ever replaced), old-major support window, **second-backend scheduling (D20/D35/D37: OpenGL is the first extension, post-release, blocked on a clean GL test environment; docking #011 next; Metal is the Mac track, behind docking; Vulkan back-burner pending user demand)**.
 
 ---
 
@@ -343,3 +343,4 @@ None identified in the game dump — zero existing native-plugin render integrat
 | 2026-09-03 | Agent + User | Post-MVP amendments: uGUI pointer blocker + IMGUI input suppression (D22, D23); opt-out viewport clamp setting (D21) |
 | 2026-09-03 | Agent + User | Pre-release feature wave spec confirmed (KSP default theme, bundled IBM Plex Sans, extension integrations, telemetry showcase, modder docs; D24–D34): `notes/finished/2026-09-03_DesignSpec_Theming_Extensions_Showcase/DESIGN_SPEC.md`. D24 narrows D18's Unity-free Application rule to permit UnityEngine.CoreModule math structs in public signatures. |
 | 2026-09-05 | Agent + User | Release versioning (D36): first public release is **1.0.0** — no public 0.x phase, so the §10.5 1.0+ stability policy applies from the first release; component semantics recorded (major = breaking, minor = features, patch = fixes; integers, trailing reset). OpenGL post-release (D35). |
+| 2026-09-06 | Agent + User | Post-release graphics-API queue (D37): Vulkan re-scope of D35 rejected — Proton users already covered via D3D11→DXVK; Vulkan device discovery is blocked by the D19 LoadLibrary model (no IUnityGraphicsVulkan without UnityPluginLoad); MoltenVK inapplicable (Unity 2019.4 macOS renders Metal). OpenGL remains the first extension, #011 docking next, Metal (Mac track) behind docking, Vulkan back-burner pending user demand. |
