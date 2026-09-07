@@ -215,11 +215,17 @@ namespace DearImGuiKSPDemo
             // IMGUI lays out in the Layout pass and replays the SAME control tree in
             // the Repaint/input passes: flipping the branch mid-pass lays out a
             // different control count and the next Repaint throws "Getting control
-            // N's position in a group with only M controls" (G3-33). Toggle clicks
-            // register on input events, so the returned value is stashed on every
-            // pass and committed to the state driving the tree only during Layout —
-            // all passes of a frame still see one consistent tree, and clicks land.
-            _pendingImguiVirtualized = newVirtualized;
+            // N's position in a group with only M controls" (G3-33). Toggle returns
+            // the flipped value ONLY on the click's input-event pass — every other
+            // pass returns the passed-in state — so the stash updates only when the
+            // returned value differs from the current state (a Repaint pass would
+            // otherwise overwrite the pending flip before the next Layout). The
+            // commit to the tree-driving state happens during Layout, keeping all
+            // passes of a frame consistent while clicks still land.
+            if (newVirtualized != _imguiVirtualized)
+            {
+                _pendingImguiVirtualized = newVirtualized;
+            }
             if (Event.current.type == EventType.Layout &&
                 _pendingImguiVirtualized != _imguiVirtualized)
             {
