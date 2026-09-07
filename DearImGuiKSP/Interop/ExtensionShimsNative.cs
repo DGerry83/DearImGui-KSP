@@ -10,8 +10,11 @@ namespace DearImGuiKSP.Interop
     /// <see cref="ImGuiNative"/>: implicit <c>[DllImport("DearImGuiKSPNative")]</c>
     /// resolves against the module NativeBridge already LoadLibrary'd. The shim
     /// ABI uses <c>int</c> for bools (1-byte C++ bools stay behind the shim) and
-    /// returns 1 when the value changed, 0 otherwise. C9 owns ImGuiNative.cs /
-    /// ImGuiInternal.cs, so this file is self-contained (its own ToUtf8).
+    /// returns 1 when the value changed, 0 otherwise. ID-bearing labels route
+    /// through <see cref="ImGuiInternal.ToIdUtf8"/> (C14, G3-20 closure: the
+    /// docs/10 §6 empty-label guard applies to these widgets too); only the
+    /// printf <c>format</c> strings — display text, never an ID — keep this
+    /// file's local <c>ToUtf8</c>/<c>ToUtf8OrNull</c>.
     /// </summary>
     internal static class ExtensionShimsNative
     {
@@ -90,16 +93,16 @@ namespace DearImGuiKSP.Interop
             int invert_colors);
 
         /// <summary>
-        /// Draws imgui_toggle's default toggle. The label is encoded to a
-        /// null-terminated UTF-8 buffer per call (same ToUtf8 convention as
-        /// <c>ImGuiInternal</c>); toggle labels are short-lived and the buffer
-        /// is not retained.
+        /// Draws imgui_toggle's default toggle. The label is encoded per call
+        /// through <see cref="ImGuiInternal.ToIdUtf8"/> (ID-bearing: null/empty
+        /// gets the invisible sentinel instead of the window's own ID); toggle
+        /// labels are short-lived and the buffer is not retained.
         /// </summary>
         /// <returns>True when <paramref name="value"/> changed this frame.</returns>
         internal static bool Toggle(string label, ref bool value)
         {
             int v = value ? 1 : 0;
-            bool changed = DK_Toggle(ToUtf8(label), ref v) != 0;
+            bool changed = DK_Toggle(ImGuiInternal.ToIdUtf8(label), ref v) != 0;
             value = v != 0;
             return changed;
         }
@@ -113,7 +116,7 @@ namespace DearImGuiKSP.Interop
         internal static bool Toggle(string label, ref bool value, int flags)
         {
             int v = value ? 1 : 0;
-            bool changed = DK_ToggleFlags(ToUtf8(label), ref v, flags) != 0;
+            bool changed = DK_ToggleFlags(ImGuiInternal.ToIdUtf8(label), ref v, flags) != 0;
             value = v != 0;
             return changed;
         }
@@ -138,7 +141,7 @@ namespace DearImGuiKSP.Interop
             int steps)
         {
             return DK_Knob(
-                ToUtf8(label),
+                ImGuiInternal.ToIdUtf8(label),
                 ref value,
                 v_min,
                 v_max,
@@ -168,7 +171,7 @@ namespace DearImGuiKSP.Interop
             int steps)
         {
             return DK_KnobInt(
-                ToUtf8(label),
+                ImGuiInternal.ToIdUtf8(label),
                 ref value,
                 v_min,
                 v_max,
@@ -203,7 +206,7 @@ namespace DearImGuiKSP.Interop
             bool invertColors)
         {
             return DK_WheelFloat(
-                ToUtf8(label),
+                ImGuiInternal.ToIdUtf8(label),
                 ref value,
                 v_min,
                 v_max,
@@ -233,7 +236,7 @@ namespace DearImGuiKSP.Interop
             bool invertColors)
         {
             return DK_WheelInt(
-                ToUtf8(label),
+                ImGuiInternal.ToIdUtf8(label),
                 ref value,
                 v_min,
                 v_max,
@@ -253,7 +256,9 @@ namespace DearImGuiKSP.Interop
         }
 
         // Null-terminated UTF-8. Null becomes "\0" (empty string).
-        // Duplicated from ImGuiInternal (C9-owned; not editable here).
+        // Kept locally for the printf format path only (display text, never an
+        // ID — formats intentionally skip the sentinel); ID-bearing labels go
+        // through ImGuiInternal.ToIdUtf8 (C14).
         private static byte[] ToUtf8(string value)
         {
             if (string.IsNullOrEmpty(value))

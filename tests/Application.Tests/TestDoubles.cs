@@ -30,17 +30,45 @@ namespace Application.Tests
     {
         public int ApplyLocksCallCount;
         public int ReleaseLocksCallCount;
-        public InputCaptureState LastState;
         public IReadOnlyList<string> LastConsumerIds;
 
         public void ApplyLocks(InputCaptureState state, IReadOnlyList<string> consumerIds)
         {
             ApplyLocksCallCount++;
-            LastState = state;
             LastConsumerIds = consumerIds;
         }
 
         public void ReleaseLocks() { ReleaseLocksCallCount++; }
+    }
+
+    /// <summary>
+    /// Recording <see cref="INativeBridge"/> double shared by the frame-loop test
+    /// classes (C14: replaces the per-class RecordingBridge/FakeNativeBridge copies).
+    /// Counts frame boundaries and records viewport-clamp calls; everything else
+    /// is inert.
+    /// </summary>
+    internal sealed class FakeNativeBridge : INativeBridge
+    {
+        public int BeginCount;
+        public int EndCount;
+        public readonly List<KeyValuePair<float, float>> ClampCalls =
+            new List<KeyValuePair<float, float>>();
+
+        private readonly InputCaptureState _captureState = new InputCaptureState();
+
+        public int Initialize() { return 0; }
+        public bool LoadFontFromFile(string utf8Path, float sizePixels) { return true; }
+        public InputCaptureState GetIoSnapshot() { return _captureState; }
+        public void BeginUiFrame(float width, float height, float deltaSeconds) { BeginCount++; }
+        public void EndUiFrame() { EndCount++; }
+        public void RebuildViewport(int width, int height) { }
+
+        public void ClampWindowsToViewport(float width, float height)
+        {
+            ClampCalls.Add(new KeyValuePair<float, float>(width, height));
+        }
+
+        public void Shutdown() { }
     }
 
     internal sealed class FakePointerBlockerGateway : IPointerBlockerGateway

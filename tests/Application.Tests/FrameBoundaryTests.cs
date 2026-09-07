@@ -19,22 +19,6 @@ namespace Application.Tests
     [Collection("FacadeStatics")]
     public class FrameBoundaryTests
     {
-        private sealed class RecordingBridge : INativeBridge
-        {
-            public int BeginCount;
-            public int EndCount;
-            private readonly InputCaptureState _captureState = new InputCaptureState();
-
-            public int Initialize() { return 0; }
-            public bool LoadFontFromFile(string utf8Path, float sizePixels) { return true; }
-            public InputCaptureState GetIoSnapshot() { return _captureState; }
-            public void BeginUiFrame(float width, float height, float deltaSeconds) { BeginCount++; }
-            public void EndUiFrame() { EndCount++; }
-            public void RebuildViewport(int width, int height) { }
-            public void ClampWindowsToViewport(float width, float height) { }
-            public void Shutdown() { }
-        }
-
         private sealed class RecordingCloser : IScopeCloser
         {
             public readonly List<string> Calls = new List<string>();
@@ -56,7 +40,7 @@ namespace Application.Tests
         private sealed class Harness : IDisposable
         {
             internal readonly ConsumerRegistry Registry = new ConsumerRegistry();
-            internal readonly RecordingBridge Bridge = new RecordingBridge();
+            internal readonly FakeNativeBridge Bridge = new FakeNativeBridge();
             internal readonly FrameLoopOrchestrator Orchestrator;
 
             internal Harness()

@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace DearImGuiKSP.Interop
 {
@@ -135,8 +134,9 @@ namespace DearImGuiKSP.Interop
     /// implicit <c>[DllImport("DearImGuiKSPNative")]</c> resolves against the module
     /// NativeBridge already LoadLibrary'd. cimplot <c>bool</c> is the same 1-byte
     /// C++ bool as cimgui, so returns use <see cref="UnmanagedType.I1"/>. C9 owns
-    /// ImGuiNative.cs / ImGuiInternal.cs, so this file is self-contained (its own
-    /// ToUtf8).
+    /// ImGuiNative.cs / ImGuiInternal.cs; ID-bearing titles/labels route through
+    /// <see cref="ImGuiInternal.ToIdUtf8"/> (C14, G3-20 closure: the docs/10 §6
+    /// empty-label guard applies to plot identity too).
     /// </summary>
     internal static class ImPlotNative
     {
@@ -226,14 +226,15 @@ namespace DearImGuiKSP.Interop
         private static extern void ImPlot_SetupAxes([In] byte[] x_label, [In] byte[] y_label, int x_flags, int y_flags);
 
         /// <summary>
-        /// Begins a plot. The label is encoded to a null-terminated UTF-8 buffer per
-        /// call (same ToUtf8 convention as <c>ImGuiInternal</c>/<c>ExtensionShimsNative</c>);
-        /// plot titles are short-lived and the buffer is not retained.
+        /// Begins a plot. The title is encoded per call through
+        /// <see cref="ImGuiInternal.ToIdUtf8"/> (it is ImPlot identity: null/empty
+        /// gets the invisible sentinel instead of an empty-string ID); plot titles
+        /// are short-lived and the buffer is not retained.
         /// </summary>
         /// <returns>The ImPlot BeginPlot result (false = plot collapsed/clipped).</returns>
         internal static bool BeginPlot(string title, ImVec2 size, ImPlotFlags flags)
         {
-            return ImPlot_BeginPlot(ToUtf8(title), size, (int)flags);
+            return ImPlot_BeginPlot(ImGuiInternal.ToIdUtf8(title), size, (int)flags);
         }
 
         /// <summary>Ends the current plot. Call exactly once per BeginPlot that returned true.</summary>
@@ -245,14 +246,15 @@ namespace DearImGuiKSP.Interop
         /// <summary>
         /// Draws a y-series line plot from an already-pinned buffer (the caller pins
         /// with <c>fixed</c>; the pin releases at scope exit, nothing native is
-        /// retained). The label is encoded to a null-terminated UTF-8 buffer per call
-        /// (same ToUtf8 convention); series labels are short-lived and the buffer is
+        /// retained). The series label is encoded per call through
+        /// <see cref="ImGuiInternal.ToIdUtf8"/> (legend identity: null/empty gets the
+        /// invisible sentinel); series labels are short-lived and the buffer is
         /// not retained. Passes the library-wide default <see cref="ImPlotSpec"/>
         /// (AUTO colors, AUTO stride = sizeof(float)).
         /// </summary>
         internal static unsafe void PlotLine(string label, float* values, int count, double xscale, double xstart)
         {
-            ImPlot_PlotLine_FloatPtrInt(ToUtf8(label), values, count, xscale, xstart, DefaultSpec);
+            ImPlot_PlotLine_FloatPtrInt(ImGuiInternal.ToIdUtf8(label), values, count, xscale, xstart, DefaultSpec);
         }
 
         /// <summary>
@@ -262,20 +264,21 @@ namespace DearImGuiKSP.Interop
         /// </summary>
         internal static unsafe void PlotLine(string label, double* values, int count, double xscale, double xstart)
         {
-            ImPlot_PlotLine_doublePtrInt(ToUtf8(label), values, count, xscale, xstart, DefaultSpec);
+            ImPlot_PlotLine_doublePtrInt(ImGuiInternal.ToIdUtf8(label), values, count, xscale, xstart, DefaultSpec);
         }
 
         /// <summary>
-        /// Begins a subplot grid. The label is encoded to a null-terminated UTF-8 buffer
-        /// per call (same ToUtf8 convention as <see cref="BeginPlot"/>); titles are
-        /// short-lived and the buffer is not retained. The row/column ratio pointers of
+        /// Begins a subplot grid. The title is encoded per call through
+        /// <see cref="ImGuiInternal.ToIdUtf8"/> (subplot identity, same rule as
+        /// <see cref="BeginPlot"/>); titles are short-lived and the buffer is not
+        /// retained. The row/column ratio pointers of
         /// the v1.0 signature (cimplot.h:1017) are passed null, i.e. evenly sized cells
         /// (the C++ defaults, implot.h:828-829).
         /// </summary>
         /// <returns>The ImPlot BeginSubplots result (false = grid collapsed/clipped).</returns>
         internal static bool BeginSubplots(string title, int rows, int cols, ImVec2 size, ImPlotSubplotFlags flags)
         {
-            return ImPlot_BeginSubplots(ToUtf8(title), rows, cols, size, (int)flags, IntPtr.Zero, IntPtr.Zero);
+            return ImPlot_BeginSubplots(ImGuiInternal.ToIdUtf8(title), rows, cols, size, (int)flags, IntPtr.Zero, IntPtr.Zero);
         }
 
         /// <summary>Ends the current subplot grid. Call exactly once per BeginSubplots that returned true.</summary>
@@ -312,24 +315,6 @@ namespace DearImGuiKSP.Interop
         internal static void SetupAxesAutoFit()
         {
             ImPlot_SetupAxes(null, null, (int)ImPlotAxisFlags.AutoFit, (int)ImPlotAxisFlags.AutoFit);
-        }
-
-        // Null-terminated UTF-8. Null becomes "\0" (empty string).
-        // Duplicated from ImGuiInternal (C9-owned; not editable here) — C10 precedent.
-        private static byte[] ToUtf8(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                return new byte[] { 0 };
-            }
-            byte[] bytes = Encoding.UTF8.GetBytes(value);
-            byte[] terminated = new byte[bytes.Length + 1];
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                terminated[i] = bytes[i];
-            }
-            terminated[bytes.Length] = 0;
-            return terminated;
         }
     }
 }

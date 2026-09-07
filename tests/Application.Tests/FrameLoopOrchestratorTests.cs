@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using DearImGuiKSP;
 using DearImGuiKSP.Application;
 using DearImGuiKSP.Application.Animation;
-using DearImGuiKSP.Application.Interfaces;
 using Xunit;
 
 namespace Application.Tests
@@ -22,29 +21,6 @@ namespace Application.Tests
     [Collection("FacadeStatics")]
     public class FrameLoopOrchestratorTests
     {
-        /// <summary>Records ClampWindowsToViewport calls with their arguments.</summary>
-        private sealed class FakeNativeBridge : INativeBridge
-        {
-            public readonly List<KeyValuePair<float, float>> ClampCalls =
-                new List<KeyValuePair<float, float>>();
-
-            private readonly InputCaptureState _captureState = new InputCaptureState();
-
-            public int Initialize() { return 0; }
-            public bool LoadFontFromFile(string utf8Path, float sizePixels) { return true; }
-            public InputCaptureState GetIoSnapshot() { return _captureState; }
-            public void BeginUiFrame(float width, float height, float deltaSeconds) { }
-            public void EndUiFrame() { }
-            public void RebuildViewport(int width, int height) { }
-
-            public void ClampWindowsToViewport(float width, float height)
-            {
-                ClampCalls.Add(new KeyValuePair<float, float>(width, height));
-            }
-
-            public void Shutdown() { }
-        }
-
         private static FrameLoopOrchestrator CreateOrchestrator(
             FakeNativeBridge bridge,
             SettingsModel settings)
