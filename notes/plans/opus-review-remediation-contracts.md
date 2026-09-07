@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-07
 **Source:** `notes\active\2026-09-07_Bug_OpusReviewTriage\TRIAGE_SWEEP.md` (triaged Claude Opus review)
-**Status:** Plan only — no code changes. Contracts below are work packages for one or more future FlyByWire sessions (`BugfixPlanning.md` for the P0 severe seam, `PlanImplementation.md` for the batched waves).
+**Status:** EXECUTING — C01 (7ea11d0) and C02 (79c03a0) complete and Gate-A-verified in-game 2026-09-07 (fault hooks c359812, temporary); C03 done — G2-U1 unreachable, G2-U2 disproven, so C17/C18 are NOT scheduled. Wave 2 (C04–C07, C09–C11) next per the execution order below.
 **Scope rule:** Only WORK items plus the two UNCERTAIN mediums (G2-U1/G2-U2) appear here. INVALID/NOTE items get no contracts and are not re-litigated. G3-U1/U2/U3 (low-tier UNCERTAIN) are not scheduled; record any future confirmation in the triage session, not here.
 
 **Coverage:** 100 distinct WORK items (3 severe + 16 medium + 46 low + 2 nit + 33 docs; G3-19 merged into G3-08; G4-03/04/05/06 are duplicates of G3-41/31/32/46) + 2 verification-gated UNCERTAIN items = **102 items across 16 contracts + 2 conditional contracts**.
@@ -196,7 +196,7 @@
 ## C17 — (conditional) F2-hidden resync fix
 
 - **Items:** G2-U1
-- **Schedule only if C03 confirms** the library stays Suspended after scene change with UI hidden.
+- **NOT SCHEDULED (2026-09-07, Gate A):** the trigger is unreachable — there is no stock UX path to change scene while the UI is F2-hidden. Item closed as latent-only in the triage sweep; revisit only if a mod-driven scene-change path is ever reported.
 - **What:** Resync `_uiHidden` on scene load (stock scene-load reshow behavior), per the verified mechanism.
 - **Files:** `DearImGuiKSP/Infrastructure/Composition.cs`.
 - **Risk:** P2 / Standard. **§5.9:** no.
@@ -205,7 +205,7 @@
 ## C18 — (conditional) Mouse-lock mask bits fix
 
 - **Items:** G2-U2
-- **Schedule only if C03 confirms** maneuver gizmos stay live under ImGui windows.
+- **NOT SCHEDULED (2026-09-07, Gate A):** disproven in-game — maneuver-node gizmos do not receive clicks through ImGui windows; the current lock mask suffices. Item closed in the triage sweep.
 - **What:** Add MAP_UI/MANNODE bits to the mouse-capture lock mask.
 - **Files:** `DearImGuiKSP/Infrastructure/InputLockGateway.cs`.
 - **Risk:** P2 / Standard. **§5.9:** no.

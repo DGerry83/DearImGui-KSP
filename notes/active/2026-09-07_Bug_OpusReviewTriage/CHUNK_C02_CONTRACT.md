@@ -26,5 +26,8 @@
 - `dotnet build` + `dotnet test` green: 110/110 (new: throwing setter killed after one call, siblings unaffected; zero-duration throwing tween swept; baseline throw contained, tween not started, engine stays usable).
 - In-game: gate A (user) — throwing tween setter no longer freezes consumer UIs.
 
+### Gate A result (2026-09-07, user in-game, verbose logging on)
+- PASS. F3: baseline-throw tween refused, log shows `Tween.To(...) baseline setter threw; the tween was not started` (09:34:14). F4: mid-tween throw contained, log shows `Tween setter threw; the tween has been stopped` exactly once (09:34:21 — no per-frame rethrow), and all other UI kept animating.
+
 ### Rollback
 - Revert the three changed files; delete the new test file.

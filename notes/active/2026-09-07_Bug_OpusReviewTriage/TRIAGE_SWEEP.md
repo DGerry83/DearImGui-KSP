@@ -66,10 +66,12 @@ All three sit at the same seam: the boundary between consumer-mod code and the s
 
 ### UNCERTAIN — need in-game verification before scheduling
 
-| ID | Item | Location | What's missing |
+**Resolved 2026-09-07 (Gate A, user in-game):** G2-U1 **closed — unreachable in practice** (there is no stock UX path to change scene while the UI is F2-hidden; latent only, C17 not scheduled). G2-U2 **closed — claim disproven** (maneuver-node gizmos do NOT receive clicks through an ImGui window in map view; the current lock mask suffices, C18 not scheduled).
+
+| ID | Item | Location | Resolution |
 |---|---|---|---|
-| G2-U1 | F2-hidden state never resyncs on scene change → library silently Suspended for the session | `Composition.cs:185` | `_uiHidden` resets only on onShowUI; stock scene-load reshow behavior is runtime-only |
-| G2-U2 | Mouse-capture lock mask omits MAP_UI/MANNODE bits — legacy collider input (maneuver gizmos) live under ImGui windows | `InputLockGateway.cs:81` | Omission confirmed; the gizmo-stays-live consequence needs an in-game test |
+| G2-U1 | F2-hidden state never resyncs on scene change → library silently Suspended for the session | `Composition.cs:185` | UNREACHABLE: no way to switch scenes without UI (user, Gate A 2026-09-07). Latent-only; no contract |
+| G2-U2 | Mouse-capture lock mask omits MAP_UI/MANNODE bits — legacy collider input (maneuver gizmos) live under ImGui windows | `InputLockGateway.cs:81` | DISPROVEN: gizmos blocked correctly under ImGui windows (user, Gate A 2026-09-07). No contract |
 
 ### NOTE (valid but not work)
 

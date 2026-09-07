@@ -34,5 +34,8 @@
 - No native source changes; native harness sanity not required (managed-only chunk).
 - In-game: gate A (user) — misbehaving consumer no longer hangs/CTDs.
 
+### Gate A result (2026-09-07, user in-game, verbose logging on)
+- PASS. Temporary demo fault hooks (commit c359812, remove before release): F1 registered a new consumer from inside OnFrame — probe window appeared, no freeze (KSP.log 09:33:57); F2 fired a widget call from Update outside any callback — silent no-op, no CTD (log 09:34:08). Only F1's register direction was exercised in-game; unregister shares the same snapshot path and is unit-tested. The 3 NREs in the session log are Scatterer/Parallax/stock scene-teardown noise, unrelated.
+
 ### Rollback
 - Revert the listed files (`git checkout -- <files>`); delete the two new files.
