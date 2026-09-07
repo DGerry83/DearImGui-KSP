@@ -50,6 +50,9 @@ namespace DearImGuiKSP.Infrastructure
                 // Running; the launcher persists across scenes, so one-shot.
                 Composition.PanelToolbar.Initialize();
                 Composition.Logger.Info("Native bridge up; frame loop running.");
+                // Render pump starts only after a successful init (C09, G3-12):
+                // with a failed bridge there is no render event to issue.
+                StartCoroutine(RenderEventPump());
             }
             else
             {
@@ -59,7 +62,6 @@ namespace DearImGuiKSP.Infrastructure
                     "native bridge init failed with code " + Composition.BridgeInitResult);
                 Composition.Logger.Error("Native bridge initialization failed with code " + Composition.BridgeInitResult + "; library inactive for this session.");
             }
-            StartCoroutine(RenderEventPump());
         }
 
         private void OnDestroy()
@@ -80,7 +82,10 @@ namespace DearImGuiKSP.Infrastructure
         {
             if (Composition.StateMachine.IsRunning)
             {
-                Composition.Orchestrator.RunFrame(Screen.width, Screen.height, Time.deltaTime);
+                // Unscaled time (C09, G2-06): this delta drives both io.DeltaTime
+                // and the tween clock — scaled time would freeze tweens on game
+                // pause and run ImGui timing fast under physics warp.
+                Composition.Orchestrator.RunFrame(Screen.width, Screen.height, Time.unscaledDeltaTime);
             }
         }
 
@@ -131,16 +136,21 @@ namespace DearImGuiKSP.Infrastructure
         // Issues the native render event after each frame's rendering is queued, so the
         // backend draws ImGui on top of the completed frame (spec §4.2). Gated on the
         // lifecycle (C12): suspended/failed means no new frames — and no stale redraws.
+        // Started only after a successful init (C09, G3-12).
         private IEnumerator RenderEventPump()
         {
             while (true)
             {
-                yield return new WaitForEndOfFrame();
+                yield return CachedEndOfFrame;
                 if (Composition.StateMachine.IsRunning)
                 {
                     GL.IssuePluginEvent(Composition.Bridge.RenderEventFunc, 0);
                 }
             }
         }
+
+        // One cached yield instruction for the session (C09, G3-12) — a fresh
+        // WaitForEndOfFrame per frame was a steady-state per-frame allocation.
+        private static readonly WaitForEndOfFrame CachedEndOfFrame = new WaitForEndOfFrame();
     }
 }

@@ -13,10 +13,13 @@ namespace DearImGuiKSP.Infrastructure
     /// Implements <see cref="INativeBridge"/>. Loads DearImGuiKSPNative.dll explicitly
     /// (LoadLibrary + SetDllDirectory) from GameData/DearImGuiKSP/PluginData/ — native DLLs
     /// must stay out of the loader's assembly scan path (D19), and implicit [DllImport]
-    /// resolution fails from GameData subfolders, so every native function is bound via
-    /// GetProcAddress + Marshal.GetDelegateForFunctionPointer (kernel32 imports are fine;
-    /// the gotcha is only about loading OUR dll implicitly). Performs the managed/native
-    /// version handshake (spec §5.4) and the D3D11 device gate (chunk C4 PoC).
+    /// resolution fails from GameData subfolders before the module is loaded. Only the
+    /// bridge's own bootstrap functions below are bound via GetProcAddress +
+    /// Marshal.GetDelegateForFunctionPointer; once the module is loaded, the Interop
+    /// layer's implicit [DllImport("DearImGuiKSPNative")] cimgui calls resolve against
+    /// it by module name (kernel32 imports are fine; the gotcha is only about loading
+    /// OUR dll implicitly). Performs the managed/native version handshake (spec §5.4)
+    /// and the D3D11 device gate (chunk C4 PoC).
     /// </summary>
     internal sealed class NativeBridge : INativeBridge
     {
@@ -134,10 +137,11 @@ namespace DearImGuiKSP.Infrastructure
 
             // Device gate managed-side: Unity only calls UnityPluginLoad for plugins
             // it loads itself, so the native side cannot see IUnityGraphics in our
-            // deployment — SystemInfo is the authoritative check (GL arrives in C5).
+            // deployment — SystemInfo is the authoritative check (OpenGL support is
+            // deferred post-release, D35/D37).
             if (SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Direct3D11)
             {
-                _logger.Error("Graphics device " + SystemInfo.graphicsDeviceType + " is not Direct3D11; the milestone 2 PoC requires D3D11 (GL support arrives in C5).");
+                _logger.Error("Graphics device " + SystemInfo.graphicsDeviceType + " is not Direct3D11; DearImGui-KSP 1.x requires D3D11 (OpenGL support is planned for a later release).");
                 Unload();
                 return InitErrUnsupportedDevice;
             }

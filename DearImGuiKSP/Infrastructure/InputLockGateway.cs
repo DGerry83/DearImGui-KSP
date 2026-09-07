@@ -13,11 +13,19 @@ namespace DearImGuiKSP.Infrastructure
         private readonly HashSet<string> _heldConsumerIds = new HashSet<string>();
         private ControlTypes _heldMask;
 
+        // Reused scratch set for the desired-id computation (C09, G3-13): one
+        // allocation for the session instead of a fresh HashSet per frame.
+        // ApplyLocks-local only — it is cleared on entry, never stored beyond
+        // the call, and never handed out; the held set copies its contents via
+        // UnionWith, so nothing can alias the mutable scratch.
+        private readonly HashSet<string> _desiredConsumerIds = new HashSet<string>();
+
         /// <inheritdoc/>
         public void ApplyLocks(InputCaptureState state, IReadOnlyList<string> consumerIds)
         {
             ControlTypes mask = ComputeMask(state);
-            HashSet<string> desiredIds = new HashSet<string>();
+            HashSet<string> desiredIds = _desiredConsumerIds;
+            desiredIds.Clear();
 
             if (mask != 0)
             {

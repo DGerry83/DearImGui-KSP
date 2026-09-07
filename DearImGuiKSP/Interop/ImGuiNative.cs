@@ -100,9 +100,11 @@ namespace DearImGuiKSP.Interop
 
     /// <summary>
     /// Raw cimgui P/Invoke declarations (private). Implicit <c>[DllImport("DearImGuiKSPNative")]</c>
-    /// is the locked mechanism (chunk C6 contract): Windows resolves against the module that
-    /// NativeBridge already LoadLibrary'd, with SetDllDirectory(PluginData) covering the search
-    /// path. Calls are gated by C7's frame loop, not this layer.
+    /// is the locked mechanism (chunk C6 contract): by the time any call here runs,
+    /// NativeBridge has already LoadLibrary'd the DLL, so Windows resolves the import
+    /// by module name against the loaded module — SetDllDirectory(PluginData) only
+    /// covers that one explicit load and is restored immediately after it.
+    /// Calls are gated by C7's frame loop, not this layer.
     /// cimgui <c>bool</c> is a 1-byte C++ bool, so returns use UnmanagedType.I1.
     /// No variadic functions — P/Invoke cannot call varargs.
     /// </summary>

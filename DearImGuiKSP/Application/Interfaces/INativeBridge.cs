@@ -51,8 +51,11 @@ namespace DearImGuiKSP.Application.Interfaces
         void EndUiFrame();
 
         /// <summary>
-        /// Recreates the render viewport after a resolution/fullscreen change.
-        /// PoC no-op; real work lands with the state machine in C12 (tracked).
+        /// Resolution-change hook; the implementation is an intentional no-op.
+        /// ImGui DisplaySize is set every <see cref="BeginUiFrame"/>, the backend
+        /// draws into whatever render target Unity has bound at render-event time,
+        /// and the font atlas is resolution-independent, so a resolution or
+        /// fullscreen change needs no native rebuild.
         /// </summary>
         void RebuildViewport(int width, int height);
 
