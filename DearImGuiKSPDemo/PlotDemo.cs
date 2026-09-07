@@ -61,9 +61,16 @@ namespace DearImGuiKSPDemo
         }
 
         // One sample per frame into both rings; no string building, no allocation.
+        // Degenerate deltas (dt <= 0, NaN, Infinity — the first frame can report 0)
+        // are skipped, never fed to the EMA: once 1f/dt seeds Inf/NaN into the
+        // lerp, every later frame keeps it and the series never recovers (G3-39).
         private void Tick()
         {
             float dt = Time.unscaledDeltaTime;
+            if (dt <= 0f || float.IsNaN(dt) || float.IsInfinity(dt))
+            {
+                return;
+            }
             _frameMs.Push(dt * 1000f);
             _fpsEma = _fpsEma < 0f ? 1f / dt : Mathf.Lerp(_fpsEma, 1f / dt, 0.05f);
             _fps.Push(_fpsEma);

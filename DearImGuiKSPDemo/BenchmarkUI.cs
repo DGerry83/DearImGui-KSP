@@ -18,7 +18,9 @@ namespace DearImGuiKSPDemo
     /// </summary>
     public sealed class BenchmarkUI
     {
-        private const float RowHeight = 22f;
+        // Row pitch of the IMGUI reference list. The reference window renders with
+        // Unity's GUI skin (KSP's own UI scale), not the library's uiScale/fontScale.
+        private const float ImguiRowHeight = 22f;
         private const float ListViewHeight = 200f;
         private const int ItemCount = 1000;
 
@@ -41,6 +43,14 @@ namespace DearImGuiKSPDemo
 
         // FPS readout: exponential moving average of unscaled delta time.
         private float _fpsEma = -1f;
+
+        // Row pitch of the Dear ImGui virtualized list, measured live from the
+        // declared row geometry (see DrawImGuiVirtualizedList). The public API
+        // exposes no style metrics (no CalcTextSize/TextLineHeight/UiScale
+        // accessor — G2-12), so a hard-coded pitch cannot follow uiScale,
+        // fontScale, or the active font; seeded with the stock-style pitch and
+        // corrected every frame after the first row is declared.
+        private float _rowHeight = 22f;
 
         // Rolling 60-frame declaration-cost averages (ms), one per side.
         private readonly Stopwatch _imGuiWatch = new Stopwatch();
@@ -112,8 +122,7 @@ namespace DearImGuiKSPDemo
         {
             DearImGuiKSP.DearImGuiKSP.TextColored(
                 DearImGuiKSP.Application.KspPalette.TextLightGrey, ResizeNote);
-            DearImGuiKSP.DearImGuiKSP.Text(string.Format(
-                "FPS: {0:0.0}  ({1:0.0} ms frame)", 1f / _fpsEma, _fpsEma * 1000f));
+            DearImGuiKSP.DearImGuiKSP.Text(FpsReadoutLine());
             DearImGuiKSP.DearImGuiKSP.Text(string.Format(
                 "ImGui declaration: {0} ms (60-frame avg)", FormatMs(_imGuiAvgMs)));
             // IMGUI's dominant cost is Unity-internal rendering AFTER OnGUI returns,
@@ -152,27 +161,46 @@ namespace DearImGuiKSPDemo
 
         // Manual virtualization on the public API: reserve the full scroll range with
         // SetCursorY, draw only the rows intersecting the viewport. Rows come from the
-        // pre-built list verbatim — no per-row string building. The trailing Dummy is
-        // required: ImGui asserts when SetCursorY extends parent boundaries without a
-        // following item (imgui.cpp ErrorCheckUsingSetCursorPosToExtendParentBoundaries).
+        // pre-built list verbatim — no per-row string building. The row pitch is the
+        // style-driven line advance measured from the first declared row each frame:
+        // the cursor's screen Y before and after one Text item is that advance, and
+        // the scroll offset shifts both readings equally within a frame, so the delta
+        // holds at any scroll position. The public API exposes no style metrics, so
+        // this is the only scale-correct source (G2-12); the seed only matters until
+        // the first row is declared. The trailing Dummy is required: ImGui asserts
+        // when SetCursorY extends parent boundaries without a following item
+        // (imgui.cpp ErrorCheckUsingSetCursorPosToExtendParentBoundaries).
         private void DrawImGuiVirtualizedList()
         {
             float scrollY = DearImGuiKSP.DearImGuiKSP.GetScrollY();
+            float rowHeight = _rowHeight;
 
-            int firstVisible = Mathf.FloorToInt(scrollY / RowHeight);
+            int firstVisible = Mathf.FloorToInt(scrollY / rowHeight);
             if (firstVisible < 0)
             {
                 firstVisible = 0;
             }
-            int visibleCount = Mathf.CeilToInt(ListViewHeight / RowHeight) + 2;
+            else if (firstVisible >= _items.Count)
+            {
+                firstVisible = _items.Count - 1;
+            }
+            int visibleCount = Mathf.CeilToInt(ListViewHeight / rowHeight) + 2;
             int lastVisible = Mathf.Min(_items.Count, firstVisible + visibleCount);
 
-            DearImGuiKSP.DearImGuiKSP.SetCursorY(firstVisible * RowHeight);
-            for (int i = firstVisible; i < lastVisible; i++)
+            DearImGuiKSP.DearImGuiKSP.SetCursorY(firstVisible * rowHeight);
+            Vector2 before = DearImGuiKSP.ImGuiDraw.GetCursorScreenPos();
+            DearImGuiKSP.DearImGuiKSP.Text(_items[firstVisible]);
+            Vector2 after = DearImGuiKSP.ImGuiDraw.GetCursorScreenPos();
+            float measured = after.y - before.y;
+            if (measured > 0f && !float.IsNaN(measured) && !float.IsInfinity(measured))
+            {
+                _rowHeight = measured;
+            }
+            for (int i = firstVisible + 1; i < lastVisible; i++)
             {
                 DearImGuiKSP.DearImGuiKSP.Text(_items[i]);
             }
-            DearImGuiKSP.DearImGuiKSP.SetCursorY(_items.Count * RowHeight);
+            DearImGuiKSP.DearImGuiKSP.SetCursorY(_items.Count * _rowHeight);
             DearImGuiKSP.DearImGuiKSP.Dummy(0f, 0f);
         }
 
@@ -181,14 +209,18 @@ namespace DearImGuiKSPDemo
             GUILayout.Label("Naive vs Virtualized List (1000 items)");
 
             bool newVirtualized = GUILayout.Toggle(_imguiVirtualized, "Use Virtualization");
-            if (newVirtualized != _imguiVirtualized)
+            // IMGUI lays out in the Layout pass and replays the SAME control tree in
+            // the Repaint/input passes: flipping the branch mid-pass (a click is an
+            // input event, not Layout) lays out a different control count and the
+            // next Repaint throws "Getting control N's position in a group with
+            // only M controls". Apply the new state only during Layout.
+            if (newVirtualized != _imguiVirtualized && Event.current.type == EventType.Layout)
             {
                 _imguiVirtualized = newVirtualized;
                 _imguiScrollPos = Vector2.zero; // reset scroll when switching modes
             }
 
-            GUILayout.Label(string.Format(
-                "FPS: {0:0.0}  ({1:0.0} ms frame)", 1f / _fpsEma, _fpsEma * 1000f));
+            GUILayout.Label(FpsReadoutLine());
             GUILayout.Label(string.Format(
                 "IMGUI OnGUI script time: {0} ms (60-frame avg)", FormatMs(_imguiAvgMs)));
             GUILayout.Label("Note: IMGUI's real cost is Unity-internal rendering after");
@@ -217,20 +249,20 @@ namespace DearImGuiKSPDemo
         {
             _imguiScrollPos = GUILayout.BeginScrollView(_imguiScrollPos, GUILayout.Height(ListViewHeight));
 
-            float totalHeight = _items.Count * RowHeight;
+            float totalHeight = _items.Count * ImguiRowHeight;
             Rect viewRect = GUILayoutUtility.GetRect(0f, totalHeight);
 
-            int firstVisible = Mathf.FloorToInt(_imguiScrollPos.y / RowHeight);
+            int firstVisible = Mathf.FloorToInt(_imguiScrollPos.y / ImguiRowHeight);
             if (firstVisible < 0)
             {
                 firstVisible = 0;
             }
-            int visibleCount = Mathf.CeilToInt(ListViewHeight / RowHeight) + 2;
+            int visibleCount = Mathf.CeilToInt(ListViewHeight / ImguiRowHeight) + 2;
             int lastVisible = Mathf.Min(_items.Count, firstVisible + visibleCount);
 
             for (int i = firstVisible; i < lastVisible; i++)
             {
-                Rect rowRect = new Rect(viewRect.x, viewRect.y + (i * RowHeight), viewRect.width, RowHeight);
+                Rect rowRect = new Rect(viewRect.x, viewRect.y + (i * ImguiRowHeight), viewRect.width, ImguiRowHeight);
                 GUI.Label(rowRect, _items[i]);
             }
 
@@ -252,7 +284,23 @@ namespace DearImGuiKSPDemo
         private void UpdateFpsEma()
         {
             float dt = Time.unscaledDeltaTime;
+            // The first sampled frame can report dt == 0; seeding the EMA with it
+            // prints Infinity for that frame and the 0.05 lerp takes dozens of
+            // frames to wash out (G4-02). Non-finite deltas poison the EMA
+            // permanently (G3-39 family). Skip degenerate frames entirely.
+            if (dt <= 0f || float.IsNaN(dt) || float.IsInfinity(dt))
+            {
+                return;
+            }
             _fpsEma = _fpsEma < 0f ? dt : Mathf.Lerp(_fpsEma, dt, 0.05f);
+        }
+
+        // Both windows share the FPS line; valid only once the EMA has a real sample.
+        private string FpsReadoutLine()
+        {
+            return _fpsEma > 0f
+                ? string.Format("FPS: {0:0.0}  ({1:0.0} ms frame)", 1f / _fpsEma, _fpsEma * 1000f)
+                : "FPS: --  (-- ms frame)";
         }
 
         // Accumulates samples; every RollingWindowFrames samples the average is

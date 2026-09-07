@@ -24,6 +24,7 @@ namespace DearImGuiKSPDemo
         private const string ConsumerId = "DearImGuiKSPDemo";
 
         private ApplicationLauncherButton _toolbarButton;
+        private bool _registered;
         private bool _windowVisible = true;
         private bool _benchmarkVisible;
         private bool _plotVisible;
@@ -55,6 +56,7 @@ namespace DearImGuiKSPDemo
                 return;
             }
             DearImGuiKSP.DearImGuiKSP.Register(ConsumerId, OnFrame);
+            _registered = true;
             Debug.Log("[DearImGuiKSPDemo] Registered with DearImGui-KSP.");
 
             _benchmark = new BenchmarkUI();
@@ -76,7 +78,14 @@ namespace DearImGuiKSPDemo
                 ApplicationLauncher.Instance.RemoveModApplication(_toolbarButton);
                 _toolbarButton = null;
             }
-            DearImGuiKSP.DearImGuiKSP.Unregister(ConsumerId);
+            // Only when Start actually registered: OnDestroy runs in every scene,
+            // and Unregister on a consumer the library never knew logs a spurious
+            // warning whenever the library is unavailable/dormant (G3-41).
+            if (_registered)
+            {
+                _registered = false;
+                DearImGuiKSP.DearImGuiKSP.Unregister(ConsumerId);
+            }
         }
 
         private void OnLauncherReady()
