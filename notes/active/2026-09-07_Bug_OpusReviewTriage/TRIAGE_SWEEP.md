@@ -107,7 +107,7 @@ All three sit at the same seam: the boundary between consumer-mod code and the s
 | G3-07 | docs/50 claims null setter is the only Tween.To throw; immediate baseline `set(from)` unguarded (`Tween.cs:50,84`) | `Tween.cs:50` | Code guard + doc fix (see Group 5) |
 | G3-08 | Slider drag rewrites settings.cfg from scratch every changed frame — no debounce | `SettingsModel.cs:44` | Shared fix with G3-09, G3-19, G3-20 |
 | G3-09 | uiScale drag rebuilds/re-applies whole theme + rewrites settings.cfg every changed frame | `ThemeEngine.cs:65` | |
-| G3-10 | IBM Plex Medium atlas-loaded but unreachable — no PushFont API anywhere | `FontResolver.cs:50` (= I26) | Either add font selection or drop the dead load |
+| G3-10 | IBM Plex Medium atlas-loaded but unreachable — no PushFont API anywhere | `FontResolver.cs:50` (= I26) | DECIDED 2026-09-07: drop the dead load. Adding a font-selection/PushFont API is a SemVer-minor public feature (D17/D36 lockstep) and out of scope for a patch-class remediation wave; if ever wanted it goes through DesignSpecRefinement as 1.1.0 work. C10 implements the removal |
 | G3-11 | NativeBridge class doc claims all native funcs GetProcAddress-bound; Interop's 87 DllImports contradict | `NativeBridge.cs:13` | Comment fix |
 | G3-12 | Render pump coroutine starts even after failed init; per-frame WaitForEndOfFrame alloc (= I51) | `DearImGuiKSPAddon.cs:62` | Two trivial fixes |
 | G3-13 | ApplyLocks allocates a fresh HashSet<string> every frame even when nothing captures | `InputLockGateway.cs:20` | Already queued: fix backlog P1 |
