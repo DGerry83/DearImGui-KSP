@@ -23,12 +23,12 @@ The design of this project was produced by `DesignSpecRefinement.md`; bootstrap 
 
 ## Repository Layout
 
-- `DearImGuiKSP/` — managed library. `Application/` = Unity-free orchestration + public API (depends on Core only via interfaces); `Infrastructure/` = the **only** KSP/Unity-touching layer.
-- `DearImGuiKSPNative/` — C++ Core (ImGui context, frame lifecycle, backends). Zero KSP/Unity knowledge. Sources come from the sibling clone `~\source\repos\cimgui` (pinned imgui 1.92.9), compiled in directly.
+- `DearImGuiKSP/` — managed library. `Application/` = orchestration + public API (no KSP APIs or engine lifecycle/scene APIs; `UnityEngine.CoreModule` math structs allowed in public signatures, D24; widget calls reach native code via the P/Invoke bindings in `Interop/`, all other seams via `Application/Interfaces/`); `Infrastructure/` = the **only** KSP/Unity-touching layer.
+- `DearImGuiKSPNative/` — C++ Core (ImGui context, frame lifecycle, backends). Zero KSP/Unity knowledge. Sources come from a sibling clone of cimgui checked out next to this repo's root (the build scripts reference `..\..\cimgui`; pinned imgui 1.92.9), compiled in directly.
 - `DearImGuiKSPDemo/` — demo/benchmark mod, separate install.
 - `GameData/` — staging tree; mirrored into the game on every managed build.
 - `tests/` — mirrors the layers (`Application.Tests` = real xUnit suite; Infrastructure/Core intentionally placeholders).
-- `notes/` — artifact taxonomy (`active\`, `finished\`, `archive\`, `knowledge\`, `indices\`, `plans\`).
+- `notes/` — artifact taxonomy (`active\`, `finished\`, `knowledge\`, `indices\`, `plans\`).
 - `ISSUES/` — local issue tracker (gitignored). Schema and workflow in `ISSUES/README.md`; file new issues per its naming convention and keep `TRACKER.md` in sync.
 
 ## Build & Test Commands

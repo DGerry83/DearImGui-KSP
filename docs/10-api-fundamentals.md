@@ -20,9 +20,10 @@ public static bool Unregister(string id)
 ```
 
 `Register` adds your per-frame callback; `Unregister` removes it. Callbacks
-run **once per frame, in registration order** — that order is also the
-z-order of overlapping windows, so register earlier if you want your windows
-behind other mods' windows.
+run **once per frame, in registration order**. That order decides only the
+*initial* stacking of windows (a newly created window appears on top of
+earlier ones); afterwards z-order follows focus, stock ImGui behavior —
+clicking a window's title bar, body, or a widget raises it above the others.
 
 **Widget calls are valid ONLY inside a callback invoked by the frame loop.**
 Calling `Text`, `Button`, `ImGuiEx.Window`, style pushes, or any other
@@ -50,14 +51,20 @@ permanently false after an unrecoverable startup failure.
 - Do NOT tear down your UI, unregister, or null your state — the frame loop
   resumes automatically when the pause ends.
 
-The only null-argument errors that throw are `Register(null, ...)` /
-`Register(id, null)` (`ArgumentNullException`). Every other availability
-race is warn-and-ignore:
+The only errors that throw are bad registration arguments
+(`ArgumentNullException`): `Register` with a null **or empty** id or a null
+callback, and `Unregister(null)` once the library is available (the registry
+dictionary rejects a null key). Every other availability race or invalid
+value is warn-and-ignore:
 
 - `Register` while unavailable (or with a duplicate id): a warning line in
   the log, call ignored.
 - `Unregister` while unavailable: warning, ignored, returns false.
 - Any widget call while unavailable: silent no-op / false / zero.
+- Invalid widget arguments never throw: an out-of-range style enum or
+  spinner type or non-positive subplot dimensions are a logged no-op; an
+  empty widget label is silently given a safe invisible ID instead of
+  colliding with the window's own ID.
 
 So the pattern is: check `IsAvailable` once at `Start`, and never write
 defensive availability checks around individual widget calls inside your
@@ -107,9 +114,15 @@ Two rules:
 - **The immediate-mode rule:** a scope must be disposed within the same
   frame/callback that created it. Never store a scope in a field or let it
   survive the callback — an unclosed window at end of frame trips ImGui's
-  end-of-frame assert.
+  end-of-frame assert in a debug native build (the shipped release DLL
+  compiles ImGui's asserts out). Either way the fault barrier force-closes
+  any scopes a throwing callback left open, so the mistake cannot corrupt
+  later consumers — but fix your code rather than relying on that.
 - **Only dispose what a factory returned.** Do not `new` up scope structs
-  yourself; a default `TabBarScope`/`TabItemScope` ends nothing.
+  yourself. A default `TabBarScope`/`TabItemScope` (or the plot scopes) ends
+  nothing, but a default `WindowScope`/`ScrollRegionScope` ends a window or
+  region you never began, and a default `StyleColorScope`/`StyleVarScope`
+  pops a style entry you never pushed.
 
 For raw Begin/End pairs (`BeginWindow`/`EndWindow`,
 `BeginScrollRegion`/`EndScrollRegion`, `BeginTabBar`/`EndTabBar`,
@@ -147,9 +160,11 @@ The facade uses the Unity types you already know:
 
 Which one a member takes is deliberate and documented per member:
 
-- `PushStyleColor(ImGuiCol, Color)` takes **linear 0-1 floats**;
-  `PushStyleColor(ImGuiCol, Color32)` takes **sRGB bytes** (normalized
-  internally). Both work; `Color32` is usually the convenient one.
+- `PushStyleColor(ImGuiCol, Color)` takes **0-1 floats**;
+  `PushStyleColor(ImGuiCol, Color32)` takes **bytes** (normalized to 0-1
+  internally). The two overloads differ only in component encoding — no
+  color-space conversion happens either way. Both work; `Color32` is usually
+  the convenient one.
 - `Spinner(..., Color? tint, ...)` takes a **nullable `Color`** (0-1 floats).
 - `ImGuiDraw` primitives and `ImGuiGradients` take **`Color32`**.
 - `TextColored(Color32 color, string text)` takes **`Color32`**.
@@ -181,7 +196,10 @@ conditional and pop outside it.
 `WindowRounding`, `FrameRounding`, `ItemSpacing`, ... through `COUNT`).
 Whether a given `ImGuiStyleVar` takes a `float` or a `Vector2` is fixed by
 ImGui (e.g. `FrameRounding` is a float, `ItemSpacing` is a Vector2);
-passing the wrong type triggers a native assert, not a managed exception.
+passing the wrong type is a programming error — debug native builds assert
+on it, while the shipped release DLL compiles that assert out, so get it
+right rather than relying on the safety net. An out-of-range enum value
+(including `COUNT`) is caught on the managed side as a logged no-op.
 The members you will reach for most: `ImGuiCol.Text`, `ImGuiCol.FrameBg`,
 `ImGuiCol.Button`, `ImGuiCol.CheckMark`, and `ImGuiStyleVar.FrameRounding`.
 
@@ -259,14 +277,19 @@ Keys (with defaults from the library's config constants):
 | `theme` | string | `ksp` | Theme preset: `ksp` or `dark`; any other value falls back to `ksp` with one log line |
 | `font` | string | `IBMPlexSans` | Font: `IBMPlexSans`, `ProggyClean`, or a `.ttf` filename placed in `GameData/DearImGuiKSP/Fonts/` (unknown names fall back to ProggyClean with a log line) |
 | `verboseLogging` | bool | false | Extra library logging |
-| `enabled` | bool | true | Master library enable switch |
+| `enabled` | bool | true | Master library enable switch — **file-only**: when false the library stays dormant for the whole session and the in-game settings panel never appears, so there is no in-game way to turn it back on; set it back to `true` here and restart KSP |
 | `clampWindowsToViewport` | bool | true | Keep windows inside the screen on resolution changes |
 | `formatVersion` | int | 1 | Internal file-format marker; migrated forward on read |
 
 These are user-facing options, not a per-mod API: your mod does not write
-them. A settings change made while the game runs (by a user or a tool)
-applies cleanly — a theme change takes effect at the start of the next UI
-frame.
+them. The file is read **once, at KSP startup** — it is not watched for
+changes while the game runs. While running, the in-game settings panel is
+the source of truth: panel edits apply in memory immediately (theme and UI
+scale live; font and font scale on the next KSP start) and are written back
+to settings.cfg about half a second after the changes settle, as one atomic
+write. So a hand edit made mid-session takes effect only at the next KSP
+start — and only if no panel change happens meanwhile, because the next
+panel edit rewrites the whole file from the in-memory settings.
 
 Next: [Widget Catalog](20-widgets.md) — every widget with real signatures
 and minimal examples.

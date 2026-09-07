@@ -22,21 +22,29 @@ GameData/
     License.txt
     Fonts/
       IBMPlexSans-Regular.ttf   Default font (IBM Plex Sans, OFL)
-      IBMPlexSans-Medium.ttf
       OFL.txt                   Font license (the SIL Open Font License requires shipping it)
+    Textures/
+      toolbar.png               Toolbar icon for the settings window button
     Plugins/
       DearImGuiKSP.dll          Managed assembly - the programming interface you compile against
     PluginData/
       DearImGuiKSPNative.dll    Native DLL (Dear ImGui core + backends)
-    settings.cfg                Library config (created/read at runtime)
+    Docs/                       This documentation set (00-70) plus CHANGELOG.md
 ```
+
+`settings.cfg` (the library config) is deliberately **not** in the zip — so
+installing an upgrade never resets your saved settings. The library creates
+it on the first settings change; until then it runs on its defaults.
 
 Two rules:
 
-- `DearImGuiKSPNative.dll` must stay in `PluginData/`. KSP only loads
-  assemblies from `Plugins/`, and the library deliberately keeps the native
-  DLL out of that folder so KSP never tries to load it directly; the library
-  loads it itself from `PluginData/`.
+- `DearImGuiKSPNative.dll` must stay in `PluginData/`. KSP's assembly loader
+  scans all of `GameData/` recursively for DLLs — skipping only folders named
+  `PluginData` — and tries to load every DLL it finds as a managed assembly.
+  A native DLL in the scan path stalls the game very early in loading, so the
+  library deliberately keeps its native DLL where the loader never looks and
+  loads it itself from `PluginData/`. (`Plugins/` for the managed DLL is
+  convention, not a requirement of the scan.)
 - The managed and native DLLs are released **in lockstep** — always together,
   as a matched pair. A version mismatch at runtime is a startup failure.
   Never mix DLLs from different releases.
@@ -46,9 +54,9 @@ every scene). It opens the "DearImGui-KSP Settings" window, where the theme
 (ksp / dark) and the overall UI scale change immediately, verbose logging
 toggles on the spot, and the font plus font scale are saved but only take
 effect on the next KSP start. Each scale slider has a small type-in box
-beside it for entering an exact value. The button uses `Textures/toolbar.png`
-from this folder when present and a generated placeholder until the icon
-ships.
+beside it for entering an exact value. The button uses `Textures/toolbar.png`,
+which ships in this folder (a generated grey placeholder is the fallback if
+the file is missing).
 
 **What the UI scale covers:** it scales the library's style-driven metrics
 (window and frame padding, item spacing, rounding) and font rendering. It
@@ -80,11 +88,14 @@ next to your `[KSPAddon]` class or in any one of your source files:
 ```
 
 The current library version is **1.0.0**, so the dependency reads
-"major 1, minor 0". `KSPAssemblyDependencyEqualMajor` pins the major and minor:
-KSP will not load your mod against an incompatible major. When the library
-ships a new major version, bump this attribute in a matching release of your
-mod. Managed and native DLLs always release together; this attribute is how
-your mod tracks the library's major version.
+"major 1, minor 0". Despite the name, `KSPAssemblyDependencyEqualMajor` pins
+only the **major**: the library's major must equal yours, and its minor must
+be **equal or higher** than the one you declare (the declared minor is a
+minimum, not a pin) — so a mod built against 1.0 loads fine against library
+1.1, but KSP refuses to load it against any 2.x. When the library ships a new
+major version, bump this attribute in a matching release of your mod. Managed
+and native DLLs always release together; this attribute is how your mod
+tracks the library's major version.
 
 Because of this attribute, the `IsAvailable` check below is a safety net for
 edge cases (library self-disabled at startup, scene transitions), not the
