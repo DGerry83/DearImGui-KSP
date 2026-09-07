@@ -140,8 +140,9 @@ int ContextHost_DrainDiagnostics(char* dst, int dstCapacity);
 // the first NewFrame — afterwards the atlas is built and locked. Returns
 // 0 on success, 1 if there is no context, 2 if frames have already begun,
 // 3 if AddFontFromFileTTF failed (the atlas is left exactly as it was).
-// May be called multiple times before the first frame (Plex Sans Regular,
-// then Medium); each call appends one font. The atlas itself is NOT built
+// May be called multiple times before the first frame; each call appends one
+// font (today the managed pipeline calls it once — the Medium second load was
+// dropped, G3-10/C10). The atlas itself is NOT built
 // here — NewFrame builds it lazily (BackendFlags, imgui 1.92.9). Not part
 // of the exported C ABI itself — the exported wrapper
 // DearImGuiKSPNative_LoadFontFromFile lives in DearImGuiKSPNative.cpp.

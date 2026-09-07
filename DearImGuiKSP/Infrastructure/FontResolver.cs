@@ -26,7 +26,7 @@ namespace DearImGuiKSP.Infrastructure
     /// </summary>
     internal static class FontResolver
     {
-        /// <summary>Base font size in pixels before <c>fontScale</c> is applied (tunable). 18 px = the KSP-comfortable default confirmed in-game at the M2 gate (15 px read small).</summary>
+        /// <summary>Base font size in pixels before <c>fontScale</c> is applied (tunable). 18 px = the KSP-comfortable default confirmed in-game at the M2 gate (15 px read small). Note the two scales multiply: rendered text is BaseSizePixels × <c>fontScale</c> × <c>uiScale</c> (the latter via the native FontGlobalScale, ThemeEngine.ApplyUiScale) — I28.</summary>
         internal const float BaseSizePixels = 18f;
 
         private const string PlexPrimaryFile = "IBMPlexSans-Regular.ttf";

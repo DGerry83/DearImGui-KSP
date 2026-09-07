@@ -144,12 +144,17 @@ Under `ksp`, knowing the mapping helps you pick push/pop slots:
 - Sliders and scrollbars grab: `ButtonGradientTop`.
 - Radio fill / checkbox tick: `GreenLight` via `ImGuiCol.CheckMark`.
 - InputText typed text: `OrangeLight` (under the `ksp` theme only; "dark"
-  keeps stock single-color InputText rendering).
+  keeps stock single-color InputText rendering). The label layout differs
+  too: under `ksp` the label is drawn separately in `TextOffWhite` to the
+  **left** of the field, while under `dark` the stock single-call layout puts
+  it to the **right** of the field. In both themes a `##` ID suffix on the
+  label never renders as visible text.
 
-Under `dark`, every slot is exactly ImGui's stock dark value; gradient
-drawing (window background and gradient-button backgrounds via the themed
-overload) still uses the KSP constants because both are explicit drawing
-paths, not theme slots.
+Under `dark`, every slot is exactly ImGui's stock dark value and the native
+window-background gradient pass is disabled (see section 1), so the theme
+stays byte-exact stock. `GradientButton` still renders its gradient under
+`dark` — both overloads are explicit consumer drawing paths, not theme slots,
+so the themed overload keeps the KSP palette stops in every theme.
 
 ## 7. Accessibility
 
@@ -157,8 +162,18 @@ paths, not theme slots.
   always pair with a text label — keep that rule in your own UI: an accent
   state must also be readable as text ("GO", "ARMED", "off"), not just as a
   hue change.
-- Users who need larger UI have `uiScale` and `fontScale` (0.5-2.0) in
-  `settings.cfg`; themes honor both.
+- Users who need larger UI have `uiScale` and `fontScale` (0.5-2.0 each).
+  Both live in `settings.cfg` and in the library's in-game settings panel
+  ("DearImGui-KSP Settings", from the library's toolbar button), so players
+  can adjust them without hand-editing the file. They are **not** independent
+  knobs for text size: the rendered glyph size is the 18 px base font
+  multiplied by **both** — `fontScale` sizes the font loaded into the atlas
+  and `uiScale` scales rendered glyphs on top (and scales style metrics).
+  Note the live-vs-restart asymmetry: `theme` and `uiScale` apply live (the
+  library re-applies them at the next frame start), while `font` and
+  `fontScale` are read only once at startup — the atlas is built on the first
+  frame — so the panel states plainly that font changes apply on the next KSP
+  start. Themes honor both scales.
 - Animated spinners are the only continuously-moving element; static
   alternatives for "busy" indication exist in the classic widgets (e.g. a
   `Text` status line) if your audience prefers no motion.

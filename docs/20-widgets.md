@@ -280,8 +280,9 @@ line thickness in pixels (unused by `FadeBars`). `tint` is an optional
 most types, half-white backgrounds for `Clock` and `Pulsar`). `id` is an
 optional invisible ImGui ID.
 
-The library binds a **curated subset of 15 types** (the upstream imspinner
-build enables only these at compile time):
+The library binds a **curated subset of 15 types**. The vendored cimspinner
+build enables 26 spinner groups at compile time; the subset below is the
+managed binding layer's curation of that set, not an upstream limit:
 
 | Value | Visual | Value | Visual |
 |---|---|---|---|
@@ -337,8 +338,11 @@ at any size.
 
 All of these sizes are consumer-passed pixels: the library's UI scale setting
 does not change them (it covers style metrics and font rendering only — see
-[Getting Started](00-getting-started.md)). Multiply by the configured scale
-yourself if a widget should follow it.
+[Getting Started](00-getting-started.md)). The public API exposes no accessor
+for the configured scale, so you cannot compute "pixels times scale" yourself —
+if a widget should track the scale, either measure a style-driven size live
+(the cursor-position trick under [Scroll regions](#scroll-regions) works for
+that) or pick a size that reads acceptably across the whole 0.5-2.0 range.
 
 ## CollapsingHeader
 
@@ -419,23 +423,38 @@ For **large lists**, virtualize manually instead of drawing every row:
    scrollable range legitimately covers the full list — ImGui requires an
    actual item (not a bare cursor move) to grow content bounds.
 
+Do not hard-code the row height: it is the style-driven line advance, which
+follows the user's `uiScale`/`fontScale` and the active font, and the public
+API exposes no style metric to compute it from. Measure it live instead — the
+cursor's screen Y before and after one row is exactly the pitch (the scroll
+offset shifts both readings equally, so the delta holds at any scroll
+position). This is what the demo's benchmark window does:
+
 ```csharp
-private const float RowHeight = 22f;
+private float _rowHeight = 22f;  // seed only; replaced by the live measurement
 // inside the callback:
 using (var region = DearImGuiKSP.ImGuiEx.ScrollRegion("vessels", 200f))
 {
     if (region.Visible)
     {
         float scroll = DearImGuiKSP.DearImGuiKSP.GetScrollY();
-        int first = (int)(scroll / RowHeight);
+        int first = (int)(scroll / _rowHeight);
         int count = _vessels.Count;
         int last = Math.Min(first + 10, count);
-        DearImGuiKSP.DearImGuiKSP.SetCursorY(first * RowHeight);
-        for (int i = first; i < last; i++)
+        DearImGuiKSP.DearImGuiKSP.SetCursorY(first * _rowHeight);
+        Vector2 before = DearImGuiKSP.ImGuiDraw.GetCursorScreenPos();
+        DearImGuiKSP.DearImGuiKSP.Text(_vessels[first].vesselName);
+        Vector2 after = DearImGuiKSP.ImGuiDraw.GetCursorScreenPos();
+        float measured = after.y - before.y;
+        if (measured > 0f)  // tracks scale/font changes with one frame of lag
+        {
+            _rowHeight = measured;
+        }
+        for (int i = first + 1; i < last; i++)
         {
             DearImGuiKSP.DearImGuiKSP.Text(_vessels[i].vesselName);
         }
-        DearImGuiKSP.DearImGuiKSP.SetCursorY(count * RowHeight);
+        DearImGuiKSP.DearImGuiKSP.SetCursorY(count * _rowHeight);
         DearImGuiKSP.DearImGuiKSP.Dummy(1f, 1f);
     }
 }

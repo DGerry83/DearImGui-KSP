@@ -8,12 +8,12 @@ Prerequisites: [Getting Started](00-getting-started.md) for installation and dep
 
 | Unity IMGUI | DearImGui-KSP |
 |---|---|
-| `OnGUI()` called for every GUI event | A callback registered once with `DearImGuiKSP.Register(id, callback)`, invoked once per frame |
-| Window rect field + `GUI.Window(id, rect, Func, title)` | `using (var w = ImGuiEx.Window("Title")) { if (w.Visible) { ... } }` |
-| `GUILayout.Label(text)` | `DearImGuiKSP.Text(text)` |
-| `GUILayout.Button(label)` | `DearImGuiKSP.Button(label)` — same "true on the click frame" return |
-| `GUILayout.TextField(value)` / `GUI.TextField` | `DearImGuiKSP.InputText(label, ref value, capacity = 256)` |
-| `GUILayout.HorizontalSlider(value, min, max)` | `DearImGuiKSP.SliderFloat(label, ref value, min, max)` |
+| `OnGUI()` called for every GUI event | A callback registered once with `DearImGuiKSP.DearImGuiKSP.Register(id, callback)`, invoked once per frame |
+| Window rect field + `GUI.Window(id, rect, Func, title)` | `using (var w = DearImGuiKSP.ImGuiEx.Window("Title")) { if (w.Visible) { ... } }` |
+| `GUILayout.Label(text)` | `DearImGuiKSP.DearImGuiKSP.Text(text)` |
+| `GUILayout.Button(label)` | `DearImGuiKSP.DearImGuiKSP.Button(label)` — same "true on the click frame" return |
+| `GUILayout.TextField(value)` / `GUI.TextField` | `DearImGuiKSP.DearImGuiKSP.InputText(label, ref value, capacity = 256)` |
+| `GUILayout.HorizontalSlider(value, min, max)` | `DearImGuiKSP.DearImGuiKSP.SliderFloat(label, ref value, min, max)` |
 | `GUIStyle` / `GUISkin` | The global theme (`ksp` or `dark`, set in the library's `settings.cfg`) + per-frame `PushStyleColor`/`PushStyleVar` or the `ImGuiEx.StyleColor`/`StyleVar` scopes — see [Theming](30-theming.md) |
 | `GUILayout.BeginHorizontal` / `BeginVertical` | Layout is **vertical by default**; see "Layout" below — there is an honest gap here |
 | `Event.current`, `Input.GetMouseButton`, hotControl juggling | Nothing. The library captures input and blocks click-through automatically — see "Input" below |
@@ -114,7 +114,7 @@ If the library is unavailable, `Register` logs a warning and ignores the call; t
 Widgets stack vertically by default — each call places its item below the previous one. There is **no public horizontal-layout helper yet**: `SameLine` exists only as an internal implementation detail (used by `InputText`), and a public layout-helper surface (SameLine et al.) may come in a later release. Until it lands:
 
 - Put each logically-grouped control on its own line — the immediate-mode style reads fine that way, and it is what the demo does (its widget showcase stacks one labelled control per line).
-- Use `DearImGuiKSP.SetCursorY(float y)` to add vertical space, and `DearImGuiKSP.Dummy(width, height)` where you need an explicit invisible spacer that grows the content bounds (required after a `SetCursorY` that extends a scroll region's range — ImGui asserts on a bare cursor move that grows parent boundaries). The manual-list-virtualization pattern built on these two calls (`GetScrollY` -> visible row range -> `SetCursorY` -> draw visible rows -> `SetCursorY(rowCount * rowHeight)` + `Dummy`) is documented on `BeginScrollRegion` in [API Fundamentals](10-api-fundamentals.md).
+- Use `DearImGuiKSP.DearImGuiKSP.SetCursorY(float y)` to add vertical space, and `DearImGuiKSP.DearImGuiKSP.Dummy(width, height)` where you need an explicit invisible spacer that grows the content bounds that grows the content bounds (required after a `SetCursorY` that extends a scroll region's range — ImGui asserts on a bare cursor move that grows parent boundaries). The manual-list-virtualization pattern built on these two calls (`GetScrollY` -> visible row range -> `SetCursorY` -> draw visible rows -> `SetCursorY(rowCount * rowHeight)` + `Dummy`) is documented on `BeginScrollRegion` in [API Fundamentals](10-api-fundamentals.md).
 
 Do not try to fake columns with spaces in labels; wait for the layout helpers or stack vertically.
 
@@ -135,7 +135,7 @@ using (DearImGuiKSP.ImGuiEx.StyleColor(DearImGuiKSP.ImGuiCol.Text, Color.red))
 }
 ```
 
-Colored accents without a scope: `DearImGuiKSP.TextColored(color, text)`, with public palette constants in `KspPalette` (e.g. `KspPalette.GreenLight`). See [Theming](30-theming.md) for the full style surface and the palette table.
+Colored accents without a scope: `DearImGuiKSP.DearImGuiKSP.TextColored(color, text)`, with public palette constants in `KspPalette` (e.g. `KspPalette.GreenLight`). See [Theming](30-theming.md) for the full style surface and the palette table.
 
 ## Checklist for a full port
 

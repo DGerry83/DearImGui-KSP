@@ -18,6 +18,10 @@ Behavior, exactly as implemented:
 - `seconds` is the duration in seconds. Zero or negative completes on the first frame after the baseline call.
 - The color overload applies `Color.Lerp(from, to, easedT)` component-wise, with the same exact-endpoint guarantee.
 - A null setter throws `ArgumentNullException` — the only way `Tween.To` throws.
+- A setter that throws on the immediate baseline call does **not** propagate:
+  the throw is contained and logged, the tween is not started, and `To` returns
+  an inert handle. A setter that throws on a later frame is likewise contained:
+  only that tween is stopped, everything else keeps running.
 - If the library is not available, `To` logs a warning and returns an **inert handle**: `IsPlaying` is false and `Cancel` is a no-op. Availability races never throw.
 
 ## The handle
@@ -126,5 +130,5 @@ The knob is `Knob(string label, ref float value, float min, float max)` — the 
 ## Next
 
 - [Migrating from Unity IMGUI](60-migration-from-imgui.md) — replacing hand-rolled IMGUI animation timers.
-- [Troubleshooting](70-troubleshooting.md) — what "Tween.To ignored" in the log means.
+- [Troubleshooting](70-troubleshooting.md#tween-warnings-ignored-and-setter-threw) — what the "Tween.To ignored" and "setter threw" log lines mean.
 - Back to [Plotting](40-plotting.md) or [Theming](30-theming.md).

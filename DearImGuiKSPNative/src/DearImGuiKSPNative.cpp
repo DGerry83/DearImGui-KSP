@@ -42,8 +42,8 @@ DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_DrainDiagnostics(char* dst, int d
 }
 
 // Loads a font file into the atlas before the first frame (spec §4.2). The
-// managed font pipeline calls this once (Regular) or twice (Regular +
-// Medium); each call appends one font. Returns 0 on success, 1 = no context,
+// managed font pipeline calls this once (Regular); each call appends one
+// font. Returns 0 on success, 1 = no context,
 // 2 = frames already begun, 3 = font load failed (embedded default intact).
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_LoadFontFromFile(const char* utf8Path, float sizePixels)
 {

@@ -381,7 +381,7 @@ int ContextHost_LoadFontFromFile(const char* utf8Path, float sizePixels)
     // ImGui renders with io.FontDefault, or Fonts[0] when it is null — and
     // Fonts[0] is the embedded ProggyClean added in ContextInit. The first
     // successfully loaded custom font (Regular weight) must claim FontDefault
-    // or it never renders; later loads (Medium) stay atlas-only.
+    // or it never renders.
     if (io.FontDefault == nullptr)
         io.FontDefault = font;
     return 0;

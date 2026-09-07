@@ -19,6 +19,15 @@ If you can't state field 3 concretely, the finding is probably not latent — it
 - **I9** — Logger→Settings→Store recursion. Unreachable because no Debug-level logging exists on the load path. Activates if load-path debug logging is added.
 - **I10 / I45** — `Fail()` never releases input locks. Unreachable because Fail() is only invoked pre-frame. Activates if Fail() becomes callable mid-frame (already tracked as backlog P1 — cross-link, don't duplicate).
 
+## Gate A outcomes (2026-09-07, user in-game)
+
+The triage sweep's two UNCERTAIN mediums resolved latent/closed, recorded here so they are not re-litigated (full detail: `notes\active\2026-09-07_Bug_OpusReviewTriage\TRIAGE_SWEEP.md`):
+
+- **G2-U1** — F2-hidden state never resyncs on scene change (`Composition.cs:185`). **Unreachable**: there is no stock UX path to change scene while the UI is F2-hidden. Latent only; conditional contract C17 not scheduled. Activates only if a mod-driven scene-change-while-hidden path is ever reported.
+- **G2-U2** — mouse-capture lock mask omits MAP_UI/MANNODE bits (`InputLockGateway.cs:81`). **Disproven**: maneuver-node gizmos do not receive clicks through ImGui windows in map view; the current mask suffices. C18 not scheduled.
+
+The sweep's NOTE/INVALID verdicts themselves (Groups 2–5) live in `TRIAGE_SWEEP.md`; per user direction they are not duplicated into `ISSUES\`.
+
 ## Housekeeping
 
 When doing work that touches an activation condition, grep this note and `ISSUES\TRACKER.md` for the entry before assuming the latent path is still unreachable. When a latent item goes live, move it from NOTE to WORK in the tracker at that moment — not after the first bug report.

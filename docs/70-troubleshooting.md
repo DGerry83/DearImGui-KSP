@@ -23,12 +23,12 @@ Your mod is unaffected code-wise: `DearImGuiKSP.IsAvailable` is false, your `Reg
 
 Managed and native DLLs always release together in lockstep — never mix DLLs
 from different releases. A startup version handshake enforces this
-(currently expected version **6** on the managed side). A stale or partially
+(currently expected version **7** on the managed side). A stale or partially
 copied native DLL fails the handshake before anything else runs, with this
 log line:
 
 ```
-[DearImGuiKSP] Native/managed handshake mismatch: expected version 6, DearImGuiKSPNative reported <n>.
+[DearImGuiKSP] Native/managed handshake mismatch: expected version 7, DearImGuiKSPNative reported <n>.
 ```
 
 Fix: copy both DLLs from the same release zip. `DearImGuiKSPNative.dll` belongs in `GameData/DearImGuiKSP/PluginData/` (not next to the managed DLL); a missing native DLL is the `NativeComponent` failure instead. Consumers: declaring `KSPAssemblyDependencyEqualMajor("DearImGuiKSP", x, y)` keeps KSP's loader from mixing a different managed major with your build (see [Getting Started](00-getting-started.md)).
@@ -64,7 +64,36 @@ The first is cause 1/2 above. The second means a consumer with that id is alread
 
 ## "Consumer '<id>' threw an exception ... auto-disabled"
 
-Your callback threw. The fault barrier catches it, logs it, and skips only your consumer for that frame; after **5 consecutive throwing frames** your consumer is auto-disabled for the session (other consumers are unaffected). The log line names your consumer id and carries the exception. Note the useful property: because `using` scopes dispose during exception unwinding, an exception thrown inside a window/style scope still leaves the ImGui stack symmetric — you will not corrupt other consumers, just get yourself disabled. Fix the exception, restart the game.
+Your callback threw. The fault barrier catches it, logs it, and skips only your consumer for that frame; after **5 consecutive throwing frames** your consumer is auto-disabled for the session (other consumers are unaffected). The log line names your consumer id and carries the exception. Note the useful property: because `using` scopes dispose during exception unwinding, an exception thrown inside a window/style scope still leaves the ImGui stack symmetric — you will not corrupt other consumers, just get yourself disabled.
+
+Recovery does not require a game restart: auto-disable flips a per-registration
+flag, so `Unregister(id)` followed by `Register(id, callback)` re-registers the
+consumer with a clean slate and it runs again from the next frame. Do that only
+after you have fixed the throwing path, or the consumer burns through the same
+five frames and disables itself again.
+
+## Tween warnings: "ignored" and "setter threw"
+
+```
+[DearImGuiKSP] Tween.To(...) ignored: DearImGui-KSP is not available.
+[DearImGuiKSP] Tween.To(...) baseline setter threw; the tween was not started. Exception: ...
+[DearImGuiKSP] Tween setter threw; the tween has been stopped. Exception: ...
+```
+
+All three mean the tween you started is **not running**, but none is a library
+failure:
+
+- **"ignored: not available"** — you called `Tween.To` while the library was
+  unavailable (startup failure, or before it finished loading). The returned
+  handle is inert (`IsPlaying` false, `Cancel` a no-op); nothing threw. Gate on
+  `IsAvailable` if the warning is noise to you.
+- **"baseline setter threw"** — your setter threw on the immediate `set(from)`
+  call. The exception is contained, logged, and the tween is refused (inert
+  handle); other tweens and consumers are unaffected. Fix the setter and start
+  the tween again.
+- **"setter threw; the tween has been stopped"** — your setter threw on a
+  per-frame tick. Only that tween is stopped (logged once, no rethrow storm);
+  every other tween and consumer keeps running.
 
 ## Empty-ID assert: "Cannot have an empty ID at the root of a window"
 
@@ -76,14 +105,22 @@ Any ImGui item needs a non-empty ID; at window root an empty label resolves to t
 
 Build nuance: a **debug** native build (`build.bat`) shows the assert dialog when this fires; the shipped **release** DLL (`build_release.bat`, `/DNDEBUG`) compiles asserts out, so the same bug degrades silently into wrong identity/behavior instead of a clear stop. Develop against the debug build so you see asserts; never treat release silence as correctness.
 
-## The 16-bit index limit
+## Very large draw lists
 
-Dear ImGui indexes draw-list vertices with a 16-bit type, so **one draw list may hold at most 65,535 vertices**; exceeding it asserts (debug builds) or renders corrupted geometry. There is no escape hatch in this library — 32-bit indices (`RendererHasVtxOffset`) were evaluated and deliberately deferred until a demonstrated need.
+There is no 65,535-vertex ceiling per draw list here. ImGui keeps 16-bit
+indices, but the shipped D3D11 backend sets `RendererHasVtxOffset`, so ImGui
+chunks oversized lists across multiple draw commands with vertex offsets and
+the effective limit is never reached in practice. (Keeping 16-bit indices was
+a deliberate choice — recorded as decision D32 — not a hard ceiling you can
+hit.)
 
-For context: a 10,000-point line is about 20k vertices — far under the limit. What approaches it is one window/region stuffed with very dense content. Remedies, in order of preference:
+Density still costs real time, though: every submitted vertex is rebuilt every
+frame, so a single window stuffed with very dense content is a performance
+problem before it is any kind of limit. For context, a 10,000-point line is
+about 20k vertices — cheap. Remedies, in order of preference:
 
-- **Plot a rolling window instead of full history** (see [Plotting](40-plotting.md)) — fewer points, constant cost, and it keeps you far from the limit.
-- **Split dense content across windows or scroll regions** — the limit is per draw list, and separate windows/regions get their own.
+- **Plot a rolling window instead of full history** (see [Plotting](40-plotting.md)) — fewer points, constant cost.
+- **Split dense content across windows or scroll regions** — smaller lists, and separate windows/regions get their own.
 - Downsample deliberately (e.g. plot every Nth sample) rather than rendering data no one can read at that density anyway.
 
 ## Performance
