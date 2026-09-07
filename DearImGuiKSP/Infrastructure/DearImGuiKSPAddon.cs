@@ -103,16 +103,13 @@ namespace DearImGuiKSP.Infrastructure
                 FontResolution resolution = FontResolver.Resolve(font, Composition.Settings.FontScale);
                 Composition.Logger.Debug("Font '" + font + "' resolved: embedded=" + resolution.UseEmbeddedDefault
                     + ", primary=" + (resolution.PrimaryPath ?? "<none>")
-                    + ", secondary=" + (resolution.SecondaryPath ?? "<none>")
                     + ", size=" + resolution.SizePixels);
 
                 if (!resolution.UseEmbeddedDefault)
                 {
                     bool primaryOk = Composition.Bridge.LoadFontFromFile(resolution.PrimaryPath, resolution.SizePixels);
-                    bool secondaryOk = resolution.SecondaryPath == null
-                        || Composition.Bridge.LoadFontFromFile(resolution.SecondaryPath, resolution.SizePixels);
-                    Composition.Logger.Debug("Font load results: primary=" + primaryOk + ", secondary=" + secondaryOk);
-                    if (primaryOk && secondaryOk)
+                    Composition.Logger.Debug("Font load result: primary=" + primaryOk);
+                    if (primaryOk)
                     {
                         return;
                     }

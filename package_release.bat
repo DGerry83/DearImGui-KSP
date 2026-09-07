@@ -30,7 +30,6 @@ for %%f in (
   "GameData\DearImGuiKSP\Plugins\DearImGuiKSP.dll"
   "GameData\DearImGuiKSP\PluginData\DearImGuiKSPNative.dll"
   "GameData\DearImGuiKSP\Fonts\IBMPlexSans-Regular.ttf"
-  "GameData\DearImGuiKSP\Fonts\IBMPlexSans-Medium.ttf"
   "GameData\DearImGuiKSP\Fonts\OFL.txt"
   "GameData\DearImGuiKSP\Textures\toolbar.png"
   "GameData\DearImGuiKSP\settings.cfg"

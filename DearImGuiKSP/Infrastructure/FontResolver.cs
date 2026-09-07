@@ -4,15 +4,18 @@ using System.IO;
 namespace DearImGuiKSP.Infrastructure
 {
     /// <summary>
-    /// Result of resolving the normalized <c>font</c> setting + <c>fontScale</c> to concrete
-    /// font files (spec §5.2, §9). <see cref="UseEmbeddedDefault"/> is the fallback signal:
-    /// the consumer loads the embedded default and logs. Paths are absolute; null when unused.
+    /// Result of resolving the normalized <c>font</c> setting + <c>fontScale</c> to a concrete
+    /// font file (spec §5.2, §9). <see cref="UseEmbeddedDefault"/> is the fallback signal:
+    /// the consumer loads the embedded default and logs. <see cref="PrimaryPath"/> is
+    /// absolute; null when <see cref="UseEmbeddedDefault"/> is set.
+    /// Only one face is resolved: there is no PushFont/font-selection API a second
+    /// atlas entry could be reached through (G3-10 decision, 2026-09-07) — font
+    /// selection is deferred as potential 1.1.0 work via DesignSpecRefinement.
     /// </summary>
     internal sealed class FontResolution
     {
         internal bool UseEmbeddedDefault;
         internal string PrimaryPath;
-        internal string SecondaryPath;
         internal float SizePixels;
     }
 
@@ -27,7 +30,6 @@ namespace DearImGuiKSP.Infrastructure
         internal const float BaseSizePixels = 18f;
 
         private const string PlexPrimaryFile = "IBMPlexSans-Regular.ttf";
-        private const string PlexSecondaryFile = "IBMPlexSans-Medium.ttf";
         private const string TtfExtension = ".ttf";
 
         internal static FontResolution Resolve(string font, float fontScale)
@@ -47,13 +49,10 @@ namespace DearImGuiKSP.Infrastructure
                 return EmbeddedDefault(fontScale);
             }
 
-            string secondaryPath = isPlex ? ResolveExistingPath(PlexSecondaryFile) : null;
-
             return new FontResolution
             {
                 UseEmbeddedDefault = false,
                 PrimaryPath = primaryPath,
-                SecondaryPath = secondaryPath,
                 SizePixels = BaseSizePixels * fontScale,
             };
         }
