@@ -60,6 +60,10 @@ ALL 16 contracted work packages are complete and committed. Build green, `dotnet
 - Native handshake is now version **7** (C04 added the diagnostics-drain export). Any future export addition → 8, lockstep managed+native.
 - Release zip deliberately excludes settings.cfg (upgrades must not reset player settings); runtime tolerates its absence (defaults + first debounced save recreates).
 
+## Session closed (2026-09-08)
+
+Gate B3 PASS (IMGUI virtualization toggle sticks; telemetry window shows Graphs + Orbit only). Temporary scaffolding removed (commit `1fd157c`). Gate D complete: 1.0.1 released — versions bumped in lockstep, CHANGELOG entry, `package_release.bat` green end-to-end, both zips inspected (library: no settings.cfg, License/Docs/Textures present; demo: DLL+.version+License+Readme), Release build + 178/178 tests. PDB decision: kept OUT of the zips (compressed ~20 MB vs the 2 MB library zip; KSP never loads them) — `package_release.bat` now archives the versioned native PDB to `dist\symbols\` for dev-side crash symbolication. Clean-KSP zip-install check handed to the user as the final D16-convention step.
+
 ## Pointers
 
 - Contract specs: `notes\plans\opus-review-remediation-contracts.md` (status line is current).
