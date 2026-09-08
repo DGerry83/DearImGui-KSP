@@ -22,6 +22,7 @@ namespace DearImGuiKSP.Application
         private bool _verboseLogging;
         private bool _enabled;
         private bool _clampWindowsToViewport;
+        private bool _docking;
 
         internal SettingsModel(ISettingsStore store)
         {
@@ -35,6 +36,7 @@ namespace DearImGuiKSP.Application
             _verboseLogging = loaded.VerboseLogging;
             _enabled = loaded.Enabled;
             _clampWindowsToViewport = loaded.ClampWindowsToViewport;
+            _docking = loaded.Docking;
         }
 
         /// <summary>Raised after any setting actually changes.</summary>
@@ -134,6 +136,18 @@ namespace DearImGuiKSP.Application
             }
         }
 
+        internal bool Docking
+        {
+            get => _docking;
+            set
+            {
+                if (Set(ref _docking, value))
+                {
+                    MarkPersistPending();
+                }
+            }
+        }
+
         private bool Set<T>(ref T field, T value)
         {
             if (EqualityComparer<T>.Default.Equals(field, value))
@@ -202,6 +216,7 @@ namespace DearImGuiKSP.Application
                 VerboseLogging = _verboseLogging,
                 Enabled = _enabled,
                 ClampWindowsToViewport = _clampWindowsToViewport,
+                Docking = _docking,
             };
         }
 

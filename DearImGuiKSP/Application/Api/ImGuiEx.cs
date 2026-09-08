@@ -52,6 +52,42 @@ namespace DearImGuiKSP
         }
 
         /// <summary>
+        /// Begins a window with explicit docking control and returns a scope that
+        /// ends it. Only valid inside a registered callback. Same as
+        /// <see cref="Window(string, bool)"/>, plus:
+        /// </summary>
+        /// <param name="name">Window title; also its ImGui identity.</param>
+        /// <param name="autoResize">
+        /// Opt in to fit-to-content sizing (stock ImGui <c>AlwaysAutoResize</c>):
+        /// the window is resized to fit its content every frame — it grows when a
+        /// collapsed section opens, shrinks when one closes, and reflows when the
+        /// library's UI scale changes. While enabled the window is NOT
+        /// user-resizable (the resize grip and edges are inactive) and no
+        /// scrollbars appear because the window always fits its content; the
+        /// title bar stays draggable. Defaults to false: the window is
+        /// user-resizable and shows an automatic scrollbar when content
+        /// overflows.
+        /// </param>
+        /// <param name="noDocking">
+        /// Opt out of docking for this window (stock ImGui <c>NoDocking</c>,
+        /// imgui.h:1238): it cannot be docked into a dockspace or another window
+        /// and shows no drop preview while dragging. Use for windows that must
+        /// always float.
+        /// </param>
+        /// <returns>
+        /// A scope whose <see cref="WindowScope.Visible"/> mirrors the facade's
+        /// BeginWindow result — when false, skip the window's content for this frame.
+        /// Dispose always ends the window, even when unused or when the body throws.
+        /// </returns>
+        /// <remarks>
+        /// Must be disposed within the same frame/callback (immediate-mode rule).
+        /// </remarks>
+        public static WindowScope Window(string name, bool autoResize, bool noDocking)
+        {
+            return new WindowScope(DearImGuiKSP.BeginWindow(name, autoResize, noDocking));
+        }
+
+        /// <summary>
         /// Begins a fixed-height scrolling region and returns a scope that ends it.
         /// Only valid inside a registered callback.
         /// </summary>

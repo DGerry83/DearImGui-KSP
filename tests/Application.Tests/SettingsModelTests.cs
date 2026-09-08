@@ -23,6 +23,7 @@ namespace Application.Tests
             Assert.Equal(LibraryConfig.DefaultVerboseLogging, model.VerboseLogging);
             Assert.Equal(LibraryConfig.DefaultEnabled, model.Enabled);
             Assert.Equal(LibraryConfig.DefaultClampWindowsToViewport, model.ClampWindowsToViewport);
+            Assert.Equal(LibraryConfig.DefaultDocking, model.Docking);
         }
 
         [Fact]
@@ -43,6 +44,19 @@ namespace Application.Tests
 
             Assert.Equal(LibraryConfig.MaxScale, model.UiScale);
             Assert.Equal(LibraryConfig.MinScale, model.FontScale);
+        }
+
+        [Fact]
+        public void Constructor_LoadedDockingFalse_StaysFalse()
+        {
+            // ISSUES #011 round-trip: a persisted docking=false must survive the
+            // load (the SettingsStore absent-key default is true, an explicit
+            // false in the store wins).
+            var store = new FakeSettingsStore();
+            store.Loaded.Docking = false;
+            var model = new SettingsModel(store);
+
+            Assert.False(model.Docking);
         }
 
         [Fact]

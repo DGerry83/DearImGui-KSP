@@ -122,6 +122,11 @@ namespace DearImGuiKSP.Application
                 (ImGuiCol.ResizeGrip, new Color32(KspPalette.TextLightGrey.r, KspPalette.TextLightGrey.g, KspPalette.TextLightGrey.b, 117)),
                 (ImGuiCol.ResizeGripHovered, new Color32(KspPalette.TextOffWhite.r, KspPalette.TextOffWhite.g, KspPalette.TextOffWhite.b, 160)),
                 (ImGuiCol.ResizeGripActive, new Color32(KspPalette.TextOffWhite.r, KspPalette.TextOffWhite.g, KspPalette.TextOffWhite.b, 220)),
+                // ISSUES #011: dock chrome. Preview is the drop-target overlay —
+                // KSP light green at ~60% alpha (ImGui scales it per drop state);
+                // the empty-dock background matches the flat window background.
+                (ImGuiCol.DockingPreview, new Color32(KspPalette.GreenLight.r, KspPalette.GreenLight.g, KspPalette.GreenLight.b, 150)),
+                (ImGuiCol.DockingEmptyBg, KspPalette.WindowBgBottom),
             };
 
             var floatVars = new (ImGuiStyleVar Var, float Value)[]

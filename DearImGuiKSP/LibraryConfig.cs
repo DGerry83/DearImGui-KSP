@@ -44,6 +44,8 @@ namespace DearImGuiKSP
         internal const bool DefaultVerboseLogging = false;
         internal const bool DefaultEnabled = true;
         internal const bool DefaultClampWindowsToViewport = true;
+        /// <summary>Default docking enable (ISSUES #011): docking is ON unless the player disables it.</summary>
+        internal const bool DefaultDocking = true;
         internal const float MinScale = 0.5f;
         internal const float MaxScale = 2.0f;
 

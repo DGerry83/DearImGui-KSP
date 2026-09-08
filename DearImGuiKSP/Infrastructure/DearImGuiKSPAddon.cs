@@ -40,6 +40,9 @@ namespace DearImGuiKSP.Infrastructure
                 // Theme apply (C8, spec §5.1): after the font load, before frames
                 // run — style writes are legal any time the context exists.
                 Composition.ThemeEngine.ApplyCurrent();
+                // Docking apply (ISSUES #011): same startup contract — a persisted
+                // docking=false must reach the native context before frames run.
+                Composition.DockingModeApplier.ApplyCurrent();
                 Composition.WireLifecycle();
                 // C31: the library's own consumer (the settings panel) joins the
                 // same registry/frame-loop path as any consumer — the fault

@@ -4,7 +4,7 @@ The Core layer of DearImGui-KSP: owns the single ImGui context, the frame lifecy
 
 ## Sources
 
-Dear ImGui 1.92.9 + cimgui are **not vendored here**. They live in a sibling clone `cimgui` next to this repo's root (with its pinned `imgui` submodule) and are compiled directly into this DLL by the build scripts. Re-pin deliberately, never casually.
+Dear ImGui 1.92.9 (**docking branch**, pinned `v1.92.9-docking-1`, submodule commit `b334d19`) + cimgui are **not vendored here**. They live in a sibling clone `cimgui` next to this repo's root (with its pinned `imgui` submodule) and are compiled directly into this DLL by the build scripts. Re-pin deliberately, never casually.
 
 ## Build
 
@@ -18,4 +18,4 @@ No CMake, no vcxproj, no vcpkg — plain `cl.exe` batch scripts, matching the Ci
 
 ## Versioning
 
-Managed and native DLLs release in lockstep; a version handshake during init (currently version **7**) turns a mismatch into the session-permanent `Failed` state (spec §5.4, D17).
+Managed and native DLLs release in lockstep; a version handshake during init (currently version **9**) turns a mismatch into the session-permanent `Failed` state (spec §5.4, D17).
