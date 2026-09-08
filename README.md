@@ -7,8 +7,9 @@ plots and graphs, dials and knobs, toggles, and animated spinners.
 Everything is rendered on the GPU and the performance impact is minimal
 even for large UI's that update every frame.
 
-**Status: 1.1.0** (2026-09-08). KSP 1.12.x, Windows
-x64, D3D11 or OpenGL Core (`-force-glcore`).
+**Status: 1.2.0** (2026-09-08). KSP 1.12.x, Windows
+x64, D3D11 or OpenGL Core (`-force-glcore`). Windows can now be
+docked to each other (enabled by default; toggle in the settings panel).
 
 ## Screenshots
 

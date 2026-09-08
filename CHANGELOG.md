@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0 — minor
+
+Window docking; no breaking changes.
+
+- Windows rendered by the library can now be docked: drag any window's title bar onto another window or a dock region to split or tab them together. Docking is enabled by default; players can turn it off live in the DearImGui-KSP settings panel (new `docking` key in `settings.cfg`).
+- Docked windows cannot leave the game window (multi-viewport platform windows are deliberately not supported), and dock layouts are not persisted between game sessions — consumers reapply their preferred layout each session.
+- New consumer API (additive only): `DockSpace` / `DockSpaceOverViewport`, a curated DockBuilder subset for programmatic one-time layouts, public `ImGuiDockNodeFlags` / `ImGuiDir` enums, and a `noDocking` option on `BeginWindow` / `ImGuiEx.Window` (declare dockspace-host windows with it — docking a host is unsupported by ImGui). Existing signatures are unchanged.
+- Consumers cannot read the player's docking setting; write docking paths so windows also make sense floating. See the "Window docking" section of `docs/20-widgets.md` for the recommended pattern (in-window dockspace with a return-value gate; pass an explicit dockspace height inside auto-resize windows).
+- The viewport clamp now skips docked windows instead of fighting the dock node on resolution changes.
+- The "ksp" theme now colors the docking drop preview and empty dock background.
+- Demo: the main demo window hosts a dockspace with the Plots and Benchmark windows docked into it by default.
+- Internal: managed/native handshake v9 (both DLLs ship in lockstep as always); the native base build has tracked the ImGui docking branch (`v1.92.9-docking`) since 1.1.0.
+
 ## 1.1.0 — minor
 
 OpenGL support; no public API changes, no breaking changes.
