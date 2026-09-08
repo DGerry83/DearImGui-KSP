@@ -6,6 +6,9 @@ rem Docs (*.md from docs\ + CHANGELOG.md) ship inside the library zip under Game
 rem settings.cfg is deliberately EXCLUDED from the library zip (G2-16): extracting an upgrade
 rem must not reset the player's saved UI settings. It stays in GameData\ for dev mirroring, and
 rem the library falls back to defaults when the file is missing (SettingsStore.Load).
+rem PDBs stay OUT of both zips (the native release PDB compresses to ~20 MB, 10x the library
+rem zip, and KSP never loads it); the native PDB is archived per-release in dist\symbols\ so
+rem crash reports against a shipped DLL stay symbolisable dev-side (C05/G2-03).
 setlocal
 
 rem --- 1. Native release build -> GameData\DearImGuiKSP\PluginData\
@@ -40,6 +43,7 @@ set MISSING=0
 for %%f in (
   "GameData\DearImGuiKSP\Plugins\DearImGuiKSP.dll"
   "GameData\DearImGuiKSP\PluginData\DearImGuiKSPNative.dll"
+  "DearImGuiKSPNative\build\DearImGuiKSPNative.pdb"
   "GameData\DearImGuiKSP\Fonts\IBMPlexSans-Regular.ttf"
   "GameData\DearImGuiKSP\Fonts\OFL.txt"
   "GameData\DearImGuiKSP\Textures\toolbar.png"
@@ -89,8 +93,14 @@ powershell -NoProfile -Command "try { Compress-Archive -Path 'dist\staging\demo\
 if errorlevel 1 (echo Zipping demo package FAILED & exit /b 1)
 if not exist "dist\DearImGuiKSPDemo-%DEMOVERSION%.zip" (echo Demo zip missing after Compress-Archive & exit /b 1)
 
+rem --- 8. Archive the native PDB for this release (symbols stay dev-side, out of the zip).
+if not exist dist\symbols mkdir dist\symbols
+copy /y DearImGuiKSPNative\build\DearImGuiKSPNative.pdb "dist\symbols\DearImGuiKSPNative-%VERSION%.pdb" >nul
+if errorlevel 1 (echo Archiving native PDB FAILED & exit /b 1)
+
 rmdir /s /q dist\staging
 echo.
 echo dist\DearImGuiKSP-%VERSION%.zip
 echo dist\DearImGuiKSPDemo-%DEMOVERSION%.zip
+echo dist\symbols\DearImGuiKSPNative-%VERSION%.pdb
 echo Done.
