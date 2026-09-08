@@ -13,9 +13,7 @@ namespace DearImGuiKSPDemo
     /// plus the M5 widget showcase section (C17: spinners, knobs, wheels, and a
     /// cancellable tween demo, drawn by ThemeDemo inside the main window).
     /// All Begin/End pairs are declared through ImGuiEx scopes (C3), including one
-    /// "Throw inside scope (test)" fault-barrier test hook, plus a temporary
-    /// fault-injection section (F1-F4) for in-game verification of the C01/C02
-    /// frame-boundary and tween fault fixes — remove before release.
+    /// "Throw inside scope (test)" fault-barrier test hook.
     /// Toggled via an ApplicationLauncher toolbar button (green placeholder icon).
     /// </summary>
     [KSPAddon(KSPAddon.Startup.EveryScene, false)]
@@ -40,13 +38,6 @@ namespace DearImGuiKSPDemo
         // longer needs its own copies — the style overload reads the preset).
         private bool _themeToggle = true;
         private int _radioChoice;
-
-        // --- Temporary fault-injection test hooks (Gate A verification of the
-        // C01/C02 fixes; remove this whole section before release) ---
-        private const string FaultProbeId = "DearImGuiKSPDemo.FaultProbe";
-        private bool _faultProbeRegistered;
-        private bool _pendingOutOfFrameProbe;
-        private string _faultStatus = "no fault test run yet";
 
         private void Start()
         {
@@ -100,23 +91,6 @@ namespace DearImGuiKSPDemo
                 ApplicationLauncher.AppScenes.ALWAYS,
                 MakePlaceholderIcon());
             _toolbarButton.SetTrue(false); // window starts visible; reflect it without firing the callback
-        }
-
-        // S2 regression probe (temporary): fires a widget call OUTSIDE any
-        // registered frame callback — deferred here from a button press so the
-        // call site is Update, not OnFrame. Pre-C01 this dereferenced ImGui's
-        // null current window and crashed to desktop; the C01 frame gate must
-        // turn it into the documented silent no-op.
-        private void Update()
-        {
-            if (!_pendingOutOfFrameProbe)
-            {
-                return;
-            }
-            _pendingOutOfFrameProbe = false;
-            DearImGuiKSP.DearImGuiKSP.Text("out-of-frame fault probe");
-            _faultStatus = "F2 fired: out-of-frame call returned, no crash (expected: silent no-op, nothing drawn)";
-            Debug.Log("[DearImGuiKSPDemo] " + _faultStatus);
         }
 
         private void OnToolbarOn()
@@ -219,91 +193,10 @@ namespace DearImGuiKSPDemo
                     // M5 widget showcase (C17): spinner row, knobs, wheels, and
                     // the tween demo — additive to the M3 section above.
                     _themeDemo.DrawImGui();
-
-                    // --- Temporary fault-injection tests (Gate A verification of
-                    // the C01/C02 fixes; remove this block before release) ---
-                    DearImGuiKSP.DearImGuiKSP.TextColored(
-                        DearImGuiKSP.Application.KspPalette.OrangeLight, "Fault injection tests (temporary)");
-                    DearImGuiKSP.DearImGuiKSP.Text(_faultStatus);
-
-                    if (DearImGuiKSP.DearImGuiKSP.Button(_faultProbeRegistered
-                        ? "F1: Unregister probe consumer mid-callback"
-                        : "F1: Register probe consumer mid-callback"))
-                    {
-                        // S1: mutating the registry from inside a callback froze KSP
-                        // pre-C01 (live-list foreach invalidated -> EndUiFrame skipped
-                        // -> native frame lock held forever).
-                        if (_faultProbeRegistered)
-                        {
-                            DearImGuiKSP.DearImGuiKSP.Unregister(FaultProbeId);
-                            _faultProbeRegistered = false;
-                            _faultStatus = "F1: probe unregistered mid-callback; its window should vanish, game alive";
-                        }
-                        else
-                        {
-                            DearImGuiKSP.DearImGuiKSP.Register(FaultProbeId, OnFaultProbeFrame);
-                            _faultProbeRegistered = true;
-                            _faultStatus = "F1: probe registered mid-callback; its window should appear, game alive";
-                        }
-                        Debug.Log("[DearImGuiKSPDemo] " + _faultStatus);
-                    }
-
-                    if (DearImGuiKSP.DearImGuiKSP.Button("F2: Call widget outside a frame callback"))
-                    {
-                        // Deferred to Update so the call really happens outside OnFrame.
-                        _pendingOutOfFrameProbe = true;
-                        _faultStatus = "F2 queued: out-of-frame widget call fires from Update next frame";
-                    }
-
-                    if (DearImGuiKSP.DearImGuiKSP.Button("F3: Tween setter throws immediately"))
-                    {
-                        // S3/G3-07: the baseline set(from) inside Tween.To escaped
-                        // unguarded pre-C02.
-                        DearImGuiKSP.Tween.To(
-                            v =>
-                            {
-                                throw new System.InvalidOperationException(
-                                    "[DearImGuiKSPDemo] Intentional baseline setter throw (fault test F3).");
-                            },
-                            0f, 1f, 1f, DearImGuiKSP.Ease.Linear);
-                        _faultStatus = "F3: baseline-throw tween refused; log should show a containment error";
-                        Debug.Log("[DearImGuiKSPDemo] " + _faultStatus);
-                    }
-
-                    if (DearImGuiKSP.DearImGuiKSP.Button("F4: Tween setter throws mid-tween"))
-                    {
-                        // S3: a setter throwing inside TweenEngine.Tick rethrew every
-                        // frame pre-C02, freezing every consumer's UI for the session.
-                        DearImGuiKSP.Tween.To(
-                            v =>
-                            {
-                                if (v >= 0.5f)
-                                {
-                                    throw new System.InvalidOperationException(
-                                        "[DearImGuiKSPDemo] Intentional mid-tween setter throw (fault test F4).");
-                                }
-                            },
-                            0f, 1f, 2f, DearImGuiKSP.Ease.Linear);
-                        _faultStatus = "F4: mid-tween throw armed (~1s in); spinners/toggles must keep animating";
-                        Debug.Log("[DearImGuiKSPDemo] " + _faultStatus);
-                    }
                 }
             }
             DrawBenchmarkWindow();
             DrawPlotWindow();
-        }
-
-        // Frame callback for the temporary F1 fault probe — registered and
-        // unregistered from INSIDE OnFrame to exercise the S1 fix.
-        private void OnFaultProbeFrame()
-        {
-            using (var window = DearImGuiKSP.ImGuiEx.Window("Fault Probe Consumer", autoResize: true))
-            {
-                if (window.Visible)
-                {
-                    DearImGuiKSP.DearImGuiKSP.Text("Registered from inside another consumer's callback.");
-                }
-            }
         }
 
         // Third window in the same registered callback — one consumer ID, one

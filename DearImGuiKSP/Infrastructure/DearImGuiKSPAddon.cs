@@ -86,48 +86,7 @@ namespace DearImGuiKSP.Infrastructure
                 // and the tween clock — scaled time would freeze tweens on game
                 // pause and run ImGui timing fast under physics warp.
                 Composition.Orchestrator.RunFrame(Screen.width, Screen.height, Time.unscaledDeltaTime);
-                MapViewLockDiagnostic();
             }
-        }
-
-        // TEMPORARY map-view lock diagnostic (Gate B2: the user reports the map
-        // camera rotating while hovering an ImGui window, though stock rotation is
-        // gated solely on CAMERACONTROLS — KSP Knowledge Library,
-        // NOTES\mapview-camera-input.md). Dumps our capture state and the stock
-        // lock bits once per second and on every transition, only with verbose
-        // logging on and map view open. Remove with the demo fault hooks.
-        private float _mapDiagNextLog;
-        private bool _mapDiagPrimed;
-        private bool _mapDiagLastCaptured;
-        private bool _mapDiagLastCamLocked;
-
-        private void MapViewLockDiagnostic()
-        {
-            if (!Composition.Settings.VerboseLogging || !MapView.MapIsEnabled)
-            {
-                _mapDiagPrimed = false;
-                return;
-            }
-            bool captured = Composition.CaptureTracker.MouseCaptured;
-            bool camLocked = InputLockManager.IsLocked(ControlTypes.CAMERACONTROLS);
-            bool transition = _mapDiagPrimed
-                && (captured != _mapDiagLastCaptured || camLocked != _mapDiagLastCamLocked);
-            bool heartbeat = Time.unscaledTime >= _mapDiagNextLog;
-            _mapDiagPrimed = true;
-            _mapDiagLastCaptured = captured;
-            _mapDiagLastCamLocked = camLocked;
-            if (!transition && !heartbeat)
-            {
-                return;
-            }
-            if (heartbeat)
-            {
-                _mapDiagNextLog = Time.unscaledTime + 1f;
-            }
-            Composition.Logger.Info("[MAPDIAG] captured=" + captured
-                + " camLocked=" + camLocked
-                + " mapUiLocked=" + InputLockManager.IsLocked(ControlTypes.MAP_UI)
-                + (transition ? " (transition)" : ""));
         }
 
         // Startup font pipeline (C5, spec §5.2): the native atlas is baked on the

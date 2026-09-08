@@ -22,10 +22,6 @@ namespace DearImGuiKSP.Application
         private bool _mouseShielded;
         private bool _keyboardShielded;
 
-        // TEMPORARY (Gate B2 map-rotation investigation): read-only view of the
-        // last applied mouse-capture state for the addon's map-view diagnostic.
-        internal bool MouseCaptured => _blocked;
-
         // Reused every frame: this is a per-frame hot path, so no fresh List per Update.
         private readonly List<string> _enabledIds = new List<string>();
 
