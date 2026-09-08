@@ -12,7 +12,7 @@ namespace DearImGuiKSP.Application
         /// <summary>Managed/native version handshake mismatch (spec §5.4, D17).</summary>
         VersionMismatch,
 
-        /// <summary>Unsupported graphics API (MVP requires D3D11).</summary>
+        /// <summary>Unsupported graphics API (requires Direct3D 11 or OpenGL Core; D37).</summary>
         GraphicsApi,
 
         /// <summary>Render-hook failure (null render-event callback after init).</summary>

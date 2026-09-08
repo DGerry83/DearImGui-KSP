@@ -14,7 +14,7 @@ Dear ImGui 1.92.9 + cimgui are **not vendored here**. They live in a sibling clo
 - `build_harness.bat` — builds the native test harness (`build\harness.exe`) under the same environment check.
 - Both DLL builds place `DearImGuiKSPNative.dll` into `..\GameData\DearImGuiKSP\PluginData\`, which the managed build then deploys into the KSP test instance. **Native DLLs must live in `PluginData/`, never `Plugins/`** — KSP's assembly loader tries to load every DLL in the scan path as a managed assembly and hangs on native DLLs (CinematicRecorder/CinematicShaders convention, confirmed 2026-07-29). The shipped library package tree is `GameData/DearImGuiKSP/` with `Plugins/` (managed DLL), `PluginData/` (this DLL), `Fonts/`, `Textures/` (toolbar icon), and `Docs/` (the docs\*.md guides + CHANGELOG.md, staged by `package_release.bat`).
 
-No CMake, no vcxproj, no vcpkg — plain `cl.exe` batch scripts, matching the CinematicRecorder convention. Links only system libs (`d3d11`, `dxgi`) plus the imgui/cimgui translation units. D3D11 is the only shipped backend; OpenGL is deferred to post-release (D20/D35), so no GL library is linked.
+No CMake, no vcxproj, no vcpkg — plain `cl.exe` batch scripts, matching the CinematicRecorder convention. Links only system libs (`d3d11`, `dxgi`, `opengl32`) plus the imgui/cimgui translation units. Ships two render backends: D3D11 (imgui_impl_dx11) and OpenGL Core (imgui_impl_opengl3 with its embedded loader; original-plan C5, landed per D37).
 
 ## Versioning
 

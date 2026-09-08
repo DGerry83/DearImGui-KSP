@@ -19,7 +19,7 @@ namespace DearImGuiKSP.Infrastructure
     /// layer's implicit [DllImport("DearImGuiKSPNative")] cimgui calls resolve against
     /// it by module name (kernel32 imports are fine; the gotcha is only about loading
     /// OUR dll implicitly). Performs the managed/native version handshake (spec §5.4)
-    /// and the D3D11 device gate (chunk C4 PoC).
+    /// and the graphics-device gate (D3D11 since C4; OpenGL Core since D37).
     /// </summary>
     internal sealed class NativeBridge : INativeBridge
     {
@@ -33,12 +33,14 @@ namespace DearImGuiKSP.Infrastructure
         internal const int InitErrContextInit = 6;
         internal const int InitErrDeviceTexture = 7;
         internal const int InitErrRenderHook = 8;
+        internal const int InitErrBackendSelect = 9;
 
         // Managed/native handshake constant (spec §5.4, D17); must match
         // DearImGuiKSPNative_GetVersion(). Bump both DLLs in lockstep.
         // 4: ISSUES #001-#003; 5: C5 font load; 6: C31 live uiScale (SetUiScale
-        // export); 7: C04 native diagnostics channel (DrainDiagnostics export).
-        private const int ExpectedNativeVersion = 7;
+        // export); 7: C04 native diagnostics channel (DrainDiagnostics export);
+        // 8: OpenGL backend (SetOpenGLBackend export; original-plan C5, D37).
+        private const int ExpectedNativeVersion = 8;
 
         private readonly ILogger _logger;
         private readonly InputCaptureState _captureState = new InputCaptureState();
@@ -51,10 +53,11 @@ namespace DearImGuiKSP.Infrastructure
         private Texture2D _deviceTexture;
 
         // Native function delegates (C3-locked C ABI + C4 device handoff + C5 font
-        // load). Held in fields so the GC never collects a delegate the native side
-        // may call back.
+        // load + OpenGL backend selection). Held in fields so the GC never collects
+        // a delegate the native side may call back.
         private GetVersionDelegate _getVersion;
         private SetD3D11DeviceTextureDelegate _setD3D11DeviceTexture;
+        private SetOpenGLBackendDelegate _setOpenGLBackend;
         private LoadFontFromFileDelegate _loadFontFromFile;
         private ContextInitDelegate _contextInit;
         private ContextShutdownDelegate _contextShutdown;
@@ -137,26 +140,44 @@ namespace DearImGuiKSP.Infrastructure
 
             // Device gate managed-side: Unity only calls UnityPluginLoad for plugins
             // it loads itself, so the native side cannot see IUnityGraphics in our
-            // deployment — SystemInfo is the authoritative check (OpenGL support is
-            // deferred post-release, D35/D37).
-            if (SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Direct3D11)
+            // deployment — SystemInfo is the authoritative check. D3D11 and OpenGL
+            // Core (-force-glcore) are supported (D37); anything else fails here.
+            UnityEngine.Rendering.GraphicsDeviceType deviceType = SystemInfo.graphicsDeviceType;
+            bool isD3D11 = deviceType == UnityEngine.Rendering.GraphicsDeviceType.Direct3D11;
+            bool isOpenGL = deviceType == UnityEngine.Rendering.GraphicsDeviceType.OpenGLCore;
+            if (!isD3D11 && !isOpenGL)
             {
-                _logger.Error("Graphics device " + SystemInfo.graphicsDeviceType + " is not Direct3D11; DearImGui-KSP 1.x requires D3D11 (OpenGL support is planned for a later release).");
+                _logger.Error("Graphics device " + deviceType + " is not supported; DearImGui-KSP requires Direct3D 11 or OpenGL (Core).");
                 Unload();
                 return InitErrUnsupportedDevice;
             }
 
-            // Hand the backend a Unity-created texture so it can capture the D3D11
-            // device (texture->GetDevice) — the CinematicRecorderNative pattern,
-            // since IUnityInterfaces is unavailable to a LoadLibrary'd plugin.
-            _deviceTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            int deviceResult = _setD3D11DeviceTexture(_deviceTexture.GetNativeTexturePtr());
-            if (deviceResult != 0)
+            if (isD3D11)
             {
-                _logger.Error("DearImGuiKSPNative_SetD3D11DeviceTexture failed with code " + deviceResult + ".");
-                DestroyDeviceTexture();
-                Unload();
-                return InitErrDeviceTexture;
+                // Hand the backend a Unity-created texture so it can capture the D3D11
+                // device (texture->GetDevice) — the CinematicRecorderNative pattern,
+                // since IUnityInterfaces is unavailable to a LoadLibrary'd plugin.
+                _deviceTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                int deviceResult = _setD3D11DeviceTexture(_deviceTexture.GetNativeTexturePtr());
+                if (deviceResult != 0)
+                {
+                    _logger.Error("DearImGuiKSPNative_SetD3D11DeviceTexture failed with code " + deviceResult + ".");
+                    DestroyDeviceTexture();
+                    Unload();
+                    return InitErrDeviceTexture;
+                }
+            }
+            else
+            {
+                // GL needs no device discovery — the context is current at
+                // render-event time. This call only selects the backend native-side.
+                int selectResult = _setOpenGLBackend();
+                if (selectResult != 0)
+                {
+                    _logger.Error("DearImGuiKSPNative_SetOpenGLBackend failed with code " + selectResult + ".");
+                    Unload();
+                    return InitErrBackendSelect;
+                }
             }
 
             int contextResult = _contextInit();
@@ -179,7 +200,7 @@ namespace DearImGuiKSP.Infrastructure
             }
 
             _initialized = true;
-            _logger.Info("Native bridge initialized: DearImGuiKSPNative v" + nativeVersion + " on D3D11, context up.");
+            _logger.Info("Native bridge initialized: DearImGuiKSPNative v" + nativeVersion + " on " + deviceType + ", context up.");
             return InitOk;
         }
 
@@ -391,6 +412,7 @@ namespace DearImGuiKSP.Infrastructure
         private bool BindExports()
         {
             _setD3D11DeviceTexture = Bind<SetD3D11DeviceTextureDelegate>("DearImGuiKSPNative_SetD3D11DeviceTexture");
+            _setOpenGLBackend = Bind<SetOpenGLBackendDelegate>("DearImGuiKSPNative_SetOpenGLBackend");
             _loadFontFromFile = Bind<LoadFontFromFileDelegate>("DearImGuiKSPNative_LoadFontFromFile");
             _contextInit = Bind<ContextInitDelegate>("DearImGuiKSPNative_ContextInit");
             _contextShutdown = Bind<ContextShutdownDelegate>("DearImGuiKSPNative_ContextShutdown");
@@ -402,6 +424,7 @@ namespace DearImGuiKSP.Infrastructure
             _clampWindowsToViewport = Bind<ClampWindowsToViewportDelegate>("DearImGuiKSPNative_ClampWindowsToViewport");
             _drainDiagnostics = Bind<DrainDiagnosticsDelegate>("DearImGuiKSPNative_DrainDiagnostics");
             return _setD3D11DeviceTexture != null
+                && _setOpenGLBackend != null
                 && _loadFontFromFile != null
                 && _contextInit != null
                 && _contextShutdown != null
@@ -440,6 +463,9 @@ namespace DearImGuiKSP.Infrastructure
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate int SetD3D11DeviceTextureDelegate(IntPtr d3d11TexturePtr);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int SetOpenGLBackendDelegate();
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate int LoadFontFromFileDelegate([In] byte[] utf8Path, float sizePixels);

@@ -14,7 +14,7 @@ The library hit an unrecoverable startup failure. This is **session-permanent by
 |---|---|---|---|
 | "native component is missing or corrupt" | `NativeComponent` | LoadLibrary/Win32 errors, missing exports, context/texture init codes | Reinstall the library package intact: `DearImGuiKSP/Plugins/DearImGuiKSP.dll` and `DearImGuiKSP/PluginData/DearImGuiKSPNative.dll` must both be present |
 | "components are from different versions" | `VersionMismatch` | handshake line (below) | Reinstall **both** DLLs from one release — see next section |
-| "this graphics API is not supported" | `GraphicsApi` | the detected `GraphicsDeviceType` | The library currently requires D3D11. OpenGL support is not shipped yet; it may come in a later release |
+| "this graphics API is not supported" | `GraphicsApi` | the detected `GraphicsDeviceType` | Run KSP on Direct3D 11 (default) or OpenGL Core (`-force-glcore`); other graphics APIs are not supported |
 | (same as native component) | `RenderHook` | "GetRenderEventFunc returned a null pointer" | Treat as native component: reinstall; report if it persists |
 
 Your mod is unaffected code-wise: `DearImGuiKSP.IsAvailable` is false, your `Register` call is ignored with a warning, and any IMGUI fallback you built (see [Migration](60-migration-from-imgui.md)) takes over.
@@ -134,7 +134,7 @@ about 20k vertices — cheap. Remedies, in order of preference:
 
 - **Intermittent whole-UI flicker** (known open issue): rarely the entire library UI flickers or disappears for a frame or two — reported worse in flight and especially under time warp; no reliable repro yet. Under active investigation; when it is understood this list will be updated.
 - **Spinner tints are partially upstream-inherent**: `SpinnerType.RainbowMix` derives its hue from the tint's saturation — with the default white tint it renders grey and never cycles; pass a saturated `Color` as the tint to get the rainbow. `SpinnerType.Atom` hardcodes its electron dots to red/green/blue; the tint colors only the ellipses. Both are vendor behavior, not binding bugs; spinner rendering is under review before release.
-- **No OpenGL**: D3D11 only; OpenGL support may come in a later release.
+- **OpenGL Core only**: OpenGL works via `-force-glcore`; legacy OpenGL and OpenGL ES are not supported, and graphics mods that fail under GL themselves (Cinematic Shaders, Cinematic Recorder) remain unusable there regardless of this library.
 - **Text input modifiers**: navigation/edit keys and Ctrl only — Ctrl+A works; Shift+Arrow / Shift+Home/End selection does not.
 - **No public horizontal layout helper** (SameLine et al.): layout is vertical-first for now; a public layout surface is a possible later addition. Use `SetCursorY`/`Dummy` for spacing (see [Migration](60-migration-from-imgui.md)).
 - **Library-owned settings only**: the library persists its own `settings.cfg` (and deliberately writes no imgui.ini); per-consumer window positions and state are yours to keep.

@@ -1,8 +1,8 @@
 // DearImGuiKSPNative — Core layer entry surface.
 //
-// Exposes the version handshake, the D3D11 device handoff, and the render-event
-// callback routed into the active renderer backend (C4: D3D11; C5 adds OpenGL)
-// (spec §4.1/§4.2).
+// Exposes the version handshake, the backend-selection exports, and the
+// render-event callback routed into the active renderer backend
+// (C4: D3D11; original-plan C5: OpenGL, landed per D37) (spec §4.1/§4.2).
 //
 // UnityPluginLoad/Unload are kept for completeness but are effectively dead in
 // our deployment: Unity only calls them for plugins IT loads at startup, and
@@ -17,18 +17,28 @@
 #include "IUnityGraphics.h" // UnityRenderingEvent only — the interface itself is unavailable to a LoadLibrary'd plugin
 
 #include "BackendD3D11.h"
+#include "BackendOpenGL.h"
 #include "ContextHost.h"
 #include "imgui.h" // ImDrawList (DearImGuiKSPNative_GetDrawListVtxCount wrapper)
 
 #define DEARIMGUIKSP_NATIVE_API extern "C" __declspec(dllexport)
 
+// Renderer backend selected for this session: set by the matching managed-side
+// selection call (DearImGuiKSPNative_SetD3D11DeviceTexture /
+// DearImGuiKSPNative_SetOpenGLBackend), read by the render-event routing.
+// None preserves the pre-selection behavior: routing falls through to
+// BackendD3D11_Render, which no-ops safely until its device arrives.
+enum class ActiveBackend { None, D3D11, OpenGL };
+static ActiveBackend s_ActiveBackend = ActiveBackend::None;
+
 // Managed/native version handshake (spec §5.4, D17). Bump in lockstep with the
 // managed ExpectedNativeVersion constant; mismatch -> Failed state.
 // 4: ISSUES #001-#003 fixed; 5: C5 font load (LoadFontFromFile); 6: C31 SetUiScale;
-// 7: C04 native diagnostics channel (DrainDiagnostics export, G2-04/G3-03).
+// 7: C04 native diagnostics channel (DrainDiagnostics export, G2-04/G3-03);
+// 8: OpenGL backend (SetOpenGLBackend export; original-plan C5, D37).
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetVersion()
 {
-    return 7; // handshake constant value 7 (managed side bumps in C04)
+    return 8;
 }
 
 // Native diagnostics drain (C04, G2-04/G3-03): the ImGui error callback and
@@ -112,19 +122,43 @@ DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetDrawListVtxCount(ImDrawList* d
 
 // Hands the D3D11 backend a Unity-created ID3D11Texture2D
 // (Texture.GetNativeTexturePtr() managed-side) so it can capture the device.
-// Returns 0 on success; see BackendD3D11.h for error codes.
+// Also selects D3D11 as the active backend. Returns 0 on success; see
+// BackendD3D11.h for error codes, plus 4 when OpenGL was already selected.
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_SetD3D11DeviceTexture(void* d3d11TexturePtr)
 {
-    return BackendD3D11_InitFromTexture(d3d11TexturePtr);
+    if (s_ActiveBackend == ActiveBackend::OpenGL)
+        return 4; // conflicting backend selection — one backend per process
+    int rc = BackendD3D11_InitFromTexture(d3d11TexturePtr);
+    if (rc == 0)
+        s_ActiveBackend = ActiveBackend::D3D11;
+    return rc;
+}
+
+// Selects the OpenGL backend for this session (original-plan C5, D37): the
+// managed bridge calls this instead of SetD3D11DeviceTexture when SystemInfo
+// reports OpenGLCore. GL needs no device discovery — the context is current at
+// render-event time. Returns 0 on selection (idempotent), 1 when D3D11 was
+// already selected (conflicting backend selection).
+DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_SetOpenGLBackend()
+{
+    if (s_ActiveBackend == ActiveBackend::D3D11)
+        return 1;
+    s_ActiveBackend = ActiveBackend::OpenGL;
+    return 0;
 }
 
 // Render-event callback handed to Unity via GL.IssuePluginEvent /
 // CommandBuffer.IssuePluginEvent. Event 0 is the per-frame "render now"
-// signal; it routes to the D3D11 backend (C4). Further event IDs arrive
-// with C5+ (spec §4.2).
+// signal; it routes to the active backend (C4: D3D11; C5: OpenGL) — defaulting
+// to the D3D11 backend before selection, preserving its safe no-op behavior
+// (spec §4.2).
 static void UNITY_INTERFACE_API OnRenderEvent(int eventID)
 {
-    if (eventID == 0)
+    if (eventID != 0)
+        return;
+    if (s_ActiveBackend == ActiveBackend::OpenGL)
+        BackendOpenGL_Render();
+    else
         BackendD3D11_Render();
 }
 
@@ -149,6 +183,7 @@ DEARIMGUIKSP_NATIVE_API void UNITY_INTERFACE_API UnityPluginLoad(IUnityInterface
 DEARIMGUIKSP_NATIVE_API void UNITY_INTERFACE_API UnityPluginUnload()
 {
     BackendD3D11_Shutdown(); // releases backend + device pointers (C4)
+    BackendOpenGL_Shutdown(); // releases backend GL objects (C5)
     s_UnityInterfaces = nullptr;
 }
 
