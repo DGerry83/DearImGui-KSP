@@ -748,6 +748,118 @@ namespace DearImGuiKSP.Interop
             return ImGuiNative.SetUiScale(scale);
         }
 
+        // ---- Docking (ISSUES #011) ----
+
+        /// <summary>
+        /// Live docking switch: <paramref name="enabled"/> != 0 enables ImGui
+        /// window docking (io.ConfigFlags DockingEnable), 0 disables it. Wraps
+        /// the native <c>DearImGuiKSPNative_SetDockingEnabled</c> export
+        /// (ContextHost.h). Style writes are legal any time the context exists —
+        /// the frame loop applies at frame start, never mid-callback.
+        /// Returns 0 on success, 1 when there is no context. A non-zero code is
+        /// non-fatal (logged, never trips the Failed state, spec §5.4).
+        /// </summary>
+        internal static int SetDockingEnabled(int enabled)
+        {
+            return ImGuiNative.SetDockingEnabled(enabled);
+        }
+
+        /// <summary>
+        /// Submits a dockspace host region of the given size and returns its ID.
+        /// Wraps cimgui <c>igDockSpace</c> (cimgui.h:4424) with window_class =
+        /// NULL. Valid only between <see cref="BeginWindow"/> and
+        /// <see cref="EndWindow"/> (a dockspace lives inside a window).
+        /// </summary>
+        internal static uint DockSpace(uint dockspaceId, ImVec2 size, int flags)
+        {
+            return ImGuiNative.DockSpace(dockspaceId, size, flags);
+        }
+
+        /// <summary>
+        /// Submits a dockspace over a viewport (NULL = the main viewport) and
+        /// returns its ID. Wraps cimgui <c>igDockSpaceOverViewport</c>
+        /// (cimgui.h:4425) with viewport = NULL and window_class = NULL;
+        /// <paramref name="dockspaceId"/> = 0 derives a deterministic ID from
+        /// the viewport (imgui.cpp DockSpaceOverViewport).
+        /// </summary>
+        internal static uint DockSpaceOverViewport(uint dockspaceId, int flags)
+        {
+            return ImGuiNative.DockSpaceOverViewport(dockspaceId, flags);
+        }
+
+        /// <summary>
+        /// Creates a dock node and returns its ID. Wraps cimgui
+        /// <c>igDockBuilderAddNode</c> (cimgui.h:5465); <paramref name="nodeId"/> =
+        /// 0 lets ImGui generate a fresh ID. Layout construction only — pair the
+        /// whole sequence with <see cref="DockBuilderFinish"/>.
+        /// </summary>
+        internal static uint DockBuilderAddNode(uint nodeId, int flags)
+        {
+            return ImGuiNative.DockBuilderAddNode(nodeId, flags);
+        }
+
+        /// <summary>
+        /// Removes a dock node, undocking its windows. Wraps cimgui
+        /// <c>igDockBuilderRemoveNode</c> (cimgui.h:5466).
+        /// </summary>
+        internal static void DockBuilderRemoveNode(uint nodeId)
+        {
+            ImGuiNative.DockBuilderRemoveNode(nodeId);
+        }
+
+        /// <summary>
+        /// Sets a dock node's size. Wraps cimgui <c>igDockBuilderSetNodeSize</c>
+        /// (cimgui.h:5470).
+        /// </summary>
+        internal static void DockBuilderSetNodeSize(uint nodeId, ImVec2 size)
+        {
+            ImGuiNative.DockBuilderSetNodeSize(nodeId, size);
+        }
+
+        /// <summary>
+        /// Splits a dock node in the given direction and returns the new node's
+        /// ID, with the two child node IDs written to the out parameters. Wraps
+        /// cimgui <c>igDockBuilderSplitNode</c> (cimgui.h:5471);
+        /// <paramref name="sizeRatioForNodeAtDir"/> is the fraction of the split
+        /// axis the child at <paramref name="splitDir"/> receives.
+        /// </summary>
+        internal static uint DockBuilderSplitNode(uint nodeId, int splitDir, float sizeRatioForNodeAtDir, out uint idAtDir, out uint idAtOppositeDir)
+        {
+            return ImGuiNative.DockBuilderSplitNode(nodeId, splitDir, sizeRatioForNodeAtDir, out idAtDir, out idAtOppositeDir);
+        }
+
+        /// <summary>
+        /// Docks an existing window (identified by its title, which is its ImGui
+        /// identity) into a dock node. Wraps cimgui <c>igDockBuilderDockWindow</c>
+        /// (cimgui.h:5462). Null <paramref name="windowName"/> renders as an
+        /// empty string.
+        /// </summary>
+        internal static void DockBuilderDockWindow(string windowName, uint nodeId)
+        {
+            ImGuiNative.DockBuilderDockWindow(ToUtf8(windowName), nodeId);
+        }
+
+        /// <summary>
+        /// Finalizes a dock-builder layout sequence, making the constructed
+        /// layout active. Wraps cimgui <c>igDockBuilderFinish</c> (cimgui.h:5475).
+        /// </summary>
+        internal static void DockBuilderFinish(uint nodeId)
+        {
+            ImGuiNative.DockBuilderFinish(nodeId);
+        }
+
+        /// <summary>
+        /// Returns the central dock node's ID for a dockspace hierarchy, or 0
+        /// when there is no central node. Wraps cimgui
+        /// <c>igDockBuilderGetCentralNode</c> (cimgui.h:5464); the returned
+        /// opaque <c>ImGuiDockNode*</c> is consumed internally and only its ID
+        /// field crosses the safe surface (Q46).
+        /// </summary>
+        internal static uint DockBuilderGetCentralNode(uint nodeId)
+        {
+            return ImGuiNative.DockBuilderGetCentralNode(nodeId);
+        }
+
         /// <summary>
         /// Opaque handle to a native <c>ImDrawList</c>, obtained from
         /// <see cref="GetWindowDrawList"/>. Keeps raw pointers out of the safe surface (Q46);

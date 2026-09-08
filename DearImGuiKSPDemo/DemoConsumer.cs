@@ -11,7 +11,10 @@ namespace DearImGuiKSPDemo
     /// window (naive vs virtualized 1000-item list) with its IMGUI reference window (D10),
     /// and the C13/M4 ImPlot proof window (two live line plots fed by ring buffers),
     /// plus the M5 widget showcase section (C17: spinners, knobs, wheels, and a
-    /// cancellable tween demo, drawn by ThemeDemo inside the main window).
+    /// cancellable tween demo, drawn by ThemeDemo inside the main window),
+    /// plus the ISSUES #011 docking showcase: a dockspace hosted inside the
+    /// main window with a one-time DockBuilder layout for the plot/benchmark
+    /// windows (only while both are visible; floating as before otherwise).
     /// All Begin/End pairs are declared through ImGuiEx scopes (C3), including one
     /// "Throw inside scope (test)" fault-barrier test hook.
     /// Toggled via an ApplicationLauncher toolbar button (green placeholder icon).
@@ -21,11 +24,33 @@ namespace DearImGuiKSPDemo
     {
         private const string ConsumerId = "DearImGuiKSPDemo";
 
+        // Window titles are process-global ImGui identities (a window is
+        // docked by its exact title), so the three scopes and the DockBuilder
+        // layout share these constants.
+        private const string MainWindowTitle = "DearImGui-KSP Demo";
+        private const string PlotWindowTitle = "DearImGui-KSP Plots";
+        private const string BenchmarkWindowTitle = "DearImGui-KSP Benchmark";
+
+        // Stable ID for the demo dockspace (any non-zero uint works; ImGui
+        // hashes strings the same way, an explicit constant is just clearer).
+        private const uint DemoDockspaceId = 0xD0C1A11;
+
+        // Fixed height for the in-window dockspace. It must be explicit
+        // because the main window is AlwaysAutoResize: a zero size would ask
+        // imgui for the "remaining" content region, which is ~0 at the end of
+        // an auto-fitted window's content, so the dockspace would clamp to a
+        // 4px strip every frame (imgui.cpp DockSpace size clamp, :20833-20836)
+        // and stay invisible. Zero width still fills the fitted content width.
+        private const float DockspaceHeight = 300f;
+
         private ApplicationLauncherButton _toolbarButton;
         private bool _registered;
         private bool _windowVisible = true;
-        private bool _benchmarkVisible;
-        private bool _plotVisible;
+        // Aux windows default visible so the docking showcase (dockspace in the
+        // main window) appears on default open without button clicks.
+        private bool _benchmarkVisible = true;
+        private bool _plotVisible = true;
+        private bool _dockLayoutApplied;
         private BenchmarkUI _benchmark;
         private PlotDemo _plotDemo;
         private ThemeDemo _themeDemo;
@@ -124,9 +149,20 @@ namespace DearImGuiKSPDemo
         {
             if (!_windowVisible)
             {
+                // The dock node tree only lives while the dockspace is submitted,
+                // so a hidden main window discards the built layout too.
+                _dockLayoutApplied = false;
                 return;
             }
-            using (var window = DearImGuiKSP.ImGuiEx.Window("DearImGui-KSP Demo", autoResize: true))
+            // noDocking: this window hosts the dockspace, and docking a
+            // dockspace host is unsupported upstream (the official dockspace
+            // demo marks its host window ImGuiWindowFlags_NoDocking,
+            // imgui_demo.cpp:10698-10700). A docked host acquires the
+            // ChildWindow flag (imgui.cpp:21544), and dock-node re-parenting
+            // can then trip the recoverable "Must call EndChild() and not
+            // End()!" error at its End() (imgui.cpp:8908-8909). Other windows
+            // can still be dropped into the dockspace region inside it.
+            using (var window = DearImGuiKSP.ImGuiEx.Window(MainWindowTitle, autoResize: true, noDocking: true))
             {
                 if (window.Visible)
                 {
@@ -193,10 +229,65 @@ namespace DearImGuiKSPDemo
                     // M5 widget showcase (C17): spinner row, knobs, wheels, and
                     // the tween demo — additive to the M3 section above.
                     _themeDemo.DrawImGui();
+
+                    // ISSUES #011 docking showcase. The dockspace is hosted
+                    // inside this window rather than over the whole viewport:
+                    // DockSpace is a strict native no-op while the library's
+                    // docking setting is off (it returns 0 and submits
+                    // nothing), whereas DockSpaceOverViewport would keep
+                    // painting its fullscreen host window. So when docking is
+                    // off — or when either auxiliary window is hidden — the
+                    // three windows simply float as before, with no broken
+                    // layout and no log noise.
+                    // Declared only while BOTH auxiliary windows are visible,
+                    // because an empty dock node would render ImGui's
+                    // "Debug##Default" fallback window.
+                    if (_plotVisible && _benchmarkVisible)
+                    {
+                        // Width fills the content region; the height is
+                        // explicit (see DockspaceHeight) because Vector2.zero
+                        // has no "remaining region" to fill in an
+                        // AlwaysAutoResize window.
+                        uint dockspaceId = DearImGuiKSP.DearImGuiKSP.DockSpace(
+                            DemoDockspaceId, new Vector2(0f, DockspaceHeight));
+                        if (!_dockLayoutApplied && dockspaceId != 0)
+                        {
+                            // DockSpace returning non-zero means the player's
+                            // docking setting is on and the node exists; the
+                            // one-time layout applies on the first such frame
+                            // (or later, if docking is toggled on mid-session).
+                            _dockLayoutApplied = true;
+                            ApplyDockLayout(dockspaceId);
+                        }
+                    }
+                    else
+                    {
+                        // The dockspace is not submitted while either window
+                        // is hidden, so ImGui discards its node tree and the
+                        // layout must be rebuilt the next time both show.
+                        _dockLayoutApplied = false;
+                    }
                 }
             }
             DrawBenchmarkWindow();
             DrawPlotWindow();
+        }
+
+        // One-time DockBuilder layout (ISSUES #011). The curated API has no
+        // DockSpace node flag, so the upstream RemoveNode/AddNode recipe does
+        // not apply: DockSpace above already created the dockspace node this
+        // frame, and DockBuilderSplitNode operates directly on a live node.
+        // Windows are docked by their exact titles (their process-global ImGui
+        // identities) — the same constants the window scopes use.
+        private static void ApplyDockLayout(uint dockspaceId)
+        {
+            // Region below the widgets: plots on top (60%), benchmark below (40%).
+            DearImGuiKSP.DearImGuiKSP.DockBuilderSplitNode(
+                dockspaceId, DearImGuiKSP.ImGuiDir.Down, 0.4f,
+                out uint benchmarkNode, out uint plotsNode);
+            DearImGuiKSP.DearImGuiKSP.DockBuilderDockWindow(PlotWindowTitle, plotsNode);
+            DearImGuiKSP.DearImGuiKSP.DockBuilderDockWindow(BenchmarkWindowTitle, benchmarkNode);
+            DearImGuiKSP.DearImGuiKSP.DockBuilderFinish(dockspaceId);
         }
 
         // Third window in the same registered callback — one consumer ID, one
@@ -207,7 +298,7 @@ namespace DearImGuiKSPDemo
             {
                 return;
             }
-            using (var window = DearImGuiKSP.ImGuiEx.Window("DearImGui-KSP Plots"))
+            using (var window = DearImGuiKSP.ImGuiEx.Window(PlotWindowTitle))
             {
                 if (window.Visible)
                 {
@@ -224,7 +315,7 @@ namespace DearImGuiKSPDemo
             {
                 return;
             }
-            using (var window = DearImGuiKSP.ImGuiEx.Window("DearImGui-KSP Benchmark"))
+            using (var window = DearImGuiKSP.ImGuiEx.Window(BenchmarkWindowTitle))
             {
                 if (window.Visible)
                 {

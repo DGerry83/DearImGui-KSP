@@ -97,6 +97,13 @@ int ContextHost_SetStyleVarVec2(int idx, float x, float y);
 // DearImGuiKSPNative_SetUiScale lives in DearImGuiKSPNative.cpp.
 int ContextHost_SetUiScale(float scale);
 
+// Live docking enable/disable (ISSUES #011): sets or clears
+// ImGuiConfigFlags_DockingEnable on the live context (the default ON is set in
+// ContextInit). Returns 0 on success, 1 if there is no context. Not exported
+// directly — the wrapper DearImGuiKSPNative_SetDockingEnabled lives in
+// DearImGuiKSPNative.cpp.
+int ContextHost_SetDockingEnabled(int enabled);
+
 // Re-applies the stock ImGui dark style to the live style (spec §5.1: "dark"
 // is the exact stock dark, and every theme apply resets to it first so slots
 // a preset does not map are never stale). Returns 0 on success, 1 if there is

@@ -39,8 +39,9 @@ namespace DearImGuiKSP.Infrastructure
         // DearImGuiKSPNative_GetVersion(). Bump both DLLs in lockstep.
         // 4: ISSUES #001-#003; 5: C5 font load; 6: C31 live uiScale (SetUiScale
         // export); 7: C04 native diagnostics channel (DrainDiagnostics export);
-        // 8: OpenGL backend (SetOpenGLBackend export; original-plan C5, D37).
-        private const int ExpectedNativeVersion = 8;
+        // 8: OpenGL backend (SetOpenGLBackend export; original-plan C5, D37);
+        // 9: ISSUES #011 docking (SetDockingEnabled).
+        private const int ExpectedNativeVersion = 9;
 
         private readonly ILogger _logger;
         private readonly InputCaptureState _captureState = new InputCaptureState();

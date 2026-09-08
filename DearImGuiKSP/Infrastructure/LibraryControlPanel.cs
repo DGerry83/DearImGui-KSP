@@ -14,8 +14,9 @@ namespace DearImGuiKSP.Infrastructure
     /// Every edit applies immediately in memory via the <see cref="SettingsModel"/>
     /// setters; the disk write is debounced (C06) — the model flags itself dirty
     /// and the frame loop writes settings.cfg once the changes settle, outside the
-    /// held frame lock. Theme and UI scale apply live (the ThemeEngine dirty path
-    /// re-applies at the next frame start); font and font scale are read only
+    /// held frame lock. Theme, UI scale, and docking apply live (the
+    /// ThemeEngine/DockingModeApplier dirty paths re-apply at the next frame
+    /// start); font and font scale are read only
     /// at startup (atlas rebuild), so the panel states plainly that they apply
     /// on the next KSP start. Both scale sliders sit beside a numeric type-in
     /// box (hidden "##" labels): typing applies through the same
@@ -44,6 +45,8 @@ namespace DearImGuiKSP.Infrastructure
         private const string FontRestartNote = "Font changes apply on next KSP start.";
         private const string VerboseToggleLabel = "Verbose logging";
         private const string VerboseHint = "Writes extra [DearImGuiKSP] diagnostics to KSP.log.";
+        private const string DockingToggleLabel = "Window docking";
+        private const string DockingHint = "Allow mod windows to dock together (drag a window onto another).";
 
         // Fixed pixel widths for the scale rows: without them slider and type-in
         // split the full window width, which the auto-resizing window then grows
@@ -78,6 +81,7 @@ namespace DearImGuiKSP.Infrastructure
 
                 DrawThemeSection();
                 DrawUiScaleSection();
+                DrawDockingSection();
                 DrawFontSection();
                 DrawLoggingSection();
             }
@@ -153,6 +157,16 @@ namespace DearImGuiKSP.Infrastructure
                 _settings.FontScale = typedFontScale;
             }
             ImGuiInternal.Text(FontRestartNote);
+        }
+
+        private void DrawDockingSection()
+        {
+            bool docking = _settings.Docking;
+            if (ExtensionShimsNative.Toggle(DockingToggleLabel, ref docking))
+            {
+                _settings.Docking = docking; // live: DockingModeApplier forwards it to the native context next frame start
+            }
+            ImGuiInternal.Text(DockingHint);
         }
 
         private void DrawLoggingSection()

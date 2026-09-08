@@ -265,6 +265,7 @@ DEARIMGUIKSP_SETTINGS
 	verboseLogging = false
 	enabled = true
 	clampWindowsToViewport = true
+	docking = true
 }
 ```
 
@@ -279,6 +280,7 @@ Keys (with defaults from the library's config constants):
 | `verboseLogging` | bool | false | Extra library logging |
 | `enabled` | bool | true | Master library enable switch — **file-only**: when false the library stays dormant for the whole session and the in-game settings panel never appears, so there is no in-game way to turn it back on; set it back to `true` here and restart KSP |
 | `clampWindowsToViewport` | bool | true | Keep windows inside the screen on resolution changes |
+| `docking` | bool | true | Window docking (ISSUES #011): allow windows to be docked together and into consumer-declared dockspaces; the player can toggle it live in the settings panel |
 | `formatVersion` | int | 1 | Internal file-format marker; migrated forward on read |
 
 These are user-facing options, not a per-mod API: your mod does not write

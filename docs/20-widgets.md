@@ -518,7 +518,128 @@ backgrounds), use `ImGuiGradients.AddRectFilledGradientVertical(min, max,
 top, bottom, rounding)` — same screen-coordinate convention; details in
 [Theming](30-theming.md).
 
-## Known layout gaps
+## Window docking
+
+```csharp
+// Facade (DearImGuiKSP.Docking.cs):
+public static uint DockSpace(uint id, Vector2 size, ImGuiDockNodeFlags flags = ImGuiDockNodeFlags.None)
+public static uint DockSpaceOverViewport(uint dockspaceId = 0, ImGuiDockNodeFlags flags = ImGuiDockNodeFlags.None)
+public static uint DockBuilderAddNode(uint nodeId = 0, ImGuiDockNodeFlags flags = ImGuiDockNodeFlags.None)
+public static void DockBuilderRemoveNode(uint nodeId)
+public static void DockBuilderSetNodeSize(uint nodeId, Vector2 size)
+public static uint DockBuilderSplitNode(uint nodeId, ImGuiDir dir, float sizeRatioForNodeAtDir, out uint idAtDir, out uint idAtOppositeDir)
+public static void DockBuilderDockWindow(string windowName, uint nodeId)
+public static void DockBuilderFinish(uint dockspaceId)
+public static uint DockBuilderGetCentralNode(uint dockspaceId)
+
+// Per-window opt-out (additive overloads, DearImGuiKSP.cs / ImGuiEx.cs):
+public static bool BeginWindow(string name, bool autoResize, bool noDocking)
+public static WindowScope Window(string name, bool autoResize, bool noDocking)
+```
+
+Docking lets players dock your windows together and into dock regions you
+declare, by dragging title bars onto drop targets. It is **on by default**;
+the player can toggle it live in the "DearImGui-KSP Settings" panel, and the
+choice persists in the library's `docking` settings key (default `true`).
+Your code cannot read the setting — write the docking path so that the
+windows also make sense floating, because that is what every player with
+docking off (and every frame before the dockspace exists) will see.
+
+`DockSpace` declares a dock region inside the current window; a size
+component `<= 0` fits that dimension to the remaining content region, so
+`Vector2.zero` fills whatever space is left under your widgets. It returns
+the dockspace ID, or **0 while docking is disabled or unavailable** — the
+return value is your degradation gate (see the recipe below).
+`DockSpaceOverViewport` declares a dockspace covering the whole game window
+and returns its ID. Note the difference for the disabled case: with docking
+off, `DockSpace` submits nothing at all, but `DockSpaceOverViewport` still
+submits its fullscreen host window (background and input capture included).
+If your UI must degrade gracefully when the player turns docking off,
+declare an in-window `DockSpace` and gate on its return value rather than
+calling `DockSpaceOverViewport` unconditionally.
+
+Auto-resize caution: in an `autoResize: true` window, "fill the remaining
+content region" resolves to nearly zero height (the window fits its
+content), so a `Vector2.zero` dockspace collapses to a 4-pixel strip. Pass
+an explicit height, e.g. `new Vector2(0f, 300f)` — a zero width still
+fills the fitted width.
+
+Host-window caution: declare a window that hosts a dockspace with
+`noDocking: true` — docking a dockspace host into another node is
+unsupported upstream (the official dockspace demo marks its host window
+`ImGuiWindowFlags_NoDocking`), and it can surface as a recoverable
+"Must call EndChild() and not End()!" ImGui error in the log. Other
+windows can still be dropped into the dockspace region inside the window.
+
+The DockBuilder calls arrange windows programmatically. They are for
+**one-time, per-session layout initialization** — there is deliberately no
+imgui.ini, so nothing remembers a layout across sessions; you reapply it
+with these calls. Two rules make the recipe different from upstream ImGui
+examples:
+
+- **Windows are docked by their exact title**, the same string you pass to
+  `BeginWindow` / `ImGuiEx.Window` — a title is a window's process-global
+  ImGui identity. Keep titles in constants shared by both call sites.
+- **The curated enum has no `DockSpace` node flag**, so the upstream
+  `DockBuilderRemoveNode` + `DockBuilderAddNode(id, flags | DockSpace)`
+  recipe is not expressible (it would recreate the node as a floating
+  node). Instead, split the live dockspace node that `DockSpace` created:
+  `DockBuilderSplitNode` operates on any existing node.
+
+The demo consumer (`DearImGuiKSPDemo/DemoConsumer.cs`) shows the full
+pattern — this is the graceful-degradation idiom to copy:
+
+```csharp
+private const uint MyDockspaceId = 0xD0C1A11;
+private bool _layoutApplied;
+
+// The window hosting the dock region: noDocking (a dockspace host must not
+// itself be dockable — see the host-window caution above). The height is
+// explicit because this window is autoResize — Vector2.zero would collapse
+// to a 4-pixel strip (see the auto-resize caution above).
+using (var window = DearImGuiKSP.ImGuiEx.Window("My Panel", autoResize: true, noDocking: true))
+{
+    if (!window.Visible)
+    {
+        return;
+    }
+    if (plotsVisible && benchmarkVisible)   // never declare an empty dockspace:
+    {                                       // an empty dock node renders ImGui's
+        uint id = DearImGuiKSP.DearImGuiKSP.DockSpace(
+            MyDockspaceId, new Vector2(0f, 300f));
+        if (!_layoutApplied && id != 0) // "docking on": apply once, first frame
+        {
+            _layoutApplied = true;
+            DearImGuiKSP.DearImGuiKSP.DockBuilderSplitNode(
+                id, DearImGuiKSP.ImGuiDir.Down, 0.4f,
+                out uint bottomNode, out uint topNode);
+            DearImGuiKSP.DearImGuiKSP.DockBuilderDockWindow("My Plots", topNode);
+            DearImGuiKSP.DearImGuiKSP.DockBuilderDockWindow("My Benchmark", bottomNode);
+            DearImGuiKSP.DearImGuiKSP.DockBuilderFinish(id);
+        }
+    }
+    else
+    {
+        _layoutApplied = false;  // dock nodes live only while submitted; rebuild
+    }                            // the layout when the dockspace returns
+}
+```
+
+With docking off, `DockSpace` returns 0 every frame, nothing is submitted,
+and both windows simply float — no errors, no log noise. If the player
+turns docking on mid-session, the layout applies on the next frame. Dock
+node flags (`ImGuiDockNodeFlags`: `NoResize`, `AutoHideTabBar`,
+`NoUndocking`, ...) go on the `DockSpace`/`DockSpaceOverViewport` call;
+`ImGuiDir` picks the split direction. Limitations: docked windows cannot
+leave the game window (multi-viewports are deliberately disabled), and
+layouts are not persisted — see
+[Troubleshooting](70-troubleshooting.md#known-limitations-honest-list).
+
+`noDocking: true` opts a single window out of docking entirely (`BeginWindow`
+/ `ImGuiEx.Window` overloads) — use it for windows that must always float,
+such as notifications or tool palettes.
+
+
 
 - **No public `SameLine`.** Widgets stack vertically; the only ways to place
   things side by side today are the `ImGuiDraw` cursor-anchor + `Dummy`

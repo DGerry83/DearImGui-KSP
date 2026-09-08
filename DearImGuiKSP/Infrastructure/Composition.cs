@@ -28,6 +28,7 @@ namespace DearImGuiKSP.Infrastructure
         private static FaultBarrier _faultBarrier;
         private static LifecycleStateMachine _stateMachine;
         private static ThemeEngine _themeEngine;
+        private static DockingModeApplier _dockingModeApplier;
         private static LibraryControlPanel _controlPanel;
         private static LibraryPanelToolbar _panelToolbar;
         private static TweenEngine _tweenEngine;
@@ -106,7 +107,7 @@ namespace DearImGuiKSP.Infrastructure
 
         /// <summary>The frame loop orchestrator singleton (C7; C9/C10/C12 wired, C14 timing), driven by DearImGuiKSPAddon.Update().</summary>
         internal static FrameLoopOrchestrator Orchestrator =>
-            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine, Logger, Settings, ThemeEngine, TweenEngine));
+            _orchestrator ?? (_orchestrator = new FrameLoopOrchestrator(Bridge, Registry, CaptureTracker, Barrier, StateMachine, Logger, Settings, ThemeEngine, DockingModeApplier, TweenEngine));
 
         /// <summary>
         /// The theme engine singleton (C8): subscribes to SettingsModel.Changed,
@@ -115,6 +116,15 @@ namespace DearImGuiKSP.Infrastructure
         /// </summary>
         internal static ThemeEngine ThemeEngine =>
             _themeEngine ?? (_themeEngine = new ThemeEngine(Settings, Logger));
+
+        /// <summary>
+        /// The docking mode applier singleton (ISSUES #011): subscribes to
+        /// SettingsModel.Changed and forwards the persisted docking flag to the
+        /// native context — once at startup (DearImGuiKSPAddon.Start) and again
+        /// through the orchestrator's dirty-flag path on every toggle.
+        /// </summary>
+        internal static DockingModeApplier DockingModeApplier =>
+            _dockingModeApplier ?? (_dockingModeApplier = new DockingModeApplier(Settings, Logger));
 
         /// <summary>
         /// The library's own control panel singleton (C31): the "DearImGui-KSP

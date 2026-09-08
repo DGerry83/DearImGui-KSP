@@ -14,6 +14,9 @@ namespace DearImGuiKSP.Interop
 
         /// <summary>Resize every window to its content every frame (imgui.h:1225, 1 &lt;&lt; 6).</summary>
         AlwaysAutoResize = 0x40,
+
+        /// <summary>Disable docking of this window (imgui.h:1238, 1 &lt;&lt; 19).</summary>
+        NoDocking = 0x80000,
     }
 
     /// <summary>
@@ -380,6 +383,63 @@ namespace DearImGuiKSP.Interop
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         private static extern int DearImGuiKSPNative_SetUiScale(float scale);
 
+        // int DearImGuiKSPNative_SetDockingEnabled(int enabled); (ContextHost.h, ISSUES #011)
+        // Live docking switch: enabled != 0 sets io.ConfigFlags |= ViewportsEnable-
+        // adjacent DockingEnable, enabled == 0 clears it. Returns 0 ok, 1 no context.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int DearImGuiKSPNative_SetDockingEnabled(int enabled);
+
+        // ---- Docking (ISSUES #011) ----
+        // Verified against the pinned cimgui.h (sibling clone, imgui 1.92.9).
+        // ImGuiID is a 32-bit unsigned int (imgui.h:120). ImGuiWindowClass* and
+        // ImGuiViewport* are opaque and always NULL here. The DockBuilder calls
+        // are the imgui.h-declared layout-construction API (imgui.h:1103-1115).
+
+        // CIMGUI_API ImGuiID igDockSpace(ImGuiID dockspace_id,const ImVec2_c size,ImGuiDockNodeFlags flags,const ImGuiWindowClass* window_class); (cimgui.h:4424)
+        // window_class is NULL (no window-class filtering).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern uint igDockSpace(uint dockspace_id, ImVec2 size, int flags, IntPtr window_class);
+
+        // CIMGUI_API ImGuiID igDockSpaceOverViewport(ImGuiID dockspace_id,const ImGuiViewport* viewport,ImGuiDockNodeFlags flags,const ImGuiWindowClass* window_class); (cimgui.h:4425)
+        // dockspace_id = 0 lets ImGui derive a deterministic ID from the viewport;
+        // viewport is NULL (the main viewport).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern uint igDockSpaceOverViewport(uint dockspace_id, IntPtr viewport, int flags, IntPtr window_class);
+
+        // CIMGUI_API ImGuiID igDockBuilderAddNode(ImGuiID node_id,ImGuiDockNodeFlags flags); (cimgui.h:5465)
+        // node_id = 0 lets ImGui generate a fresh ID.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern uint igDockBuilderAddNode(uint node_id, int flags);
+
+        // CIMGUI_API void igDockBuilderRemoveNode(ImGuiID node_id); (cimgui.h:5466)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igDockBuilderRemoveNode(uint node_id);
+
+        // CIMGUI_API void igDockBuilderSetNodeSize(ImGuiID node_id,ImVec2_c size); (cimgui.h:5470)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igDockBuilderSetNodeSize(uint node_id, ImVec2 size);
+
+        // CIMGUI_API ImGuiID igDockBuilderSplitNode(ImGuiID node_id,ImGuiDir split_dir,float size_ratio_for_node_at_dir,ImGuiID* out_id_at_dir,ImGuiID* out_id_at_opposite_dir); (cimgui.h:5471)
+        // Both out-pointers are always supplied (the split result is the point of the call).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern uint igDockBuilderSplitNode(uint node_id, int split_dir, float size_ratio_for_node_at_dir, out uint out_id_at_dir, out uint out_id_at_opposite_dir);
+
+        // CIMGUI_API void igDockBuilderDockWindow(const char* window_name,ImGuiID node_id); (cimgui.h:5462)
+        // window_name is an existing window's title (its ImGui identity).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igDockBuilderDockWindow([In] byte[] window_name, uint node_id);
+
+        // CIMGUI_API void igDockBuilderFinish(ImGuiID node_id); (cimgui.h:5475)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igDockBuilderFinish(uint node_id);
+
+        // CIMGUI_API ImGuiDockNode* igDockBuilderGetCentralNode(ImGuiID node_id); (cimgui.h:5464)
+        // Returns NULL when the node has no central node. The internal wrapper
+        // reads the node's first field (ImGuiID ID, imgui_internal.h:2067) so no
+        // raw ImGuiDockNode pointer crosses the safe surface.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr igDockBuilderGetCentralNode(uint node_id);
+
         // ---- Native window-bg gradient descriptor (chunk C9) ----
 
         // int DearImGuiKSPNative_SetWindowBgGradient(int enabled, float r1, float g1, float b1, float a1, float r2, float g2, float b2, float a2); (ContextHost.h)
@@ -690,6 +750,63 @@ namespace DearImGuiKSP.Interop
         internal static int SetUiScale(float scale)
         {
             return DearImGuiKSPNative_SetUiScale(scale);
+        }
+
+        // Docking (ISSUES #011). Flags arrive as the int bitmasks of the public
+        // DearImGuiKSP.ImGuiDockNodeFlags enum; ImGuiDir as DearImGuiKSP.ImGuiDir
+        // (single source of truth, no duplicated table).
+
+        internal static int SetDockingEnabled(int enabled)
+        {
+            return DearImGuiKSPNative_SetDockingEnabled(enabled);
+        }
+
+        internal static uint DockSpace(uint dockspaceId, ImVec2 size, int flags)
+        {
+            return igDockSpace(dockspaceId, size, flags, IntPtr.Zero);
+        }
+
+        internal static uint DockSpaceOverViewport(uint dockspaceId, int flags)
+        {
+            return igDockSpaceOverViewport(dockspaceId, IntPtr.Zero, flags, IntPtr.Zero);
+        }
+
+        internal static uint DockBuilderAddNode(uint nodeId, int flags)
+        {
+            return igDockBuilderAddNode(nodeId, flags);
+        }
+
+        internal static void DockBuilderRemoveNode(uint nodeId)
+        {
+            igDockBuilderRemoveNode(nodeId);
+        }
+
+        internal static void DockBuilderSetNodeSize(uint nodeId, ImVec2 size)
+        {
+            igDockBuilderSetNodeSize(nodeId, size);
+        }
+
+        internal static uint DockBuilderSplitNode(uint nodeId, int splitDir, float sizeRatioForNodeAtDir, out uint idAtDir, out uint idAtOppositeDir)
+        {
+            return igDockBuilderSplitNode(nodeId, splitDir, sizeRatioForNodeAtDir, out idAtDir, out idAtOppositeDir);
+        }
+
+        internal static void DockBuilderDockWindow(byte[] windowNameUtf8, uint nodeId)
+        {
+            igDockBuilderDockWindow(windowNameUtf8, nodeId);
+        }
+
+        internal static void DockBuilderFinish(uint nodeId)
+        {
+            igDockBuilderFinish(nodeId);
+        }
+
+        // Reads ImGuiDockNode::ID, the struct's first field (imgui_internal.h:2067);
+        // 0 when the native side returned NULL (no central node).
+        internal static uint DockBuilderGetCentralNode(uint nodeId)
+        {
+            IntPtr node = igDockBuilderGetCentralNode(nodeId);
+            return node == IntPtr.Zero ? 0u : (uint)Marshal.ReadInt32(node);
         }
     }
 }

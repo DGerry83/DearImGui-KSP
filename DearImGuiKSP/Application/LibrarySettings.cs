@@ -14,5 +14,6 @@ namespace DearImGuiKSP.Application
         internal bool VerboseLogging = LibraryConfig.DefaultVerboseLogging;
         internal bool Enabled = LibraryConfig.DefaultEnabled;
         internal bool ClampWindowsToViewport = LibraryConfig.DefaultClampWindowsToViewport;
+        internal bool Docking = LibraryConfig.DefaultDocking;
     }
 }

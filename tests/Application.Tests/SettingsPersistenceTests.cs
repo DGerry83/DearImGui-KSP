@@ -129,5 +129,24 @@ namespace Application.Tests
             Assert.False(model.PersistPending);
             Assert.Empty(store.Saves);
         }
+
+        [Fact]
+        public void DockingChange_RoundTripsThroughSnapshot()
+        {
+            // ISSUES #011: toggling docking off must reach the persisted
+            // snapshot so SettingsStore writes the key (and a reload keeps it).
+            SettingsModel model = CreateModel(out FakeSettingsStore store);
+
+            model.Docking = false;
+            model.SaveNow();
+
+            Assert.False(model.PersistPending);
+            LibrarySettings saved = Assert.Single(store.Saves);
+            Assert.False(saved.Docking);
+
+            var reloadStore = new FakeSettingsStore { Loaded = saved };
+            var reloaded = new SettingsModel(reloadStore);
+            Assert.False(reloaded.Docking);
+        }
     }
 }

@@ -167,14 +167,56 @@ namespace DearImGuiKSP
         /// </returns>
         public static bool BeginWindow(string name, bool autoResize = false)
         {
+            return BeginWindow(name, autoResize, noDocking: false);
+        }
+
+        /// <summary>
+        /// Begins an ImGui window with explicit docking control. Only valid
+        /// inside a registered callback. Same as
+        /// <see cref="BeginWindow(string, bool)"/>, plus:
+        /// </summary>
+        /// <param name="name">
+        /// Window title; also its ImGui identity. Titles are PROCESS-GLOBAL:
+        /// they are shared by every mod using this library (and any other ImGui
+        /// user) in the KSP process, with no namespacing — two mods beginning
+        /// the same title share one window identity, so position, collapse
+        /// state, and focus bleed across them. When two different registered
+        /// consumers begin the same title, the library logs one warning per
+        /// title (G2-11; detection only, the window still begins). Prefix
+        /// titles with your mod name to keep them unique. Standard ImGui
+        /// <c>##</c>/<c>###</c> suffix rules apply.
+        /// </param>
+        /// <param name="autoResize">
+        /// Opt in to fit-to-content sizing (<c>ImGuiWindowFlags_AlwaysAutoResize</c>,
+        /// imgui.h:1225): the window is resized to its content every frame. While
+        /// enabled, the resize grip and edges are inactive (the window is not
+        /// user-resizable) and no scrollbars appear because the window always fits;
+        /// the title bar stays draggable.
+        /// </param>
+        /// <param name="noDocking">
+        /// Opt out of docking for this window (<c>ImGuiWindowFlags_NoDocking</c>,
+        /// imgui.h:1238): the window cannot be docked into a dockspace or another
+        /// window, and dragging it onto a drop target shows no preview. Use for
+        /// windows that must always float (tool palettes, notifications).
+        /// </param>
+        /// <returns>
+        /// False when the window is collapsed/clipped — <see cref="EndWindow"/> is
+        /// still required. Also false when called while unavailable.
+        /// </returns>
+        public static bool BeginWindow(string name, bool autoResize, bool noDocking)
+        {
             if (!CanDeclareUi)
             {
                 return false;
             }
             WarnOnWindowTitleCollision(name);
             // End is required even when Begin returns false, so count unconditionally.
-            bool visible = ImGuiInternal.BeginWindow(
-                name, autoResize ? ImGuiWindowFlags.AlwaysAutoResize : ImGuiWindowFlags.None);
+            ImGuiWindowFlags flags = autoResize ? ImGuiWindowFlags.AlwaysAutoResize : ImGuiWindowFlags.None;
+            if (noDocking)
+            {
+                flags |= ImGuiWindowFlags.NoDocking;
+            }
+            bool visible = ImGuiInternal.BeginWindow(name, flags);
             OpenScopeTracker.Windows++;
             return visible;
         }

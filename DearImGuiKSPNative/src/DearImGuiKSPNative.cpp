@@ -35,10 +35,11 @@ static ActiveBackend s_ActiveBackend = ActiveBackend::None;
 // managed ExpectedNativeVersion constant; mismatch -> Failed state.
 // 4: ISSUES #001-#003 fixed; 5: C5 font load (LoadFontFromFile); 6: C31 SetUiScale;
 // 7: C04 native diagnostics channel (DrainDiagnostics export, G2-04/G3-03);
-// 8: OpenGL backend (SetOpenGLBackend export; original-plan C5, D37).
+// 8: OpenGL backend (SetOpenGLBackend export; original-plan C5, D37);
+// 9: ISSUES #011 docking (SetDockingEnabled export; docking defaults ON).
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_GetVersion()
 {
-    return 8;
+    return 9;
 }
 
 // Native diagnostics drain (C04, G2-04/G3-03): the ImGui error callback and
@@ -99,6 +100,15 @@ DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_StyleColorsDark(void)
 DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_SetUiScale(float scale)
 {
     return ContextHost_SetUiScale(scale);
+}
+
+// Live docking enable/disable (ISSUES #011): sets or clears
+// ImGuiConfigFlags_DockingEnable on the live context (docking defaults ON from
+// ContextInit). Called by the managed DockingModeApplier only when the persisted
+// setting changes. Returns 0 on success, 1 = no context.
+DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_SetDockingEnabled(int enabled)
+{
+    return ContextHost_SetDockingEnabled(enabled);
 }
 
 // Window-background gradient descriptor (chunk C9, spec §6.1). enabled != 0

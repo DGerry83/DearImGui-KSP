@@ -7,7 +7,8 @@ namespace DearImGuiKSP.Application
     /// <summary>
     /// Executes the per-frame sequence (locked in C7, spec §5.3; theme apply added in C8):
     /// sample capture state → apply/release input locks (C9) → deferred theme apply
-    /// when dirty (C8, one bool check at steady state) → debounced settings persist
+    /// when dirty (C8, one bool check at steady state) → deferred docking apply
+    /// when dirty (ISSUES #011, one bool check) → debounced settings persist
     /// (C06: writes settings.cfg once changes settle, at frame start, outside the
     /// native frame lock) → tween tick (C14: advances live tweens with this frame's
     /// delta, before any consumer callback) → native BeginUiFrame →
@@ -32,6 +33,7 @@ namespace DearImGuiKSP.Application
         private readonly ILogger _log;
         private readonly SettingsModel _settings;
         private readonly ThemeEngine _themeEngine;
+        private readonly DockingModeApplier _dockingModeApplier;
         private readonly TweenEngine _tweenEngine;
 
         private readonly Stopwatch _frameWatch = new Stopwatch();
@@ -53,6 +55,7 @@ namespace DearImGuiKSP.Application
             ILogger log,
             SettingsModel settings,
             ThemeEngine themeEngine,
+            DockingModeApplier dockingModeApplier,
             TweenEngine tweenEngine)
         {
             _bridge = bridge;
@@ -63,6 +66,7 @@ namespace DearImGuiKSP.Application
             _log = log;
             _settings = settings;
             _themeEngine = themeEngine;
+            _dockingModeApplier = dockingModeApplier;
             _tweenEngine = tweenEngine;
         }
 
@@ -82,6 +86,12 @@ namespace DearImGuiKSP.Application
             // engine; the re-apply happens here at frame start — never inside a
             // consumer callback. Steady-state cost is the bool check.
             _themeEngine.ApplyIfDirty();
+
+            // Deferred docking apply (ISSUES #011): same dirty/apply contract as
+            // the theme engine — a docking toggle is forwarded to the native
+            // context here at frame start, never mid-callback. Steady-state cost
+            // is one bool check.
+            _dockingModeApplier.ApplyIfDirty();
 
             // Debounced settings persist (C06, G3-08/09/14/16/19): setters only
             // flag the model dirty; the write lands here once changes settle —

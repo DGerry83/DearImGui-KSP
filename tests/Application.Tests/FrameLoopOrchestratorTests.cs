@@ -35,9 +35,12 @@ namespace Application.Tests
             // Real ThemeEngine over the test settings: no theme change fires in
             // these tests, so ApplyIfDirty never reaches native code.
             var themeEngine = new ThemeEngine(settings, new FakeLogger());
+            // Real DockingModeApplier (ISSUES #011): same contract — no docking
+            // change fires here, so ApplyIfDirty never reaches native code.
+            var dockingApplier = new DockingModeApplier(settings, new FakeLogger());
             return new FrameLoopOrchestrator(
                 bridge, registry, tracker, new FaultBarrier(new FakeLogger()), machine,
-                new FakeLogger(), settings, themeEngine, new TweenEngine());
+                new FakeLogger(), settings, themeEngine, dockingApplier, new TweenEngine());
         }
 
         private static SettingsModel CreateSettings(bool clampWindowsToViewport)
@@ -119,7 +122,8 @@ namespace Application.Tests
             var themeEngine = new ThemeEngine(settings, new FakeLogger());
             var orchestrator = new FrameLoopOrchestrator(
                 bridge, registry, tracker, new FaultBarrier(new FakeLogger()), machine,
-                new FakeLogger(), settings, themeEngine, tweenEngine);
+                new FakeLogger(), settings, themeEngine,
+                new DockingModeApplier(settings, new FakeLogger()), tweenEngine);
 
             float value = -1f;
             TweenHandle handle = tweenEngine.StartFloat(v => value = v, 0f, 10f, 1f, Ease.Linear);

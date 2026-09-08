@@ -138,6 +138,10 @@ about 20k vertices — cheap. Remedies, in order of preference:
 - **Text input modifiers**: navigation/edit keys and Ctrl only — Ctrl+A works; Shift+Arrow / Shift+Home/End selection does not.
 - **No public horizontal layout helper** (SameLine et al.): layout is vertical-first for now; a public layout surface is a possible later addition. Use `SetCursorY`/`Dummy` for spacing (see [Migration](60-migration-from-imgui.md)).
 - **Library-owned settings only**: the library persists its own `settings.cfg` (and deliberately writes no imgui.ini); per-consumer window positions and state are yours to keep.
+- **Docked windows cannot leave the game window** (ISSUES #011): multi-viewports are deliberately disabled — an embedded KSP plugin cannot sanely own OS platform windows — so a docked window is always clipped to the game window. Undock it if you need to drag it to the edge.
+- **Dock layouts are not persisted** (ISSUES #011): there is no imgui.ini by design (D7), so nothing remembers how windows were arranged — neither programmatic layouts nor the player's manual rearrangements survive a session restart. Consumers reapply their intended layout each session with the DockBuilder calls (one-time, guarded); see the recipe in [Widgets](20-widgets.md#window-docking).
+- **`clampWindowsToViewport` skips docked windows** (ISSUES #011): a docked window's position is owned by its dock node, not by the window, so the screen-edge clamping that applies to floating windows does not touch it. A dock layout wider/taller than the game window can therefore place docked content partially outside the viewport until the player resizes the splitters; the library leaves that to the dock node rather than fighting it.
+- **Docking off mid-session undocks everything** (ISSUES #011): the player toggle applies live — turning docking off undocks all windows immediately, and turning it back on does not restore the previous arrangement. Consumer one-time layouts reapply on their own guard; manual rearrangements are lost.
 
 ## Next
 

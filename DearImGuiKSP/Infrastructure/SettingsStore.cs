@@ -23,6 +23,7 @@ namespace DearImGuiKSP.Infrastructure
         private const string VerboseLoggingKey = "verboseLogging";
         private const string EnabledKey = "enabled";
         private const string ClampWindowsToViewportKey = "clampWindowsToViewport";
+        private const string DockingKey = "docking";
 
         private readonly ILogger _logger;
 
@@ -86,6 +87,9 @@ namespace DearImGuiKSP.Infrastructure
             settings.VerboseLogging = ReadBool(node, VerboseLoggingKey, defaults.VerboseLogging);
             settings.Enabled = ReadBool(node, EnabledKey, defaults.Enabled);
             settings.ClampWindowsToViewport = ReadBool(node, ClampWindowsToViewportKey, defaults.ClampWindowsToViewport);
+            // ISSUES #011: absent key defaults to true (no formatVersion bump) —
+            // old settings.cfg files keep docking enabled.
+            settings.Docking = ReadBool(node, DockingKey, defaults.Docking);
 
             if (formatVersion != LibraryConfig.SettingsFormatVersion)
             {
@@ -127,6 +131,7 @@ namespace DearImGuiKSP.Infrastructure
                 node.AddValue(VerboseLoggingKey, settings.VerboseLogging);
                 node.AddValue(EnabledKey, settings.Enabled);
                 node.AddValue(ClampWindowsToViewportKey, settings.ClampWindowsToViewport);
+                node.AddValue(DockingKey, settings.Docking);
 
                 // Atomic write (C06, G3-16): write the temp sibling first, then
                 // replace the real file, so a crash or concurrent reader mid-write

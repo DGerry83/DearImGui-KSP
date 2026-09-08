@@ -55,6 +55,7 @@ namespace Application.Tests
                 Orchestrator = new FrameLoopOrchestrator(
                     Bridge, Registry, tracker, new FaultBarrier(new FakeLogger()), machine,
                     new FakeLogger(), settings, new ThemeEngine(settings, new FakeLogger()),
+                    new DockingModeApplier(settings, new FakeLogger()),
                     new TweenEngine());
 
                 Facade.Log = new FakeLogger();

@@ -165,6 +165,12 @@ DEARIMGUIKSP_NATIVE_API int DearImGuiKSPNative_ContextInit(void)
     io.DisplaySize  = ImVec2(kDefaultDisplayWidth, kDefaultDisplayHeight);
     io.IniFilename  = nullptr; // no imgui.ini: window state belongs to consumers (D7, spec §5.4)
 
+    // ISSUES #011: docking is ON by default (settings key 'docking', default true).
+    // ImGuiConfigFlags_ViewportsEnable stays OFF — docked windows cannot leave the
+    // game window (contract decision 3). Live toggling goes through
+    // ContextHost_SetDockingEnabled.
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
     // G2-04: route ImGui recoverable errors to the diagnostics buffer (drained
     // to KSP.log by the managed bridge) instead of the stock red debug tooltip
     // painted over the game. Recovery itself and the assert/debug-log flags
@@ -356,12 +362,30 @@ void ContextHost_ClampWindowsToViewport(float width, float height)
         ImGuiWindow* window = windows[i];
         if (window == nullptr || window->Hidden || !window->WasActive)
             continue; // hidden this frame or not submitted by any consumer
+        if (window->DockIsActive)
+            continue; // ISSUES #011: docked position is owned by the dock node, not clampable
 
         const float maxX = ImMax(0.0f, viewport.x - window->Size.x);
         const float maxY = ImMax(0.0f, viewport.y - window->Size.y);
         window->Pos.x = ImClamp(window->Pos.x, 0.0f, maxX);
         window->Pos.y = ImClamp(window->Pos.y, 0.0f, maxY);
     }
+}
+
+// ISSUES #011: live docking enable/disable for the persisted 'docking' setting.
+// Sets or clears ImGuiConfigFlags_DockingEnable on the live context (the default
+// ON is set in ContextInit). Mirrors ContextHost_SetUiScale's return convention:
+// 0 = ok, 1 = no context. Never fatal — the managed applier logs and continues.
+int ContextHost_SetDockingEnabled(int enabled)
+{
+    if (s_Context == nullptr)
+        return 1; // no context
+    ImGuiIO& io = ImGui::GetIO();
+    if (enabled)
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    else
+        io.ConfigFlags &= ~ImGuiConfigFlags_DockingEnable;
+    return 0;
 }
 
 int ContextHost_LoadFontFromFile(const char* utf8Path, float sizePixels)
