@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0 — minor
+
+OpenGL support; no public API changes, no breaking changes.
+
+- KSP now works under OpenGL Core (`-force-glcore`) in addition to Direct3D 11: the native library gained an imgui_impl_opengl3 backend alongside the D3D11 one, selected automatically at startup from the detected graphics API. No consumer action needed.
+- Graphics mods that fail under OpenGL themselves (Cinematic Shaders, Cinematic Recorder) remain unusable in GL mode regardless of this library.
+
 ## 1.0.1 — patch
 
 Bugfixes and hardening from the post-release review wave; no public API changes, no breaking changes.

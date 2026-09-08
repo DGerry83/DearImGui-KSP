@@ -7,8 +7,8 @@ plots and graphs, dials and knobs, toggles, and animated spinners.
 Everything is rendered on the GPU and the performance impact is minimal
 even for large UI's that update every frame.
 
-**Status: 1.0.0 — first public release** (2026-09-05). KSP 1.12.x, Windows
-x64, D3D11. OpenGL support is planned for a post-release update.
+**Status: 1.1.0** (2026-09-08). KSP 1.12.x, Windows
+x64, D3D11 or OpenGL Core (`-force-glcore`).
 
 ## Screenshots
 
@@ -89,8 +89,8 @@ requires you to update your dependency attribute; those will be rare.
 ## How it works
 
 - `DearImGuiKSPNative.dll` (C++) - Dear ImGui 1.92.9 + cimgui compiled
-  directly in, with a D3D11 backend rendered on Unity's render thread via
-  the low-level native plugin API.
+  directly in, with D3D11 and OpenGL backends rendered on Unity's render
+  thread via the low-level native plugin API.
 - `DearImGuiKSP.dll` (C#) - the KSP plugin: frame loop, input locking,
   lifecycle management, settings, and the public consumer API.
 - `DearImGuiKSPDemo.dll` - the demo/benchmark mod, shipped separately so
