@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — demo fixes
+## Demo 1.2.1 — demo-only patch (2026-09-10)
+
+Demo fixes only; the library is unchanged at 1.2.0 (this zip replaces DearImGuiKSPDemo-1.2.0.zip).
 
 - Demo: fixed duplicate and dead green toolbar buttons piling up across scene loads (three in the VAB) — the demo consumer is now a persistent once-addon with one-shot toolbar registration, the same pattern that fixed the library's own settings button (ISSUES #015).
 - Demo: window visibility now survives scene changes — closing the demo in one scene keeps it closed in the next instead of reopening every time.
