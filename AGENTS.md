@@ -37,6 +37,14 @@ The design of this project was produced by `DesignSpecRefinement.md`; bootstrap 
 - Native: `cd DearImGuiKSPNative; build.bat` (debug) / `build_release.bat` (release) — plain `cl.exe`, no CMake/vcxproj.
 - Test: `dotnet test DearImGui-KSP.slnx` (xUnit Application-layer suite; Infrastructure/Core deferred — see `tests/*/README.md`). In-game acceptance per milestone ACs (`notes\finished\2026-07-29_DearImGuiKSP_PlanImplementation\FINAL_AUDIT.md`).
 
+### Release protocol — library and demo version independently
+
+Each half has its own version: its csproj `<Version>` **and** its AVC `.version` template, always bumped in lockstep (the template on `main` is what AVC polls; KSPBuildTools regenerates the shipped copy from the csproj). `package_release.bat` already names each zip from its own csproj version (G3-45).
+
+- **Library release** (new DearImGuiKSP x.y.z): bump the library pair; bump the demo pair too only if the demo actually changed or the `KSPAssemblyDependencyEqualMajor` stepping stone applies (ISSUES #016). New GitHub release, attach both zips, CHANGELOG section per version.
+- **Demo-only release**: bump ONLY the demo pair, CHANGELOG "Demo x.y.z" section, run `package_release.bat`, attach the new `DearImGuiKSPDemo-x.y.z.zip` to the **current** GitHub release (add an asset, note it in the release text). Library version and zip stay untouched — the library zip the script also produces is simply not uploaded.
+- **Never replace a published zip in place.** Same version number with different bytes gives existing installs no upgrade path (AVC compares versions, not hashes) and silently redefines what that version means. Adding a new-versioned asset to an existing release is fine; mutating an asset is not.
+
 ### Design artifacts (this repo)
 
 Authoritative design record, in `notes\finished\2026-07-29_DesignSpec_DearImGuiKSP_UI_Library\`:

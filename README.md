@@ -8,8 +8,8 @@ Everything is rendered on the GPU and the performance impact is minimal
 even for large UI's that update every frame.
 
 **Status: 1.2.0** (2026-09-08). KSP 1.12.x, Windows
-x64, D3D11 or OpenGL Core (`-force-glcore`). Windows can now be
-docked to each other (enabled by default; toggle in the settings panel).
+x64, D3D11 or OpenGL. Windows can now be docked to each other, enabled by 
+default with toggle in the settings panel.
 
 ## Screenshots
 
@@ -58,25 +58,24 @@ DearImGui-KSP has real value when the stock IMGUI falls short:
 - You want live plots and graphs of flight data, not just text fields.
 - You want animated elements without having to hand-roll them.
 - You want features like collapsible sections and windows, automatic
-  UI scaling, user-controllable UI rescaling, all handled natively by
+  UI window sizing, user-controllable UI rescaling, all handled natively by
   DearImGui-KSP
 
 ## For players
 
 You only need this if a mod you use lists DearImGui-KSP as a dependency.
-Extract `DearImGuiKSP-x.y.z.zip` into your KSP root so
-`GameData\DearImGuiKSP\` sits alongside the game. Once installed, the mod
-adds a toolbar button (DearImGui-KSP Settings) where you can pick the
-theme and font and adjust UI and font scaling (Font and Font Scale require
-a restart of KSP to take effect).
+Extract `DearImGuiKSP-x.y.z.zip` into your KSP root so `GameData\DearImGuiKSP\`
+ends up as the install path. Once installed, the mod adds a toolbar button 
+where you can pick the theme and font and adjust UI and font scaling
+(Font and Font Scale require a restart of KSP to take effect).
 
 The optional demo mod (`DearImGuiKSPDemo-x.y.z.zip`, a separate install)
 shows many examples of what the framework can do.  It includes some spinners,
-a variety of widgets, plot examples, etc.  Players can skip it.
+a variety of widgets, plot examples, etc.  Players should skip it.
 
 ## For modders
 
-Your mod hard-depends on DearImGui-KSP and draws its UI through a clean
+Your mod hard-depends on DearImGui-KSP and draws its UI through a 
 C# API - declare `[assembly: KSPAssemblyDependencyEqualMajor("DearImGuiKSP",
 1, 0)]`, register a frame callback, and call the facade. Full modder
 documentation ships in [`docs/`](docs/) (and as plain files inside the
@@ -85,7 +84,7 @@ release zip), starting with
 
 On versioning: patch (1.0.**x**) and minor (1.**x**.0) updates never break
 consumers. Only a major bump (**x**.0.0) signals breaking API changes and
-requires you to update your dependency attribute; those will be rare.
+requires you to update your dependency attribute and those will be rare.
 
 ## How it works
 
