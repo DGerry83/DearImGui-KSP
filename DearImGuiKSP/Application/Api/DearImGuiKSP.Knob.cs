@@ -86,6 +86,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             return ExtensionShimsNative.Knob(
                 label, ref value, min, max, 0f, null, (int)KnobVariant.Tick, 0f, (int)KnobFlags.None, 10);
         }
@@ -118,6 +119,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             return ExtensionShimsNative.Knob(
                 label, ref value, min, max, speed, format, (int)variant, size, (int)flags, steps);
         }
@@ -138,6 +140,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             return ExtensionShimsNative.KnobInt(
                 label, ref value, min, max, 0f, null, (int)KnobVariant.Tick, 0f, (int)KnobFlags.None, 10);
         }
@@ -168,6 +171,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             return ExtensionShimsNative.KnobInt(
                 label, ref value, min, max, speed, format, (int)variant, size, (int)flags, steps);
         }

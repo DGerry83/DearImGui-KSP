@@ -38,6 +38,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             return ImGuiInternal.CollapsingHeader(label, defaultOpen);
         }
     }

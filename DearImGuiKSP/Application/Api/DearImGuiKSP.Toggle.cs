@@ -58,6 +58,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             return ExtensionShimsNative.Toggle(label, ref value);
         }
 
@@ -77,6 +78,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             return ExtensionShimsNative.Toggle(label, ref value, (int)flags);
         }
     }

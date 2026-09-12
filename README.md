@@ -7,9 +7,10 @@ plots and graphs, dials and knobs, toggles, and animated spinners.
 Everything is rendered on the GPU and the performance impact is minimal
 even for large UI's that update every frame.
 
-**Status: 1.2.0** (2026-09-08). KSP 1.12.x, Windows
+**Status: 1.3.0** (2026-09-12). KSP 1.12.x, Windows
 x64, D3D11 or OpenGL. Windows can now be docked to each other, enabled by 
-default with toggle in the settings panel.
+default with toggle in the settings panel. New in 1.3.0: horizontal row
+layout (`ImGuiEx.Row`), combo dropdowns, and hover tooltips.
 
 ## Screenshots
 

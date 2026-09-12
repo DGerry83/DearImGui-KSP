@@ -82,6 +82,44 @@ namespace DearImGuiKSP.Interop
     }
 
     /// <summary>
+    /// Item flags for <c>igPushItemFlag</c> (FR-2 combo, 1.3.0); values match
+    /// <c>ImGuiItemFlags_</c> in the pinned cimgui.h (cimgui.h:327-337). Only the
+    /// values we use.
+    /// </summary>
+    [Flags]
+    internal enum ImGuiItemFlags
+    {
+        None = 0,
+
+        /// <summary>
+        /// The item accepts no hover/click/nav interaction (cimgui.h:328,
+        /// ImGuiItemFlags_Disabled = 1 &lt;&lt; 6). Used for the empty-list combo:
+        /// its preview renders but the popup never opens.
+        /// </summary>
+        Disabled = 1 << 6,
+    }
+
+    /// <summary>
+    /// Hover flags for <c>igIsItemHovered</c> (FR-3 tooltip, 1.3.0); values
+    /// match <c>ImGuiHoveredFlags_</c> in the pinned cimgui.h (cimgui.h:460-480).
+    /// Only the values we use.
+    /// </summary>
+    [Flags]
+    internal enum ImGuiHoveredFlags
+    {
+        None = 0,
+
+        /// <summary>
+        /// Stock tooltip hover predicate (cimgui.h:474, 1 &lt;&lt; 12): ImGui
+        /// expands it to style.HoverFlagsForTooltipMouse (Stationary |
+        /// DelayShort | AllowWhenDisabled) plus NoSharedDelay (imgui.h:1533,
+        /// imgui.cpp IsItemHovered) — exactly what SetItemTooltip uses, so
+        /// Tooltips appear only after the stock hover delay.
+        /// </summary>
+        ForTooltip = 1 << 12,
+    }
+
+    /// <summary>
     /// Blittable mirror of cimgui's <c>ImVec4_c</c> (<c>struct { float x, y, z, w; }</c>, cimgui.h:264-268).
     /// 16 bytes, passed by value to <c>igPushStyleColor_Vec4</c>/<c>igGetColorU32_Vec4</c> — safe on Win64 Cdecl.
     /// </summary>
@@ -355,6 +393,74 @@ namespace DearImGuiKSP.Interop
         [return: MarshalAs(UnmanagedType.I1)]
         private static extern bool igCollapsingHeader_TreeNodeFlags([In] byte[] label, int flags);
 
+        // ---- Combo (FR-2, 1.3.0) ----
+        // Verified against the pinned cimgui.h (sibling clone, imgui 1.92.9).
+
+        // CIMGUI_API bool igBeginCombo(const char* label,const char* preview_value,ImGuiComboFlags flags); (cimgui.h:4260)
+        // flags = 0 (ImGuiComboFlags_None, cimgui.h:411).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igBeginCombo([In] byte[] label, [In] byte[] preview_value, int flags);
+
+        // CIMGUI_API void igEndCombo(void); (cimgui.h:4261)
+        // Pairing rule: only call EndCombo() when BeginCombo() returned true —
+        // it asserts "wrong window" otherwise (imgui.cpp EndCombo).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igEndCombo();
+
+        // CIMGUI_API bool igSelectable_Bool(const char* label,bool selected,ImGuiSelectableFlags flags,const ImVec2_c size); (cimgui.h:4341)
+        // flags = 0 (ImGuiSelectableFlags_None, cimgui.h:401); size (0,0) =
+        // fit to label, the stock combo-popup item shape.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igSelectable_Bool([In] byte[] label, [MarshalAs(UnmanagedType.I1)] bool selected, int flags, ImVec2 size);
+
+        // CIMGUI_API void igCloseCurrentPopup(void); (cimgui.h:4386)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igCloseCurrentPopup();
+
+        // CIMGUI_API void igPushItemFlag(ImGuiItemFlags option,bool enabled); (cimgui.h:4166)
+        // CIMGUI_API void igPopItemFlag(void); (cimgui.h:4167)
+        // Pair: every PushItemFlag is matched by exactly one PopItemFlag on the
+        // same exit path (the empty-list combo runs disabled).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igPushItemFlag(int option, [MarshalAs(UnmanagedType.I1)] bool enabled);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igPopItemFlag();
+
+        // ---- Tooltip compose path (FR-3, 1.3.0) ----
+        // Verified against the pinned cimgui.h (sibling clone, imgui 1.92.9).
+        // igSetItemTooltip/igSetTooltip are variadic (fmt, ...) and unbindable
+        // (repo convention, ImGuiNative.cs:112): Tooltip composes them from
+        // these non-variadic exports instead.
+
+        // CIMGUI_API bool igBeginTooltip(void); (cimgui.h:4367)
+        // Currently always returns true (imgui.cpp BeginTooltipEx).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool igBeginTooltip();
+
+        // CIMGUI_API void igEndTooltip(void); (cimgui.h:4368)
+        // Pairing rule: only call after a BeginTooltip that returned true.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igEndTooltip();
+
+        // CIMGUI_API void igPushTextWrapPos(float wrap_local_pos_x); (cimgui.h:4172)
+        // CIMGUI_API void igPopTextWrapPos(void); (cimgui.h:4173)
+        // Pair: every PushTextWrapPos is matched by exactly one PopTextWrapPos
+        // on the same exit path. BeginTooltip pushes NO wrap pos of its own
+        // (imgui.cpp BeginTooltipEx), so this is not a double-wrap.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igPushTextWrapPos(float wrap_local_pos_x);
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void igPopTextWrapPos();
+
+        // CIMGUI_API float igGetFontSize(void); (cimgui.h:4156)
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern float igGetFontSize();
+
         // ---- Native theme exports (chunk C8) ----
         // Own DearImGuiKSPNative_* ABI (ContextHost.h), not cimgui: cimgui exports
         // no per-field style setters, so the DLL provides these pass-throughs over
@@ -541,6 +647,14 @@ namespace DearImGuiKSP.Interop
             igSameLine(0f, 0f);
         }
 
+        // Row layout (FR-1, 1.3.0): offset 0 keeps the cursor on the current
+        // line; spacing < 0 selects style.ItemSpacing.x (imgui.cpp SameLine),
+        // so StyleDefaultSpacing follows the UI scale through the style vars.
+        internal static void SameLine(float spacing)
+        {
+            igSameLine(0f, spacing);
+        }
+
         internal static void PushStyleColor(int idx, uint col)
         {
             igPushStyleColor_U32(idx, col);
@@ -650,6 +764,14 @@ namespace DearImGuiKSP.Interop
             return igIsItemHovered(flags: 0); // ImGuiHoveredFlags_None
         }
 
+        // Tooltip compose path (FR-3, 1.3.0): the stock SetItemTooltip
+        // predicate — IsItemHovered(ImGuiHoveredFlags_ForTooltip).
+
+        internal static bool IsItemHovered(ImGuiHoveredFlags flags)
+        {
+            return igIsItemHovered((int)flags);
+        }
+
         internal static bool IsItemActive()
         {
             return igIsItemActive();
@@ -709,6 +831,70 @@ namespace DearImGuiKSP.Interop
         internal static bool CollapsingHeader(byte[] labelUtf8, bool defaultOpen)
         {
             return igCollapsingHeader_TreeNodeFlags(labelUtf8, defaultOpen ? 1 << 5 : 0);
+        }
+
+        // Combo (FR-2, 1.3.0). BeginCombo/EndCombo pairing: EndCombo only when
+        // Begin returned true (imgui.cpp EndCombo asserts otherwise) — the
+        // facade's try/finally owns that condition. Preview is display-only
+        // (it seeds no ID); the label and items are ID-bearing.
+
+        internal static bool BeginCombo(byte[] labelUtf8, byte[] previewUtf8)
+        {
+            return igBeginCombo(labelUtf8, previewUtf8, flags: 0); // ImGuiComboFlags_None
+        }
+
+        internal static void EndCombo()
+        {
+            igEndCombo();
+        }
+
+        internal static bool Selectable(byte[] labelUtf8, bool selected)
+        {
+            return igSelectable_Bool(labelUtf8, selected, flags: 0, new ImVec2(0f, 0f)); // ImGuiSelectableFlags_None
+        }
+
+        internal static void CloseCurrentPopup()
+        {
+            igCloseCurrentPopup();
+        }
+
+        internal static void PushItemFlag(ImGuiItemFlags option, bool enabled)
+        {
+            igPushItemFlag((int)option, enabled);
+        }
+
+        internal static void PopItemFlag()
+        {
+            igPopItemFlag();
+        }
+
+        // Tooltip compose path (FR-3, 1.3.0). BeginTooltip/EndTooltip pairing:
+        // EndTooltip only when Begin returned true (imgui.cpp asserts
+        // mismatched pairs); the facade's try/finally owns that condition.
+
+        internal static bool BeginTooltip()
+        {
+            return igBeginTooltip();
+        }
+
+        internal static void EndTooltip()
+        {
+            igEndTooltip();
+        }
+
+        internal static void PushTextWrapPos(float wrapLocalPosX)
+        {
+            igPushTextWrapPos(wrapLocalPosX);
+        }
+
+        internal static void PopTextWrapPos()
+        {
+            igPopTextWrapPos();
+        }
+
+        internal static float GetFontSize()
+        {
+            return igGetFontSize();
         }
 
         // Window-bg gradient descriptor (C9). <paramref name="enabled"/> != 0

@@ -129,6 +129,7 @@ namespace DearImGuiKSP.Application
             _bridge.BeginUiFrame(width, height, deltaTime);
             DearImGuiKSP.FrameOpen = true;
             OpenScopeTracker.Reset();
+            RowState.Reset();
             try
             {
                 // Snapshot iteration (S1): a consumer calling Register/Unregister

@@ -84,11 +84,11 @@ version of it) is missing, via an assembly attribute in your mod — typically
 next to your `[KSPAddon]` class or in any one of your source files:
 
 ```csharp
-[assembly: KSPAssemblyDependencyEqualMajor("DearImGuiKSP", 1, 0)]
+[assembly: KSPAssemblyDependencyEqualMajor("DearImGuiKSP", 1, 3)]
 ```
 
-The current library version is **1.0.0**, so the dependency reads
-"major 1, minor 0". Despite the name, `KSPAssemblyDependencyEqualMajor` pins
+The current library version is **1.3.0**, so the dependency reads
+"major 1, minor 3". Despite the name, `KSPAssemblyDependencyEqualMajor` pins
 only the **major**: the library's major must equal yours, and its minor must
 be **equal or higher** than the one you declare (the declared minor is a
 minimum, not a pin) — so a mod built against 1.0 loads fine against library

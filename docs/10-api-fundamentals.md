@@ -89,6 +89,7 @@ code throws (the exception then reaches the fault barrier, section 7 below).
 | `ScrollRegion(string id, Vector2 size)` | `ScrollRegionScope` | same; `size.x = 0` stretches to available width | Always ends the region |
 | `TabBar(string id)` | `TabBarScope` | false = tab bar clipped | Ends the tab bar **only when visible** (ImGui requires End only after a successful Begin) |
 | `TabItem(string label)` | `TabItemScope` | true = tab selected (draw its content) | Ends the tab **only when visible** |
+| `Row()` / `Row(float spacing)` | `RowScope` | — (layout only; widgets inside are placed side by side) | Ends the row **only when it pushed** (a nested or unavailable row is inert) |
 | `StyleColor(ImGuiCol col, Color value)` | `StyleColorScope` | — | Pops exactly one style color |
 | `StyleColor(ImGuiCol col, Color32 value)` | `StyleColorScope` | — | Pops exactly one style color |
 | `StyleVar(ImGuiStyleVar var, float value)` | `StyleVarScope` | — | Pops exactly one style var |

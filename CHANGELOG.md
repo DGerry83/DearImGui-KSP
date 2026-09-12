@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.0 — minor
+
+Consumer-requested API additions (CinematicRecorder migration); no breaking changes, existing signatures unchanged.
+
+- New horizontal layout scope: `ImGuiEx.Row()` / `ImGuiEx.Row(float spacing)` lays out the widgets declared inside it side by side (selector rows, button rows, and N×M grids built with rows in a loop). Default spacing follows the theme's item spacing (and therefore UI scale); an explicit spacing is unscaled pixels. Nested rows are inert no-ops.
+- New `Combo(label, ref selectedIndex, items)` dropdown over a string list: returns true on selection change, highlights and closes on click, scrolls long lists, and tolerates empty lists and out-of-range persisted indices with a disabled "(none)" preview — never throws.
+- New `Tooltip(text)`: call right after any widget to give it a hover tooltip with stock ImGui delay semantics; multi-line text works and long text wraps.
+- Docs: new Layout/Combo/Tooltip sections in `docs/20-widgets.md`, IMGUI→DearImGui-KSP mapping rows for `BeginHorizontal`, dropdowns, and `GUI.tooltip` in `docs/60-migration-from-imgui.md`, and doc-drift fixes (handshake version example, current-version note).
+- Internal: managed/native handshake unchanged (v9); native sources are untouched — all new widgets compose cimgui exports already present in the shipped DLL. Consumers can now declare `KSPAssemblyDependencyEqualMajor("DearImGuiKSP", 1, 3)`.
+
+## Demo 1.3.0 — demo release
+
+Ships with library 1.3.0.
+
+- New "Layout showcase" in the main demo window exercising the 1.3.0 APIs: selector and label+control rows, a 4×4 camera-slot button grid with per-state tinting (the CinematicRecorder manual test page), a 64-item scrolling combo plus an out-of-range-tolerance combo, hover tooltips, and rows inside a scroll region.
+
 ## Demo 1.2.1 — demo-only patch (2026-09-10)
 
 Demo fixes only; the library is unchanged at 1.2.0 (this zip replaces DearImGuiKSPDemo-1.2.0.zip).

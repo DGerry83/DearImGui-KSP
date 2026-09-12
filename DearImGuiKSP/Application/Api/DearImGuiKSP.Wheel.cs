@@ -38,6 +38,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             return ExtensionShimsNative.WheelFloat(
                 label, ref value, min, max, 96f, 22f, (int)WheelOrientation.Horizontal, null, 1f, false);
         }
@@ -73,6 +74,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             return ExtensionShimsNative.WheelFloat(
                 label, ref value, min, max, sizeX, sizeY, (int)orientation, format, speed, invertColors);
         }

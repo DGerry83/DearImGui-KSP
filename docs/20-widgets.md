@@ -10,10 +10,11 @@ Next: [Theming](30-theming.md)
 
 General conventions:
 
-- Widgets **stack vertically**, one per line, in declaration order. There is
-  **no public `SameLine` yet** (it exists only inside the library) — for
-  side-by-side layouts see [ImGuiDraw](#imguidraw-custom-drawing) and
-  [Layout](#layout-dummy--setcursory), and the "Known layout gaps" note below.
+- Widgets **stack vertically**, one per line, in declaration order. Wrap a
+  group in an [ImGuiEx.Row](#layout-rows-imguiexrow) scope to lay it out
+  horizontally; custom drawing uses the cursor-anchor canvas pattern under
+  [ImGuiDraw](#imguidraw-custom-drawing). See also the "Known layout gaps"
+  note below.
 - Value-returning widgets report "changed this frame" and update your `ref`
   value in place; returns are `false` when the library is unavailable.
 - Labels double as widget IDs — see the immediate-mode ID rules in
@@ -161,6 +162,72 @@ private int _guidanceMode; // 0 = surface, 1 = orbit
 DearImGuiKSP.DearImGuiKSP.RadioButton("Surface", ref _guidanceMode, 0);
 DearImGuiKSP.DearImGuiKSP.RadioButton("Orbit", ref _guidanceMode, 1);
 ```
+
+## Combo
+
+```csharp
+public static bool Combo(string label, ref int selectedIndex, IReadOnlyList<string> items)
+```
+
+A dropdown bound to an index into a list of items — the curated wrapper over
+stock ImGui `BeginCombo`/`Selectable`. The closed combo shows
+`items[selectedIndex]` as its preview beside the label; opening it lists all
+items with the current selection highlighted; clicking an item updates
+`selectedIndex` in place and closes the popup. Returns true on the frame the
+selection changes, false otherwise (including when unavailable). Long lists
+scroll inside the popup per stock behavior.
+
+```csharp
+private int _cameraMode;
+private static readonly string[] _cameraModes =
+    { "Auto", "Free", "Chase", "Orbital" };
+// inside the callback:
+if (DearImGuiKSP.DearImGuiKSP.Combo("Camera", ref _cameraMode, _cameraModes))
+{
+    ApplyCameraMode(_cameraMode);
+}
+```
+
+Rules:
+
+- Null or empty `items` renders a disabled combo showing `"(none)"` — its
+  popup never opens and the call never throws.
+- An out-of-range `selectedIndex` (e.g. a persisted index whose list shrank)
+  shows the `"(none)"` preview, throws nothing, and leaves your reference
+  untouched until the user makes a real selection.
+- The label is also the combo's ImGui ID, and each item string is its row's
+  ID: two combos with the same visible label in one window, or two identical
+  item strings in one list, need distinct `##` suffixes to behave
+  independently (same convention as everywhere else — see
+  [API Fundamentals](10-api-fundamentals.md#6-immediate-mode-ids-labels--and-the-spinner-id-rule)).
+- `Combo` is a regular row item: inside an [ImGuiEx.Row](#layout-rows-imguiexrow)
+  scope it takes a horizontal slot like any widget.
+
+## Tooltip
+
+```csharp
+public static void Tooltip(string text)
+```
+
+Shows `text` as a hover tooltip on the item declared immediately before the
+call — the curated equivalent of stock ImGui `SetItemTooltip`. Declare it
+directly after the widget it describes:
+
+```csharp
+DearImGuiKSP.DearImGuiKSP.Button("Stage");
+DearImGuiKSP.DearImGuiKSP.Tooltip("Fire the next stage.");
+```
+
+- The tooltip appears after the stock hover delay (once the cursor is
+  stationary on the item, or after a short delay) on the shared tooltip
+  window, which renders above consumer windows and follows the theme and
+  font scale.
+- Null or empty text is a no-op, and with no item declared before it (e.g.
+  at the very start of a window) the call is a safe no-op.
+- Multi-line text (`\n` in the string) renders as multiple lines; a long
+  single line wraps at 35 × the current font size (the stock demo width).
+- A tooltip is not a layout item: it takes no slot in a
+  [Row](#layout-rows-imguiexrow) and reserves no space.
 
 ## Knob
 
@@ -460,6 +527,67 @@ using (var region = DearImGuiKSP.ImGuiEx.ScrollRegion("vessels", 200f))
 }
 ```
 
+## Layout: Rows (ImGuiEx.Row)
+
+```csharp
+public static RowScope Row()
+public static RowScope Row(float spacing)
+```
+
+Widgets declared inside a `Row` scope are laid out horizontally, sharing one
+line — the library separates the items with its internal SameLine; the first
+item keeps the vertical cursor, so a row measures, auto-resizes, and scrolls
+like a single item in `autoResize` windows and `ScrollRegion`s. Only valid
+inside a registered callback.
+
+```csharp
+using (DearImGuiKSP.ImGuiEx.Row())
+{
+    DearImGuiKSP.DearImGuiKSP.Text("Throttle");
+    DearImGuiKSP.DearImGuiKSP.SliderFloat("##throttle", ref _throttle, 0f, 1f);
+    DearImGuiKSP.DearImGuiKSP.Button("Full");
+}
+```
+
+Rules:
+
+- The default spacing is `style.ItemSpacing.x`, which follows the library's
+  UI scale. `Row(float spacing)` takes an explicit gap in **pixels, not
+  UI-scaled** (the same convention as knob/plot pixel sizes); pass a negative
+  value to select the scaled default.
+- Rows do not nest: a `Row` opened inside an active row is an inert no-op
+  scope (asserted in Debug builds). Multiple independent rows per window are
+  fine.
+- The scope holds managed state only — `using` ends the row on every exit
+  path, and an undisposed scope is cleared by the per-frame reset (worst
+  case: one frame of wrong layout, never an ImGui stack imbalance).
+- All standard widgets participate: `Text`, `TextColored`, `Button`,
+  `GradientButton`, `RadioButton`, `Toggle`, `SliderFloat`, `InputText`,
+  `CollapsingHeader`, `Spinner`, `Knob`, `Wheel`, `Dummy`, and `Combo`.
+  The `ImGuiDraw` drawing primitives and `Tooltip` are not row items.
+
+A 4×4 button grid is four rows of four buttons. Every cell shows the same
+visible label, so each button carries a `##` suffix to keep its ImGui ID
+unique — identical labels in one window are one widget as far as ImGui is
+concerned (the ID rules from
+[API Fundamentals](10-api-fundamentals.md#6-immediate-mode-ids-labels--and-the-spinner-id-rule)):
+
+```csharp
+for (int y = 0; y < 4; y++)
+{
+    using (DearImGuiKSP.ImGuiEx.Row())
+    {
+        for (int x = 0; x < 4; x++)
+        {
+            if (DearImGuiKSP.DearImGuiKSP.Button($"Engage##cell_{x}_{y}"))
+            {
+                EngageCell(x, y);
+            }
+        }
+    }
+}
+```
+
 ## Layout: Dummy / SetCursorY
 
 ```csharp
@@ -641,11 +769,9 @@ such as notifications or tool palettes.
 
 
 
-- **No public `SameLine`.** Widgets stack vertically; the only ways to place
-  things side by side today are the `ImGuiDraw` cursor-anchor + `Dummy`
-  canvas pattern above, or a rolling `Wheel`/`Knob` designed to sit in a
-  sized box. A public same-line helper is a post-release candidate.
-- There is no public checkbox, combo, tree, menu, table, or drag widget; the
+- Horizontal layout is the [Row](#layout-rows-imguiexrow) scope only — there
+  is no public raw `SameLine` for arbitrary same-line cursor placement.
+- There is no public checkbox, tree, menu, table, or drag widget; the
   catalog above plus [Theming](30-theming.md) helpers is the full public
   surface of this release. (Plotting lives in the sibling doc
   [Plotting](40-plotting.md).)

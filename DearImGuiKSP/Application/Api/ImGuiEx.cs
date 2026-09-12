@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using DearImGuiKSP.Application;
 using Color = UnityEngine.Color;
 using Color32 = UnityEngine.Color32;
 using Vector2 = UnityEngine.Vector2;
@@ -244,6 +246,54 @@ namespace DearImGuiKSP
         }
 
         /// <summary>
+        /// Begins a horizontal row and returns a scope that ends it. Widgets
+        /// declared inside the scope are separated by SameLine; the first item
+        /// keeps the vertical cursor, so the row behaves like a single line for
+        /// autoResize fit-to-content and ScrollRegion composition. Only valid
+        /// inside a registered callback.
+        /// </summary>
+        /// <returns>
+        /// A scope whose Dispose ends the row. Multiple independent rows per
+        /// window are supported; rows do not nest — a <see cref="Row(float)"/>
+        /// opened inside an active row is an inert no-op scope (asserted in
+        /// Debug builds), also when the library is unavailable.
+        /// </returns>
+        /// <remarks>
+        /// Default spacing is <c>style.ItemSpacing.x</c>, which follows the
+        /// library's UI scale. Must be disposed within the same frame/callback
+        /// (immediate-mode rule); an undisposed scope is cleared by the
+        /// per-frame reset, worst case is wrong layout for one frame.
+        /// </remarks>
+        public static RowScope Row()
+        {
+            return Row(RowState.StyleDefaultSpacing);
+        }
+
+        /// <summary>
+        /// Begins a horizontal row with an explicit item gap and returns a scope
+        /// that ends it. Only valid inside a registered callback.
+        /// </summary>
+        /// <param name="spacing">
+        /// Gap between row items in pixels — NOT scaled by the library's UI
+        /// scale (the same convention as knob/plot pixel sizes). Pass a negative
+        /// value to select <c>style.ItemSpacing.x</c> (the scaled default).
+        /// </param>
+        /// <returns>A scope whose Dispose ends the row; see <see cref="Row()"/>.</returns>
+        /// <remarks>
+        /// Must be disposed within the same frame/callback (immediate-mode rule).
+        /// </remarks>
+        public static RowScope Row(float spacing)
+        {
+            bool pushed = false;
+            if (DearImGuiKSP.CanDeclareUi)
+            {
+                pushed = RowState.TryPush(spacing);
+                Debug.Assert(pushed, "ImGuiEx.Row() opened inside an active row is inert: rows do not nest.");
+            }
+            return new RowScope(pushed);
+        }
+
+        /// <summary>
         /// Scope guard pairing a facade <see cref="DearImGuiKSP.BeginTabBar"/> with
         /// exactly one <see cref="DearImGuiKSP.EndTabBar"/> — but only when the begin
         /// returned true (EndTabBar is only valid then, imgui.h:965). Obtain it from
@@ -321,6 +371,38 @@ namespace DearImGuiKSP
                 if (_visible)
                 {
                     DearImGuiKSP.EndTabItem();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Scope guard pairing an <see cref="ImGuiEx.Row()"/> or
+        /// <see cref="ImGuiEx.Row(float)"/> factory call with exactly one row-state
+        /// pop. Obtain it from a factory; do not construct it directly (a default
+        /// instance pops nothing — dispose only what a factory returned). Unlike
+        /// the native-backed scopes this holds managed row state only: there is
+        /// no native pairing, so Dispose is safe on every path and never throws.
+        /// </summary>
+        public readonly struct RowScope : IDisposable
+        {
+            private readonly bool _pushed;
+
+            internal RowScope(bool pushed)
+            {
+                _pushed = pushed;
+            }
+
+            /// <summary>
+            /// Ends the row, but only when this scope actually pushed one — a
+            /// nested or unavailable row is inert and must not pop the enclosing
+            /// row's state. Called once by <c>using</c> on every exit path,
+            /// including when the body throws.
+            /// </summary>
+            public void Dispose()
+            {
+                if (_pushed)
+                {
+                    RowState.Pop();
                 }
             }
         }

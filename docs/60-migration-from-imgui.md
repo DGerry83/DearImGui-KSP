@@ -15,7 +15,10 @@ Prerequisites: [Getting Started](00-getting-started.md) for installation and dep
 | `GUILayout.TextField(value)` / `GUI.TextField` | `DearImGuiKSP.DearImGuiKSP.InputText(label, ref value, capacity = 256)` |
 | `GUILayout.HorizontalSlider(value, min, max)` | `DearImGuiKSP.DearImGuiKSP.SliderFloat(label, ref value, min, max)` |
 | `GUIStyle` / `GUISkin` | The global theme (`ksp` or `dark`, set in the library's `settings.cfg`) + per-frame `PushStyleColor`/`PushStyleVar` or the `ImGuiEx.StyleColor`/`StyleVar` scopes — see [Theming](30-theming.md) |
-| `GUILayout.BeginHorizontal` / `BeginVertical` | Layout is **vertical by default**; see "Layout" below — there is an honest gap here |
+| `GUILayout.BeginHorizontal` / `EndHorizontal` | `using (DearImGuiKSP.ImGuiEx.Row()) { ... }` — widgets declared inside share one line (see "Layout" below) |
+| `GUILayout.BeginVertical` / `EndVertical` | Nothing — widgets stack vertically by default |
+| Hand-rolled dropdown (`GUILayout.Button` + toggle list, `GUI.SelectionGrid`, ...) | `DearImGuiKSP.DearImGuiKSP.Combo(label, ref selectedIndex, items)` — see [Widget Catalog](20-widgets.md) |
+| `GUIContent.tooltip` / `GUI.tooltip` | `DearImGuiKSP.DearImGuiKSP.Tooltip(text)` — declare it directly after the item it describes |
 | `Event.current`, `Input.GetMouseButton`, hotControl juggling | Nothing. The library captures input and blocks click-through automatically — see "Input" below |
 | Persistent window rect you save/load | Nothing to save: window positions are ImGui-managed for the session (drag by the title bar); note they are **not** persisted across sessions — the library disables the imgui.ini, so re-anchoring on next launch is consumer state if you need it |
 
@@ -109,14 +112,27 @@ What changed and why:
 
 If the library is unavailable, `Register` logs a warning and ignores the call; the `IsAvailable` check above lets you fall back to your old IMGUI path (or just do nothing) — which is also the recommended pattern for releasing a mod that supports both UI stacks during a transition.
 
-## Layout: vertical-first, with a known gap
+## Layout
 
-Widgets stack vertically by default — each call places its item below the previous one. There is **no public horizontal-layout helper yet**: `SameLine` exists only as an internal implementation detail (used by `InputText`), and a public layout-helper surface (SameLine et al.) may come in a later release. Until it lands:
+Widgets stack vertically by default — each call places its item below the
+previous one. A horizontal group is a `Row` scope around the items (see
+"Layout: Rows" in the [Widget Catalog](20-widgets.md#layout-rows-imguiexrow)):
+
+```csharp
+using (DearImGuiKSP.ImGuiEx.Row())
+{
+    DearImGuiKSP.DearImGuiKSP.Button("Arm");
+    DearImGuiKSP.DearImGuiKSP.Button("Abort");
+}
+```
+
+There is no public raw `SameLine` for arbitrary cursor placement — the row
+scope is the horizontal layout surface. Beyond that:
 
 - Put each logically-grouped control on its own line — the immediate-mode style reads fine that way, and it is what the demo does (its widget showcase stacks one labelled control per line).
 - Use `DearImGuiKSP.DearImGuiKSP.SetCursorY(float y)` to add vertical space, and `DearImGuiKSP.DearImGuiKSP.Dummy(width, height)` where you need an explicit invisible spacer that grows the content bounds that grows the content bounds (required after a `SetCursorY` that extends a scroll region's range — ImGui asserts on a bare cursor move that grows parent boundaries). The manual-list-virtualization pattern built on these two calls (`GetScrollY` -> visible row range -> `SetCursorY` -> draw visible rows -> `SetCursorY(rowCount * rowHeight)` + `Dummy`) is documented on `BeginScrollRegion` in [API Fundamentals](10-api-fundamentals.md).
 
-Do not try to fake columns with spaces in labels; wait for the layout helpers or stack vertically.
+Do not try to fake columns with spaces in labels; use a row (or stack vertically).
 
 ## Input: delete your event handling
 
@@ -143,7 +159,7 @@ Colored accents without a scope: `DearImGuiKSP.DearImGuiKSP.TextColored(color, t
 2. Convert each `GUILayout.*` call per the mapping table; keep state in fields, `ref`-pass values into widgets.
 3. Delete rect bookkeeping, `GUI.DragWindow`, event branching, and input/hotControl code.
 4. Replace `GUIStyle` tweaks with the theme + style pushes; use `TextColored` for accents.
-5. Stack horizontally-grouped controls vertically for now (no public SameLine yet).
+5. Group horizontally-related controls in an `ImGuiEx.Row` scope (see "Layout" above); there is no public raw `SameLine` beyond that.
 6. Gate the whole thing on `IsAvailable` with your chosen fallback.
 
 Worked examples at full scale: `DearImGuiKSPDemo/DemoConsumer.cs` (registration, multiple windows from one callback, toolbar visibility toggle) and the demo's benchmark window, which deliberately keeps an IMGUI reference implementation (`BenchmarkUI.OnGUIReference`) for side-by-side comparison.

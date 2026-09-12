@@ -63,6 +63,11 @@ namespace DearImGuiKSP
                 return;
             }
             Application.OpenScopeTracker.Unwind(closer ?? Application.NativeScopeCloser.Instance);
+            // FR-1 (1.3.0): row state is pure managed layout state; clear it with
+            // the same backstop so a faulting consumer cannot skew the next
+            // consumer's layout. Worst case without it is wrong item spacing,
+            // never a native stack imbalance.
+            Application.RowState.Reset();
         }
 
         /// <summary>
@@ -245,6 +250,7 @@ namespace DearImGuiKSP
             {
                 return;
             }
+            RowItemHook();
             ImGuiInternal.Text(text);
         }
 
@@ -258,6 +264,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             return ImGuiInternal.Button(label);
         }
 
@@ -274,6 +281,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             return ImGuiInternal.SliderFloat(label, ref value, min, max);
         }
 
@@ -306,6 +314,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             if (ThemeEngine == null ||
                 string.Equals(ThemeEngine.CurrentThemeName, LibraryConfig.DarkThemeName, StringComparison.Ordinal))
             {
@@ -402,6 +411,7 @@ namespace DearImGuiKSP
             {
                 return;
             }
+            RowItemHook();
             ImGuiInternal.Dummy(width, height);
         }
 
@@ -417,6 +427,7 @@ namespace DearImGuiKSP
             {
                 return;
             }
+            RowItemHook();
             ImGuiInternal.Dummy(new ImVec2(size.x, size.y));
         }
 

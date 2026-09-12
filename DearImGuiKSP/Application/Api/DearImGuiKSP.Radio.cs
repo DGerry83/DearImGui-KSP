@@ -22,6 +22,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             // igRadioButton_Bool takes `active` by value and cannot write back,
             // so the click applies here (G2-07).
             bool clicked = ImGuiInternal.RadioButton(label, value);
@@ -49,6 +50,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            RowItemHook();
             bool clicked = ImGuiInternal.RadioButton(label, ref value, option);
             DrawRadioRimIfKspTheme();
             return clicked;

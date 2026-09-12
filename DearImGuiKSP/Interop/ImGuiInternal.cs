@@ -299,6 +299,18 @@ namespace DearImGuiKSP.Interop
         }
 
         /// <summary>
+        /// Keeps the next widget on the current line with an explicit gap after
+        /// the previous item. Wraps cimgui <c>igSameLine</c> with offset 0 and
+        /// the given spacing; a negative spacing selects <c>style.ItemSpacing.x</c>
+        /// (imgui.cpp SameLine), so it follows the UI scale. Used by the FR-1
+        /// row layout hook.
+        /// </summary>
+        internal static void SameLine(float spacing)
+        {
+            ImGuiNative.SameLine(spacing);
+        }
+
+        /// <summary>
         /// Submits an invisible item of the given size, advancing the cursor and growing
         /// the window's content bounds. Wraps cimgui <c>igDummy</c>. Required after using
         /// <see cref="SetCursorY"/> to extend a region's scrollable range — ImGui asserts
@@ -540,6 +552,18 @@ namespace DearImGuiKSP.Interop
         }
 
         /// <summary>
+        /// True when the last item is hovered under the given hover flags.
+        /// Wraps cimgui <c>igIsItemHovered</c>. The FR-3 tooltip uses
+        /// <see cref="ImGuiHoveredFlags.ForTooltip"/> — the stock
+        /// SetItemTooltip predicate (stationary-or-delay, allow-when-disabled,
+        /// no shared delay).
+        /// </summary>
+        internal static bool IsItemHovered(ImGuiHoveredFlags flags)
+        {
+            return ImGuiNative.IsItemHovered(flags);
+        }
+
+        /// <summary>
         /// True while the last item (e.g. an <see cref="InvisibleButton"/>) is
         /// being held active (mouse held down after press). Wraps cimgui
         /// <c>igIsItemActive</c>.
@@ -659,6 +683,129 @@ namespace DearImGuiKSP.Interop
         internal static bool CollapsingHeader(string label, bool defaultOpen)
         {
             return ImGuiNative.CollapsingHeader(ToIdUtf8(label), defaultOpen);
+        }
+
+        // ---- Combo (FR-2, 1.3.0) ----
+
+        /// <summary>
+        /// Begins a combo dropdown showing <paramref name="preview"/> as the
+        /// closed-state value. Wraps cimgui <c>igBeginCombo</c> with
+        /// ImGuiComboFlags_None. Null <paramref name="label"/> takes the
+        /// empty-id sentinel (G3-20); null <paramref name="preview"/> renders
+        /// an empty preview (display-only, it seeds no ID).
+        /// </summary>
+        /// <returns>
+        /// False when the popup is closed — <see cref="EndCombo"/> must NOT be
+        /// called then (imgui.cpp EndCombo asserts); the facade's try/finally
+        /// owns the pairing.
+        /// </returns>
+        internal static bool BeginCombo(string label, string preview)
+        {
+            return ImGuiNative.BeginCombo(ToIdUtf8(label), ToUtf8(preview));
+        }
+
+        /// <summary>
+        /// Ends an open combo popup. Wraps cimgui <c>igEndCombo</c>. Only call
+        /// after a <see cref="BeginCombo"/> that returned true.
+        /// </summary>
+        internal static void EndCombo()
+        {
+            ImGuiNative.EndCombo();
+        }
+
+        /// <summary>
+        /// Draws one selectable row inside an open combo popup, highlighted
+        /// when selected. Wraps cimgui <c>igSelectable_Bool</c> with
+        /// ImGuiSelectableFlags_None and auto size (stock combo-item shape).
+        /// Null <paramref name="label"/> takes the empty-id sentinel (G3-20).
+        /// </summary>
+        /// <returns>True on the frame the row is clicked.</returns>
+        internal static bool Selectable(string label, bool selected)
+        {
+            return ImGuiNative.Selectable(ToIdUtf8(label), selected);
+        }
+
+        /// <summary>
+        /// Closes the currently open popup. Wraps cimgui
+        /// <c>igCloseCurrentPopup</c> — the combo facade calls it after a
+        /// selection so the popup closes on click (stock combo behavior).
+        /// </summary>
+        internal static void CloseCurrentPopup()
+        {
+            ImGuiNative.CloseCurrentPopup();
+        }
+
+        /// <summary>
+        /// Pushes an item flag (e.g. <see cref="ImGuiItemFlags.Disabled"/>)
+        /// onto the per-item flag stack. Wraps cimgui <c>igPushItemFlag</c>;
+        /// every push must be paired with exactly one <see cref="PopItemFlag"/>
+        /// on the same exit path. The empty-list combo runs disabled so its
+        /// popup never opens.
+        /// </summary>
+        internal static void PushItemFlag(ImGuiItemFlags option, bool enabled)
+        {
+            ImGuiNative.PushItemFlag(option, enabled);
+        }
+
+        /// <summary>
+        /// Pops one entry from the per-item flag stack. Wraps cimgui
+        /// <c>igPopItemFlag</c>.
+        /// </summary>
+        internal static void PopItemFlag()
+        {
+            ImGuiNative.PopItemFlag();
+        }
+
+        // ---- Tooltip compose path (FR-3, 1.3.0) ----
+
+        /// <summary>
+        /// Begins the tooltip window. Wraps cimgui <c>igBeginTooltip</c>;
+        /// currently always returns true (imgui.cpp BeginTooltipEx).
+        /// <see cref="EndTooltip"/> is only valid when this returned true.
+        /// </summary>
+        /// <returns>True when the tooltip window began.</returns>
+        internal static bool BeginTooltip()
+        {
+            return ImGuiNative.BeginTooltip();
+        }
+
+        /// <summary>
+        /// Ends the tooltip window. Wraps cimgui <c>igEndTooltip</c>. Only call
+        /// after a <see cref="BeginTooltip"/> that returned true.
+        /// </summary>
+        internal static void EndTooltip()
+        {
+            ImGuiNative.EndTooltip();
+        }
+
+        /// <summary>
+        /// Pushes a text wrap position (window-local x) so tooltip text wraps
+        /// at that width. Wraps cimgui <c>igPushTextWrapPos</c>; every push must
+        /// be paired with exactly one <see cref="PopTextWrapPos"/> on the same
+        /// exit path. Stock tooltips push no wrap pos themselves, so the
+        /// facade's wrap is what makes long tooltip text wrap.
+        /// </summary>
+        internal static void PushTextWrapPos(float wrapLocalPosX)
+        {
+            ImGuiNative.PushTextWrapPos(wrapLocalPosX);
+        }
+
+        /// <summary>
+        /// Pops one text wrap position. Wraps cimgui <c>igPopTextWrapPos</c>.
+        /// </summary>
+        internal static void PopTextWrapPos()
+        {
+            ImGuiNative.PopTextWrapPos();
+        }
+
+        /// <summary>
+        /// Current font size in pixels, ui-scale applied. Wraps cimgui
+        /// <c>igGetFontSize</c>; the FR-3 tooltip derives its wrap width from
+        /// it (<c>GetFontSize() * 35</c>, the stock demo value).
+        /// </summary>
+        internal static float GetFontSize()
+        {
+            return ImGuiNative.GetFontSize();
         }
 
         /// <summary>

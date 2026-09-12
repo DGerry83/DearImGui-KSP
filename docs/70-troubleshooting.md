@@ -23,12 +23,12 @@ Your mod is unaffected code-wise: `DearImGuiKSP.IsAvailable` is false, your `Reg
 
 Managed and native DLLs always release together in lockstep — never mix DLLs
 from different releases. A startup version handshake enforces this
-(currently expected version **7** on the managed side). A stale or partially
+(currently expected version **9** on the managed side). A stale or partially
 copied native DLL fails the handshake before anything else runs, with this
 log line:
 
 ```
-[DearImGuiKSP] Native/managed handshake mismatch: expected version 7, DearImGuiKSPNative reported <n>.
+[DearImGuiKSP] Native/managed handshake mismatch: expected version 9, DearImGuiKSPNative reported <n>.
 ```
 
 Fix: copy both DLLs from the same release zip. `DearImGuiKSPNative.dll` belongs in `GameData/DearImGuiKSP/PluginData/` (not next to the managed DLL); a missing native DLL is the `NativeComponent` failure instead. Consumers: declaring `KSPAssemblyDependencyEqualMajor("DearImGuiKSP", x, y)` keeps KSP's loader from mixing a different managed major with your build (see [Getting Started](00-getting-started.md)).
@@ -136,7 +136,7 @@ about 20k vertices — cheap. Remedies, in order of preference:
 - **Spinner tints are partially upstream-inherent**: `SpinnerType.RainbowMix` derives its hue from the tint's saturation — with the default white tint it renders grey and never cycles; pass a saturated `Color` as the tint to get the rainbow. `SpinnerType.Atom` hardcodes its electron dots to red/green/blue; the tint colors only the ellipses. Both are vendor behavior, not binding bugs; spinner rendering is under review before release.
 - **OpenGL Core only**: OpenGL works via `-force-glcore`; legacy OpenGL and OpenGL ES are not supported, and graphics mods that fail under GL themselves (Cinematic Shaders, Cinematic Recorder) remain unusable there regardless of this library.
 - **Text input modifiers**: navigation/edit keys and Ctrl only — Ctrl+A works; Shift+Arrow / Shift+Home/End selection does not.
-- **No public horizontal layout helper** (SameLine et al.): layout is vertical-first for now; a public layout surface is a possible later addition. Use `SetCursorY`/`Dummy` for spacing (see [Migration](60-migration-from-imgui.md)).
+- **Horizontal layout is row-scoped** (SameLine et al.): `ImGuiEx.Row` places the widgets inside it on one line, but there is no public raw `SameLine` for arbitrary same-line placement. Use `SetCursorY`/`Dummy` for fine spacing (see [Migration](60-migration-from-imgui.md); the row scope is documented in [Widgets](20-widgets.md#layout-rows-imguiexrow)).
 - **Library-owned settings only**: the library persists its own `settings.cfg` (and deliberately writes no imgui.ini); per-consumer window positions and state are yours to keep.
 - **Docked windows cannot leave the game window** (ISSUES #011): multi-viewports are deliberately disabled — an embedded KSP plugin cannot sanely own OS platform windows — so a docked window is always clipped to the game window. Undock it if you need to drag it to the edge.
 - **Dock layouts are not persisted** (ISSUES #011): there is no imgui.ini by design (D7), so nothing remembers how windows were arranged — neither programmatic layouts nor the player's manual rearrangements survive a session restart. Consumers reapply their intended layout each session with the DockBuilder calls (one-time, guarded); see the recipe in [Widgets](20-widgets.md#window-docking).

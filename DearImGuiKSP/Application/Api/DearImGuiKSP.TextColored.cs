@@ -21,6 +21,7 @@ namespace DearImGuiKSP
             {
                 return;
             }
+            RowItemHook();
             PushStyleColor(ImGuiCol.Text, color);
             ImGuiInternal.Text(text);
             PopStyleColor();

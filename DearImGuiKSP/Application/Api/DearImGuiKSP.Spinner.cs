@@ -213,6 +213,7 @@ namespace DearImGuiKSP
             {
                 return;
             }
+            RowItemHook();
             // G3-17: no-throw widget contract — an out-of-range type would index
             // past the default-ID table and dispatch nothing; reject before it.
             if (type < SpinnerType.RainbowMix || type > SpinnerType.SplitSquare)

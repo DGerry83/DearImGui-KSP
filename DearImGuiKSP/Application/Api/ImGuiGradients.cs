@@ -123,6 +123,7 @@ namespace DearImGuiKSP
             {
                 return false;
             }
+            DearImGuiKSP.RowItemHook();
 
             // Measure the DISPLAY text exactly once (G3-26): the ID suffix is
             // stripped up front (no allocation when there is none), so the
@@ -220,6 +221,9 @@ namespace DearImGuiKSP
             // Stops from the active preset; the preset always carries them
             // (the dark preset holds the ksp values to stay non-degenerate),
             // so the palette fallback only covers an unwired ThemeEngine.
+            // No RowItemHook here: this overload delegates to the explicit-color
+            // one, whose hook already counts the single item it declares —
+            // hooking both would double-count and SameLine the button off its row.
             Application.ThemePreset preset = DearImGuiKSP.ThemeEngine?.ActivePreset;
             Color32 top = KspPalette.ButtonGradientTop;
             Color32 bottom = KspPalette.ButtonGradientBottom;

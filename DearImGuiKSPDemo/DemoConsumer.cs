@@ -15,7 +15,12 @@ namespace DearImGuiKSPDemo
     /// plus the ISSUES #011 docking showcase: a dockspace hosted inside the
     /// main window with a DockBuilder layout for the plot/benchmark windows
     /// (whichever of them is visible docks in — a single window fills the
-    /// dockspace, both share a split layout; both hidden = no dockspace).
+    /// dockspace, both share a split layout; both hidden = no dockspace),
+    /// plus the 1.3.0 Row/Combo/Tooltip showcase: the G2/G3/G4 in-game manual
+    /// test page (selector and label+control rows, a per-state-tinted 4×4
+    /// camera-slot grid built with Row() in loops, a 64-item scrolling combo,
+    /// an out-of-range-tolerant combo, hover tooltips, and rows composed
+    /// inside a ScrollRegion).
     /// All Begin/End pairs are declared through ImGuiEx scopes (C3), including one
     /// "Throw inside scope (test)" fault-barrier test hook.
     /// Persistent once-addon (MainMenu, once: true) that DontDestroyOnLoads itself —
@@ -83,6 +88,71 @@ namespace DearImGuiKSPDemo
         // longer needs its own copies — the style overload reads the preset).
         private bool _themeToggle = true;
         private int _radioChoice;
+
+        // --- 1.3.0 Row/Combo/Tooltip showcase (G2/G3/G4 in-game test page) ---
+        private const string LayoutSectionHeaderText = "Row / combo / tooltip showcase (1.3.0)";
+        private const string SelectorPrevLabel = "←";
+        private const string SelectorNextLabel = "→";
+        private const string SelectorTooltipText = "Next camera\n(wraps around the 64-item list)";
+        private const string PairRowLabelText = "Pair row:";
+        private const string PairRowSliderId = "##pairrowslider";
+        private const string PairRowSliderTooltip = "Tooltip on a slider inside a Row";
+        private const string GridCaptionText =
+            "Camera slots (click cycles empty → assigned → live → empty):";
+        private const int GridRows = 4;
+        private const int GridCols = 4;
+        private const int GridCellCount = GridRows * GridCols;
+        private const int TooltipCellIndex = 0;
+        private const string GridCellTooltipText =
+            "Camera slot 01 — multi-line tooltip\nState tint: green = assigned, orange = live.";
+        private const float GridRowSpacing = 4f;   // Row(float): explicit, unscaled pixels
+        private const int SlotEmpty = 0;
+        private const int SlotAssigned = 1;
+        private const int SlotLive = 2;
+        private const int CameraItemCount = 64;    // 50+ items so the combo popup must scroll
+        private const int OrphanedIndexSeed = CameraItemCount + 7; // deliberately out of range
+        private const string CameraComboLabel = "Camera combo";
+        private const string OrphanedComboLabel = "Recovered combo";
+        private const string OrphanedRebreakLabel = "Re-orphan the index (test)";
+        private const string OrphanedRebreakTooltip =
+            "Seeds the combo index beyond the list again:\npreview shows \"(none)\", nothing throws.";
+        private const string EmptyComboLabel = "Empty combo (disabled)";
+        private const string EmptyComboTooltip =
+            "Bound to an empty list: disabled \"(none)\" chrome.\nThe popup never opens and the call never throws.";
+        private const string ScrollRegionCaptionText = "Rows inside a ScrollRegion:";
+        private const string ScrollRegionId = "rowscrollregion";
+        private const float ScrollRegionHeight = 64f;
+
+        // Generated lists, built once (steady-state per-frame path allocates
+        // nothing here — the ThemeDemo precedent).
+        private static readonly string[] CameraItems = BuildCameraItems();
+        private static readonly string[] CellLabels = BuildCellLabels();
+        private static readonly string[] EmptyItems = new string[0];
+
+        // Per-state slot tints, alpha < 255 so the buttons read as tints.
+        // Assigned = KSP green, live = KSP orange (the CinematicRecorder
+        // camera-slot mirror the FR asks the grid to stand in for).
+        private static readonly Color32 SlotAssignedTint =
+            WithAlpha(DearImGuiKSP.Application.KspPalette.GreenDark, 120);
+        private static readonly Color32 SlotAssignedTintHover =
+            WithAlpha(DearImGuiKSP.Application.KspPalette.GreenDark, 185);
+        private static readonly Color32 SlotAssignedTintActive =
+            WithAlpha(DearImGuiKSP.Application.KspPalette.GreenLight, 230);
+        private static readonly Color32 SlotLiveTint =
+            WithAlpha(DearImGuiKSP.Application.KspPalette.OrangeDark, 150);
+        private static readonly Color32 SlotLiveTintHover =
+            WithAlpha(DearImGuiKSP.Application.KspPalette.OrangeDark, 210);
+        private static readonly Color32 SlotLiveTintActive =
+            WithAlpha(DearImGuiKSP.Application.KspPalette.OrangeLight, 255);
+
+        private int _selectorIndex;
+        private float _pairSliderValue = 0.5f;
+        private readonly int[] _slotStates = new int[GridCellCount];
+        private int _cameraComboIndex;
+        // Seeded beyond the list on purpose: the combo preview must show
+        // "(none)" and never throw until the user makes a real selection.
+        private int _orphanedComboIndex = OrphanedIndexSeed;
+        private int _emptyComboIndex;
 
         private void Awake()
         {
@@ -258,6 +328,10 @@ namespace DearImGuiKSPDemo
                     // the tween demo — additive to the M3 section above.
                     _themeDemo.DrawImGui();
 
+                    // 1.3.0 Row/Combo/Tooltip showcase — additive section inside
+                    // this autoResize window (the grid G2 checks stays here).
+                    DrawLayoutShowcase();
+
                     // ISSUES #011 docking showcase. The dockspace is hosted
                     // inside this window rather than over the whole viewport:
                     // DockSpace is a strict native no-op while the library's
@@ -357,6 +431,215 @@ namespace DearImGuiKSPDemo
                     dockspaceId);
             }
             DearImGuiKSP.DearImGuiKSP.DockBuilderFinish(dockspaceId);
+        }
+
+        // 1.3.0 manual test page (FR-1..FR-3; the in-game half of G2/G3/G4):
+        // selector and label+control Row examples, the per-state-tinted 4×4
+        // camera-slot grid, the 64-item combo, the out-of-range combo, and
+        // hover tooltips — all inside this autoResize window; the last block
+        // additionally composes rows inside a ScrollRegion. The ←/→ selector
+        // labels stand in for the work item's ◀/▶ because the bundled Plex
+        // font has no glyphs for U+25C0/U+25B6 (font probe on file).
+        private void DrawLayoutShowcase()
+        {
+            DearImGuiKSP.DearImGuiKSP.TextColored(
+                DearImGuiKSP.Application.KspPalette.GreenLight, LayoutSectionHeaderText);
+
+            // FR-1 selector row: prev/next buttons flank a label; inside a
+            // Row scope the three widgets share one line. Tooltip attaches
+            // to the "next" button (the item declared immediately before it;
+            // a tooltip is not a layout item, so the row spacing is unaffected).
+            using (DearImGuiKSP.ImGuiEx.Row())
+            {
+                if (DearImGuiKSP.DearImGuiKSP.Button(SelectorPrevLabel))
+                {
+                    _selectorIndex = (_selectorIndex + CameraItemCount - 1) % CameraItemCount;
+                }
+                DearImGuiKSP.DearImGuiKSP.Text(CameraItems[_selectorIndex]);
+                if (DearImGuiKSP.DearImGuiKSP.Button(SelectorNextLabel))
+                {
+                    _selectorIndex = (_selectorIndex + 1) % CameraItemCount;
+                }
+                DearImGuiKSP.DearImGuiKSP.Tooltip(SelectorTooltipText);
+            }
+
+            // FR-1 label+control pair row: a plain label and a slider on one
+            // line (the slider's visible label is empty; "##" keeps its id).
+            using (DearImGuiKSP.ImGuiEx.Row())
+            {
+                DearImGuiKSP.DearImGuiKSP.Text(PairRowLabelText);
+                DearImGuiKSP.DearImGuiKSP.SliderFloat(
+                    PairRowSliderId, ref _pairSliderValue, 0f, 1f);
+                DearImGuiKSP.DearImGuiKSP.Tooltip(PairRowSliderTooltip);
+            }
+
+            // FR-1 camera-slot grid (the CinematicRecorder use case): 4 rows
+            // of 4 cells built with Row() in loops; ## ids give every cell a
+            // unique identity and ImGuiEx.StyleColor scopes tint the button
+            // per state (empty keeps the theme default).
+            DearImGuiKSP.DearImGuiKSP.Text(GridCaptionText);
+            for (int row = 0; row < GridRows; row++)
+            {
+                using (DearImGuiKSP.ImGuiEx.Row(GridRowSpacing))
+                {
+                    for (int col = 0; col < GridCols; col++)
+                    {
+                        DrawGridCell(row * GridCols + col);
+                    }
+                }
+            }
+
+            // FR-2 scrolling combo: 64 generated items force the popup to
+            // scroll; the current selection is echoed as text below.
+            DearImGuiKSP.DearImGuiKSP.Combo(
+                CameraComboLabel, ref _cameraComboIndex, CameraItems);
+            DearImGuiKSP.DearImGuiKSP.Text(
+                "Selected: " + CameraItems[_cameraComboIndex]);
+
+            // FR-2 out-of-range tolerance: the index is seeded beyond the
+            // list, so the preview shows "(none)" and the ref is left
+            // untouched — no exception. The button re-seeds it after a real
+            // selection repairs it.
+            DearImGuiKSP.DearImGuiKSP.Combo(
+                OrphanedComboLabel, ref _orphanedComboIndex, CameraItems);
+            // Index echo makes the repair visible: 71 ("(none)") until a real
+            // selection writes a valid index.
+            DearImGuiKSP.DearImGuiKSP.Text(
+                "Recovered index: " + _orphanedComboIndex);
+            if (DearImGuiKSP.DearImGuiKSP.Button(OrphanedRebreakLabel))
+            {
+                _orphanedComboIndex = OrphanedIndexSeed;
+            }
+            DearImGuiKSP.DearImGuiKSP.Tooltip(OrphanedRebreakTooltip);
+
+            // FR-2 empty-list path: the genuinely DISABLED "(none)" combo —
+            // its popup never opens. Distinct from the recovered combo above,
+            // which is interactive by design (selection repairs the index).
+            DearImGuiKSP.DearImGuiKSP.Combo(
+                EmptyComboLabel, ref _emptyComboIndex, EmptyItems);
+            DearImGuiKSP.DearImGuiKSP.Tooltip(EmptyComboTooltip);
+
+            // Composition edge case: rows inside a fixed-height ScrollRegion
+            // (the region is skipped while its begin reports not visible).
+            DearImGuiKSP.DearImGuiKSP.Text(ScrollRegionCaptionText);
+            using (var region = DearImGuiKSP.ImGuiEx.ScrollRegion(
+                ScrollRegionId, ScrollRegionHeight))
+            {
+                if (region.Visible)
+                {
+                    using (DearImGuiKSP.ImGuiEx.Row())
+                    {
+                        DearImGuiKSP.DearImGuiKSP.Button("Alpha##scrollrow");
+                        DearImGuiKSP.DearImGuiKSP.Button("Beta##scrollrow");
+                        DearImGuiKSP.DearImGuiKSP.Button("Gamma##scrollrow");
+                    }
+                    using (DearImGuiKSP.ImGuiEx.Row())
+                    {
+                        DearImGuiKSP.DearImGuiKSP.Text("a second row");
+                        DearImGuiKSP.DearImGuiKSP.Button("Delta##scrollrow");
+                    }
+                }
+            }
+        }
+
+        // One camera-slot cell, tinted per state. Assigned = KSP green,
+        // live = KSP orange; the empty state keeps the stock themed button.
+        private void DrawGridCell(int index)
+        {
+            int state = _slotStates[index];
+            if (state == SlotAssigned)
+            {
+                using (DearImGuiKSP.ImGuiEx.StyleColor(
+                    DearImGuiKSP.ImGuiCol.Button, SlotAssignedTint))
+                using (DearImGuiKSP.ImGuiEx.StyleColor(
+                    DearImGuiKSP.ImGuiCol.ButtonHovered, SlotAssignedTintHover))
+                using (DearImGuiKSP.ImGuiEx.StyleColor(
+                    DearImGuiKSP.ImGuiCol.ButtonActive, SlotAssignedTintActive))
+                {
+                    DrawGridCellButton(index);
+                }
+            }
+            else if (state == SlotLive)
+            {
+                using (DearImGuiKSP.ImGuiEx.StyleColor(
+                    DearImGuiKSP.ImGuiCol.Button, SlotLiveTint))
+                using (DearImGuiKSP.ImGuiEx.StyleColor(
+                    DearImGuiKSP.ImGuiCol.ButtonHovered, SlotLiveTintHover))
+                using (DearImGuiKSP.ImGuiEx.StyleColor(
+                    DearImGuiKSP.ImGuiCol.ButtonActive, SlotLiveTintActive))
+                {
+                    DrawGridCellButton(index);
+                }
+            }
+            else
+            {
+                DrawGridCellButton(index);
+            }
+        }
+
+        // The cell button itself plus its click cycle (empty → assigned →
+        // live → empty; only one slot can be live, so a new live slot demotes
+        // the previously live one to assigned). Cell 0 carries the grid's
+        // multi-line tooltip.
+        private void DrawGridCellButton(int index)
+        {
+            if (DearImGuiKSP.DearImGuiKSP.Button(CellLabels[index]))
+            {
+                int state = _slotStates[index];
+                if (state == SlotLive)
+                {
+                    _slotStates[index] = SlotEmpty;
+                }
+                else if (state == SlotAssigned)
+                {
+                    for (int i = 0; i < GridCellCount; i++)
+                    {
+                        if (_slotStates[i] == SlotLive)
+                        {
+                            _slotStates[i] = SlotAssigned;
+                        }
+                    }
+                    _slotStates[index] = SlotLive;
+                }
+                else
+                {
+                    _slotStates[index] = SlotAssigned;
+                }
+            }
+            if (index == TooltipCellIndex)
+            {
+                DearImGuiKSP.DearImGuiKSP.Tooltip(GridCellTooltipText);
+            }
+        }
+
+        // 64 generated camera names — 50+ items so the combo popup scrolls.
+        private static string[] BuildCameraItems()
+        {
+            var items = new string[CameraItemCount];
+            for (int i = 0; i < items.Length; i++)
+            {
+                items[i] = "Camera " + (i + 1).ToString("00");
+            }
+            return items;
+        }
+
+        // "01".."16" visible labels with ##camslotNN ids: uniform two-character
+        // labels keep the grid cells the same width and every cell identity
+        // unique within the window.
+        private static string[] BuildCellLabels()
+        {
+            var labels = new string[GridCellCount];
+            for (int i = 0; i < labels.Length; i++)
+            {
+                string number = (i + 1).ToString("00");
+                labels[i] = number + "##camslot" + number;
+            }
+            return labels;
+        }
+
+        private static Color32 WithAlpha(Color32 color, byte alpha)
+        {
+            return new Color32(color.r, color.g, color.b, alpha);
         }
 
         // Third window in the same registered callback — one consumer ID, one

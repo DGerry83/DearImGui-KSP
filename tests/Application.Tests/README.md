@@ -1,7 +1,7 @@
 # tests/Application.Tests
 
 Unit tests for the managed Application layer — the Unity-free orchestration core.
-178 tests (xUnit, net48), hand-written fakes against `Application.Interfaces`
+229 tests (xUnit, net48), hand-written fakes against `Application.Interfaces`
 (no mocking framework). Access to internals via `InternalsVisibleTo("Application.Tests")`
 in `DearImGuiKSP.csproj`.
 
@@ -22,6 +22,10 @@ Coverage set:
   mappings (`HelperTests`); `ImGuiCol`/`ImGuiStyleVar` ordinal pins and the ImPlot
   flag pins against the vendored headers (`StyleEnumPinTests`, `ImPlotFlagsTests`);
   Interop label/id routing through the empty-id sentinel (`InteropLabelRoutingTests`).
+- 1.3.0 consumer API additions: row-state push/pop/hook decision, frame-open and
+  fault-unwind resets, `ImGuiEx.Row` factory semantics (`RowStateTests`); combo
+  preview clamping and selection mapping (`ComboLogicTests`); tooltip hover-flag
+  and item-flag pins plus no-op guards (`TooltipGuardTests`).
 
 Run: `dotnet test` (solution) or `dotnet test tests/Application.Tests/Application.Tests.csproj`.
 The csproj imports `DearImGui-KSP.props.user` (machine KSP pin) so standalone runs
