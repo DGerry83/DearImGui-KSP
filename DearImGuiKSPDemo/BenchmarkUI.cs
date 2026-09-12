@@ -39,7 +39,10 @@ namespace DearImGuiKSPDemo
         private bool _imguiVirtualized = true;
         // Last value returned by the IMGUI reference toggle, stashed on every OnGUI
         // pass and committed to _imguiVirtualized only during Layout (G3-33).
-        private bool _pendingImguiVirtualized;
+        // Must start EQUAL to _imguiVirtualized: the Layout-pass commit fires
+        // whenever the two differ, so a default-false pending field would flip
+        // virtualization off on the very first frame without any click.
+        private bool _pendingImguiVirtualized = true;
 
         private Vector2 _imguiScrollPos;
         private Rect _imguiWindowRect = new Rect(60f, 60f, 380f, 420f);

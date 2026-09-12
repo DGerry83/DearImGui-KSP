@@ -13,13 +13,22 @@ namespace DearImGuiKSPDemo
     /// plus the M5 widget showcase section (C17: spinners, knobs, wheels, and a
     /// cancellable tween demo, drawn by ThemeDemo inside the main window),
     /// plus the ISSUES #011 docking showcase: a dockspace hosted inside the
-    /// main window with a one-time DockBuilder layout for the plot/benchmark
-    /// windows (only while both are visible; floating as before otherwise).
+    /// main window with a DockBuilder layout for the plot/benchmark windows
+    /// (whichever of them is visible docks in — a single window fills the
+    /// dockspace, both share a split layout; both hidden = no dockspace).
     /// All Begin/End pairs are declared through ImGuiEx scopes (C3), including one
     /// "Throw inside scope (test)" fault-barrier test hook.
+    /// Persistent once-addon (MainMenu, once: true) that DontDestroyOnLoads itself —
+    /// KSP does not do that automatically for once-addons (the library's own
+    /// entry point works the same way). One instance lives for the whole session,
+    /// so window visibility choices survive scene loads instead of resetting, and
+    /// the toolbar button registers one-shot: the ApplicationLauncher persists
+    /// across scenes and carries mod buttons with it, so the per-scene add/remove
+    /// cycle stock does not reliably honor (ISSUES #015) is never exercised —
+    /// no duplicate or dead green buttons accumulate.
     /// Toggled via an ApplicationLauncher toolbar button (green placeholder icon).
     /// </summary>
-    [KSPAddon(KSPAddon.Startup.EveryScene, false)]
+    [KSPAddon(KSPAddon.Startup.MainMenu, true)]
     public sealed class DemoConsumer : MonoBehaviour
     {
         private const string ConsumerId = "DearImGuiKSPDemo";
@@ -46,11 +55,22 @@ namespace DearImGuiKSPDemo
         private ApplicationLauncherButton _toolbarButton;
         private bool _registered;
         private bool _windowVisible = true;
-        // Aux windows default visible so the docking showcase (dockspace in the
-        // main window) appears on default open without button clicks.
-        private bool _benchmarkVisible = true;
+        // Aux windows: the plot window defaults visible (cheap), the benchmark
+        // window is opt-in — it and its IMGUI reference window are the perf
+        // showcase and have no business appearing unasked. Because this addon
+        // persists across scenes, these choices survive scene loads; whichever
+        // aux windows are visible dock into the in-window dockspace.
+        private bool _benchmarkVisible;
         private bool _plotVisible = true;
-        private bool _dockLayoutApplied;
+        // Docking showcase layout state: which DockBuilder layout (if any) is
+        // currently applied to the in-window dockspace. ImGui discards a dock
+        // node tree on any frame its dockspace is not submitted, so this only
+        // ever tracks trees this code believes are alive.
+        private int _dockLayoutState;
+        private const int DockLayoutNone = 0;
+        private const int DockLayoutPlotOnly = 1;
+        private const int DockLayoutBenchmarkOnly = 2;
+        private const int DockLayoutBoth = DockLayoutPlotOnly | DockLayoutBenchmarkOnly;
         private BenchmarkUI _benchmark;
         private PlotDemo _plotDemo;
         private ThemeDemo _themeDemo;
@@ -63,6 +83,14 @@ namespace DearImGuiKSPDemo
         // longer needs its own copies — the style overload reads the preset).
         private bool _themeToggle = true;
         private int _radioChoice;
+
+        private void Awake()
+        {
+            // KSP does not DontDestroyOnLoad once-addons automatically (KSP
+            // Knowledge Library, assembly-loading notes) — the library's own
+            // entry point does this too.
+            DontDestroyOnLoad(gameObject);
+        }
 
         private void Start()
         {
@@ -94,9 +122,9 @@ namespace DearImGuiKSPDemo
                 ApplicationLauncher.Instance.RemoveModApplication(_toolbarButton);
                 _toolbarButton = null;
             }
-            // Only when Start actually registered: OnDestroy runs in every scene,
-            // and Unregister on a consumer the library never knew logs a spurious
-            // warning whenever the library is unavailable/dormant (G3-41).
+            // Only when Start actually registered: OnDestroy runs at session end
+            // (once-addon), and Unregister on a consumer the library never knew
+            // logs a spurious warning whenever the library is unavailable/dormant (G3-41).
             if (_registered)
             {
                 _registered = false;
@@ -151,7 +179,7 @@ namespace DearImGuiKSPDemo
             {
                 // The dock node tree only lives while the dockspace is submitted,
                 // so a hidden main window discards the built layout too.
-                _dockLayoutApplied = false;
+                _dockLayoutState = DockLayoutNone;
                 return;
             }
             // noDocking: this window hosts the dockspace, and docking a
@@ -236,13 +264,33 @@ namespace DearImGuiKSPDemo
                     // docking setting is off (it returns 0 and submits
                     // nothing), whereas DockSpaceOverViewport would keep
                     // painting its fullscreen host window. So when docking is
-                    // off — or when either auxiliary window is hidden — the
-                    // three windows simply float as before, with no broken
-                    // layout and no log noise.
-                    // Declared only while BOTH auxiliary windows are visible,
-                    // because an empty dock node would render ImGui's
-                    // "Debug##Default" fallback window.
-                    if (_plotVisible && _benchmarkVisible)
+                    // off the windows simply float, with no broken layout and
+                    // no log noise.
+                    // The dockspace is declared whenever at least one aux
+                    // window is visible — never while both are hidden, because
+                    // an empty dock node would render ImGui's "Debug##Default"
+                    // fallback window. Each visibility combo gets its own
+                    // DockBuilder layout. The curated API has no RemoveNode, so
+                    // a combo change cannot reshape a live tree: the dockspace
+                    // is skipped for one frame (ImGui discards a dock node
+                    // tree on any frame its dockspace is not submitted) and
+                    // the new layout applies to the fresh tree next frame.
+                    int desiredDockLayout =
+                        (_plotVisible ? DockLayoutPlotOnly : DockLayoutNone) |
+                        (_benchmarkVisible ? DockLayoutBenchmarkOnly : DockLayoutNone);
+                    if (desiredDockLayout == DockLayoutNone)
+                    {
+                        // No aux windows: no dockspace, no node tree.
+                        _dockLayoutState = DockLayoutNone;
+                    }
+                    else if (_dockLayoutState != DockLayoutNone && desiredDockLayout != _dockLayoutState)
+                    {
+                        // The combo changed while an old-layout tree is alive:
+                        // skip this frame so ImGui discards it; the new layout
+                        // is applied to the fresh tree on the next frame.
+                        _dockLayoutState = DockLayoutNone;
+                    }
+                    else
                     {
                         // Width fills the content region; the height is
                         // explicit (see DockspaceHeight) because Vector2.zero
@@ -250,43 +298,64 @@ namespace DearImGuiKSPDemo
                         // AlwaysAutoResize window.
                         uint dockspaceId = DearImGuiKSP.DearImGuiKSP.DockSpace(
                             DemoDockspaceId, new Vector2(0f, DockspaceHeight));
-                        if (!_dockLayoutApplied && dockspaceId != 0)
+                        if (dockspaceId == 0)
                         {
-                            // DockSpace returning non-zero means the player's
-                            // docking setting is on and the node exists; the
-                            // one-time layout applies on the first such frame
-                            // (or later, if docking is toggled on mid-session).
-                            _dockLayoutApplied = true;
-                            ApplyDockLayout(dockspaceId);
+                            // Docking setting off: nothing was submitted, so
+                            // no tree exists — force a fresh layout apply if
+                            // the player turns docking back on mid-session.
+                            _dockLayoutState = DockLayoutNone;
+                        }
+                        else if (_dockLayoutState == DockLayoutNone)
+                        {
+                            // Fresh node tree (first show, post-combo-change,
+                            // or docking just toggled on): apply the layout
+                            // for the current visibility combo.
+                            ApplyDockLayout(dockspaceId, desiredDockLayout);
+                            _dockLayoutState = desiredDockLayout;
                         }
                     }
-                    else
-                    {
-                        // The dockspace is not submitted while either window
-                        // is hidden, so ImGui discards its node tree and the
-                        // layout must be rebuilt the next time both show.
-                        _dockLayoutApplied = false;
-                    }
+                }
+                else
+                {
+                    // Collapsed main window: the dockspace is not submitted
+                    // this frame either, so the node tree is discarded and the
+                    // layout must be re-applied when the window is expanded.
+                    _dockLayoutState = DockLayoutNone;
                 }
             }
             DrawBenchmarkWindow();
             DrawPlotWindow();
         }
 
-        // One-time DockBuilder layout (ISSUES #011). The curated API has no
-        // DockSpace node flag, so the upstream RemoveNode/AddNode recipe does
-        // not apply: DockSpace above already created the dockspace node this
-        // frame, and DockBuilderSplitNode operates directly on a live node.
-        // Windows are docked by their exact titles (their process-global ImGui
-        // identities) — the same constants the window scopes use.
-        private static void ApplyDockLayout(uint dockspaceId)
+        // One-time DockBuilder layout (ISSUES #011), applied only to a FRESH
+        // dock node tree — the caller guarantees any previous tree was
+        // discarded by skipping the dockspace for a frame first
+        // (DockBuilderSplitNode asserts on an already-split node). The curated
+        // API has no DockSpace node flag, so the upstream RemoveNode/AddNode
+        // recipe does not apply: DockSpace above already created the dockspace
+        // node this frame, and DockBuilderSplitNode operates directly on a
+        // live node. Windows are docked by their exact titles (their
+        // process-global ImGui identities) — the same constants the window
+        // scopes use.
+        private static void ApplyDockLayout(uint dockspaceId, int layout)
         {
-            // Region below the widgets: plots on top (60%), benchmark below (40%).
-            DearImGuiKSP.DearImGuiKSP.DockBuilderSplitNode(
-                dockspaceId, DearImGuiKSP.ImGuiDir.Down, 0.4f,
-                out uint benchmarkNode, out uint plotsNode);
-            DearImGuiKSP.DearImGuiKSP.DockBuilderDockWindow(PlotWindowTitle, plotsNode);
-            DearImGuiKSP.DearImGuiKSP.DockBuilderDockWindow(BenchmarkWindowTitle, benchmarkNode);
+            if (layout == DockLayoutBoth)
+            {
+                // Region below the widgets: plots on top (60%), benchmark below (40%).
+                DearImGuiKSP.DearImGuiKSP.DockBuilderSplitNode(
+                    dockspaceId, DearImGuiKSP.ImGuiDir.Down, 0.4f,
+                    out uint benchmarkNode, out uint plotsNode);
+                DearImGuiKSP.DearImGuiKSP.DockBuilderDockWindow(PlotWindowTitle, plotsNode);
+                DearImGuiKSP.DearImGuiKSP.DockBuilderDockWindow(BenchmarkWindowTitle, benchmarkNode);
+            }
+            else
+            {
+                // Single visible aux window: dock it into the root node so it
+                // fills the whole dockspace.
+                DearImGuiKSP.DearImGuiKSP.DockBuilderDockWindow(
+                    layout == DockLayoutPlotOnly ? PlotWindowTitle : BenchmarkWindowTitle,
+                    dockspaceId);
+            }
             DearImGuiKSP.DearImGuiKSP.DockBuilderFinish(dockspaceId);
         }
 

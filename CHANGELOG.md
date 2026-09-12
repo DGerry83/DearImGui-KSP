@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — demo fixes
+
+- Demo: fixed duplicate and dead green toolbar buttons piling up across scene loads (three in the VAB) — the demo consumer is now a persistent once-addon with one-shot toolbar registration, the same pattern that fixed the library's own settings button (ISSUES #015).
+- Demo: window visibility now survives scene changes — closing the demo in one scene keeps it closed in the next instead of reopening every time.
+- Demo: the benchmark window and its IMGUI reference window are now hidden by default instead of forced open in every scene; show them from the main demo window when wanted. The docked-window showcase appears once both the Plots and Benchmark windows are shown.
+- Demo: the IMGUI reference window's "Use Virtualization" toggle now actually starts ON — a first-frame layout commit was silently flipping it off.
+- Demo: the in-window docking area now appears whenever at least one of the Plots/Benchmark windows is visible instead of requiring both — a single visible window docks into the full area, both get the split layout, and layout changes rebuild cleanly when windows are shown or hidden.
+
 ## 1.2.0 — minor
 
 Window docking; no breaking changes.
